@@ -97,13 +97,7 @@ Ins2:
 	}
 Ins3:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 4
-		} else {
-			stack = append(stack, [2]int{offset, 4})
-		}
+		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
 Ins4:
@@ -142,13 +136,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
@@ -187,13 +175,7 @@ Ins12:
 	}
 Ins13:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 14
-		} else {
-			stack = append(stack, [2]int{offset, 14})
-		}
+		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
 Ins14:
@@ -292,13 +274,7 @@ Ins2:
 	}
 Ins3:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 4
-		} else {
-			stack = append(stack, [2]int{offset, 4})
-		}
+		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
 Ins4:
@@ -337,13 +313,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
@@ -382,13 +352,7 @@ Ins12:
 	}
 Ins13:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 14
-		} else {
-			stack = append(stack, [2]int{offset, 14})
-		}
+		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
 Ins14:
@@ -503,13 +467,7 @@ Ins2:
 	}
 Ins3:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 4
-		} else {
-			stack = append(stack, [2]int{offset, 4})
-		}
+		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
 Ins4:
@@ -552,13 +510,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
@@ -601,13 +553,7 @@ Ins12:
 	}
 Ins13:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 14
-		} else {
-			stack = append(stack, [2]int{offset, 14})
-		}
+		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
 Ins14:
@@ -741,13 +687,7 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins3:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 4
-			} else {
-				stack = append(stack, [2]int{offset, 4})
-			}
+			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
 	Ins4:
@@ -790,13 +730,7 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins8:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 9
-			} else {
-				stack = append(stack, [2]int{offset, 9})
-			}
+			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
 	Ins9:
@@ -839,13 +773,7 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins13:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 14
-			} else {
-				stack = append(stack, [2]int{offset, 14})
-			}
+			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}
 	Ins14:
@@ -983,13 +911,7 @@ Ins2:
 	}
 Ins3:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 4
-		} else {
-			stack = append(stack, [2]int{offset, 4})
-		}
+		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
 Ins4:
@@ -1032,13 +954,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
@@ -1081,13 +997,7 @@ Ins12:
 	}
 Ins13:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 14
-		} else {
-			stack = append(stack, [2]int{offset, 14})
-		}
+		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
 Ins14:
@@ -1221,13 +1131,7 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins3:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 4
-			} else {
-				stack = append(stack, [2]int{offset, 4})
-			}
+			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
 	Ins4:
@@ -1270,13 +1174,7 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins8:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 9
-			} else {
-				stack = append(stack, [2]int{offset, 9})
-			}
+			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
 	Ins9:
@@ -1319,13 +1217,7 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins13:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 14
-			} else {
-				stack = append(stack, [2]int{offset, 14})
-			}
+			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}
 	Ins14:

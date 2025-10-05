@@ -175,13 +175,7 @@ Ins6:
 	}
 Ins7:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 8
-		} else {
-			stack = append(stack, [2]int{offset, 8})
-		}
+		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
 Ins8:
@@ -246,13 +240,7 @@ Ins13:
 	}
 Ins14:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 15
-		} else {
-			stack = append(stack, [2]int{offset, 15})
-		}
+		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
 Ins15:
@@ -291,13 +279,7 @@ Ins18:
 	}
 Ins19:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 20
-		} else {
-			stack = append(stack, [2]int{offset, 20})
-		}
+		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
 Ins20:
@@ -306,13 +288,7 @@ Ins20:
 	}
 Ins21:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 27
-		} else {
-			stack = append(stack, [2]int{offset, 27})
-		}
+		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
 Ins22:
@@ -347,13 +323,7 @@ Ins24:
 	}
 Ins25:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 26
-		} else {
-			stack = append(stack, [2]int{offset, 26})
-		}
+		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
 Ins26:
@@ -362,13 +332,7 @@ Ins26:
 	}
 Ins27:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 28
-		} else {
-			stack = append(stack, [2]int{offset, 28})
-		}
+		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
 Ins28:
@@ -541,13 +505,7 @@ Ins6:
 	}
 Ins7:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 8
-		} else {
-			stack = append(stack, [2]int{offset, 8})
-		}
+		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
 Ins8:
@@ -612,13 +570,7 @@ Ins13:
 	}
 Ins14:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 15
-		} else {
-			stack = append(stack, [2]int{offset, 15})
-		}
+		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
 Ins15:
@@ -657,13 +609,7 @@ Ins18:
 	}
 Ins19:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 20
-		} else {
-			stack = append(stack, [2]int{offset, 20})
-		}
+		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
 Ins20:
@@ -672,13 +618,7 @@ Ins20:
 	}
 Ins21:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 27
-		} else {
-			stack = append(stack, [2]int{offset, 27})
-		}
+		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
 Ins22:
@@ -713,13 +653,7 @@ Ins24:
 	}
 Ins25:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 26
-		} else {
-			stack = append(stack, [2]int{offset, 26})
-		}
+		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
 Ins26:
@@ -728,13 +662,7 @@ Ins26:
 	}
 Ins27:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 28
-		} else {
-			stack = append(stack, [2]int{offset, 28})
-		}
+		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
 Ins28:
@@ -929,13 +857,7 @@ Ins6:
 	}
 Ins7:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 8
-		} else {
-			stack = append(stack, [2]int{offset, 8})
-		}
+		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
 Ins8:
@@ -1004,13 +926,7 @@ Ins13:
 	}
 Ins14:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 15
-		} else {
-			stack = append(stack, [2]int{offset, 15})
-		}
+		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
 Ins15:
@@ -1053,13 +969,7 @@ Ins18:
 	}
 Ins19:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 20
-		} else {
-			stack = append(stack, [2]int{offset, 20})
-		}
+		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
 Ins20:
@@ -1070,13 +980,7 @@ Ins20:
 	}
 Ins21:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 27
-		} else {
-			stack = append(stack, [2]int{offset, 27})
-		}
+		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
 Ins22:
@@ -1113,13 +1017,7 @@ Ins24:
 	}
 Ins25:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 26
-		} else {
-			stack = append(stack, [2]int{offset, 26})
-		}
+		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
 Ins26:
@@ -1130,13 +1028,7 @@ Ins26:
 	}
 Ins27:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 28
-		} else {
-			stack = append(stack, [2]int{offset, 28})
-		}
+		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
 Ins28:
@@ -1348,13 +1240,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins7:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 8
-			} else {
-				stack = append(stack, [2]int{offset, 8})
-			}
+			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
 	Ins8:
@@ -1423,13 +1309,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins14:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 15
-			} else {
-				stack = append(stack, [2]int{offset, 15})
-			}
+			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
 	Ins15:
@@ -1472,13 +1352,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins19:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 20
-			} else {
-				stack = append(stack, [2]int{offset, 20})
-			}
+			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
 	Ins20:
@@ -1489,13 +1363,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins21:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 27
-			} else {
-				stack = append(stack, [2]int{offset, 27})
-			}
+			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
 	Ins22:
@@ -1532,13 +1400,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins25:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 26
-			} else {
-				stack = append(stack, [2]int{offset, 26})
-			}
+			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
 	Ins26:
@@ -1549,13 +1411,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins27:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 28
-			} else {
-				stack = append(stack, [2]int{offset, 28})
-			}
+			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}
 	Ins28:
@@ -1771,13 +1627,7 @@ Ins6:
 	}
 Ins7:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 8
-		} else {
-			stack = append(stack, [2]int{offset, 8})
-		}
+		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
 Ins8:
@@ -1846,13 +1696,7 @@ Ins13:
 	}
 Ins14:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 15
-		} else {
-			stack = append(stack, [2]int{offset, 15})
-		}
+		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
 Ins15:
@@ -1895,13 +1739,7 @@ Ins18:
 	}
 Ins19:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 20
-		} else {
-			stack = append(stack, [2]int{offset, 20})
-		}
+		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
 Ins20:
@@ -1912,13 +1750,7 @@ Ins20:
 	}
 Ins21:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 27
-		} else {
-			stack = append(stack, [2]int{offset, 27})
-		}
+		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
 Ins22:
@@ -1955,13 +1787,7 @@ Ins24:
 	}
 Ins25:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 26
-		} else {
-			stack = append(stack, [2]int{offset, 26})
-		}
+		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
 Ins26:
@@ -1972,13 +1798,7 @@ Ins26:
 	}
 Ins27:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 28
-		} else {
-			stack = append(stack, [2]int{offset, 28})
-		}
+		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
 Ins28:
@@ -2190,13 +2010,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins7:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 8
-			} else {
-				stack = append(stack, [2]int{offset, 8})
-			}
+			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
 	Ins8:
@@ -2265,13 +2079,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins14:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 15
-			} else {
-				stack = append(stack, [2]int{offset, 15})
-			}
+			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
 	Ins15:
@@ -2314,13 +2122,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins19:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 20
-			} else {
-				stack = append(stack, [2]int{offset, 20})
-			}
+			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
 	Ins20:
@@ -2331,13 +2133,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins21:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 27
-			} else {
-				stack = append(stack, [2]int{offset, 27})
-			}
+			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
 	Ins22:
@@ -2374,13 +2170,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins25:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 26
-			} else {
-				stack = append(stack, [2]int{offset, 26})
-			}
+			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
 	Ins26:
@@ -2391,13 +2181,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins27:
 		{
-			if cap(stack) > len(stack) {
-				stack = stack[:len(stack)+1]
-				stack[len(stack)-1][0] = offset
-				stack[len(stack)-1][1] = 28
-			} else {
-				stack = append(stack, [2]int{offset, 28})
-			}
+			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}
 	Ins28:

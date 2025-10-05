@@ -81,13 +81,7 @@ Ins1:
 	}
 Ins2:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 3
-		} else {
-			stack = append(stack, [2]int{offset, 3})
-		}
+		stack = append(stack, [2]int{offset, 3})
 		goto Ins1
 	}
 Ins3:
@@ -118,13 +112,7 @@ Ins4:
 	}
 Ins5:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 6
-		} else {
-			stack = append(stack, [2]int{offset, 6})
-		}
+		stack = append(stack, [2]int{offset, 6})
 		goto Ins4
 	}
 Ins6:
@@ -155,13 +143,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
@@ -240,13 +222,7 @@ Ins1:
 	}
 Ins2:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 3
-		} else {
-			stack = append(stack, [2]int{offset, 3})
-		}
+		stack = append(stack, [2]int{offset, 3})
 		goto Ins1
 	}
 Ins3:
@@ -277,13 +253,7 @@ Ins4:
 	}
 Ins5:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 6
-		} else {
-			stack = append(stack, [2]int{offset, 6})
-		}
+		stack = append(stack, [2]int{offset, 6})
 		goto Ins4
 	}
 Ins6:
@@ -314,13 +284,7 @@ Ins7:
 	}
 Ins8:
 	{
-		if cap(stack) > len(stack) {
-			stack = stack[:len(stack)+1]
-			stack[len(stack)-1][0] = offset
-			stack[len(stack)-1][1] = 9
-		} else {
-			stack = append(stack, [2]int{offset, 9})
-		}
+		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
 Ins9:
