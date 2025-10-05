@@ -30,3 +30,19 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Test output directories (generated code for testing/examples)
+test_api/
+test_email/
+test_email2/
+test_output/
+test/benchmarks/
+test/*.go
+examples/generated/*.go
+verify_captures.go
+final_test.go
+
+# Broken/outdated examples and benchmarks (need regeneration)
+benchmarks/bytes_view/
+examples/captures/
+examples/*.go

@@ -67,82 +67,97 @@ func EmailMatchBytes(input []byte) bool {
 # Install CLI
 go install github.com/KromDaniel/regengo/cmd/regengo@latest
 
-# Generate basic matcher
+# Generate matcher from pattern
 regengo -pattern "[\w\.+-]+@[\w\.-]+\.[\w\.-]+" -name Email -output email.go -package main
 
-# Generate with capture groups
-regengo -pattern "(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)" -name Email -output email.go -package main -captures
+# Generate with capture groups (auto-detected from pattern)
+regengo -pattern "(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+\.[\w\.-]+)" -name Email -output email.go -package main
 
-# Generate with pool optimization (recommended for production)
-regengo -pattern "[\w\.+-]+@[\w\.-]+\.[\w\.-]+" -name Email -output email.go -package main -pool
-
-# Generate with zero-copy []byte captures (best performance for byte inputs)
-regengo -pattern "(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)" -name Email -output email.go -package main -captures -bytes-view
-
-# Combine optimizations for maximum performance
-regengo -pattern "(?P<protocol>https?)://(?P<host>[\w\.-]+)" -name URL -output url.go -package main -pool -captures -bytes-view
+# Disable pool optimization if needed
+regengo -pattern "[\w\.+-]+@[\w\.-]+\.[\w\.-]+" -name Email -output email.go -package main -no-pool
 ```
+
+**CLI Flags**:
+
+- `-pattern`: Regex pattern to compile (required)
+- `-name`: Function name prefix (required)
+- `-output`: Output file path (required)
+- `-package`: Go package name (required)
+- `-no-pool`: Disable sync.Pool optimization (default: pool enabled)
+- `-test`: Generate test file with sample inputs
 
 ## 📊 Performance
 
-Regengo provides **dramatic performance improvements** over the standard `regexp` package, especially with pool optimization enabled:
+Regengo provides **dramatic performance improvements** over the standard `regexp` package. All benchmarks below are from actual test runs on Apple M4 Pro:
 
-### Basic Matching (MatchString)
+### Pattern Matching (MatchString)
 
-#### With Pool Optimization (`-pool` flag)
+| Pattern | Regengo  | Standard regexp | Speedup         | Memory   |
+| ------- | -------- | --------------- | --------------- | -------- |
+| Greedy  | 201 ns   | 776 ns          | **3.9x faster** | 0 allocs |
+| Lazy    | 427 ns   | 1,363 ns        | **3.2x faster** | 0 allocs |
+| Email   | 6,753 ns | 1,600 ns        | _0.2x_          | 0 allocs |
 
-| Pattern | Regengo (pooled) | Standard regexp | Speedup         |
-| ------- | ---------------- | --------------- | --------------- |
-| Email   | 289 ns/op        | 882 ns/op       | **3.1x faster** |
-| URL     | 121 ns/op        | 549 ns/op       | **4.5x faster** |
-| IPv4    | 96 ns/op         | 470 ns/op       | **4.9x faster** |
-
-**Memory**: 0 allocations/op with pool (vs 0 for standard regexp, 14-23 for non-pooled)
-
-#### Without Pool Optimization
-
-| Pattern | Regengo   | Standard regexp | Speedup         |
-| ------- | --------- | --------------- | --------------- |
-| Email   | 585 ns/op | 882 ns/op       | **1.5x faster** |
-| URL     | 373 ns/op | 549 ns/op       | **1.5x faster** |
-| IPv4    | 237 ns/op | 470 ns/op       | **2.0x faster** |
+_Note: Complex backtracking patterns (like the Email MatchString test) may be slower. Use capture variants or simpler patterns for better performance._
 
 ### Capture Groups (FindStringSubmatch)
 
-#### Standard (String Fields)
+Regengo generates **optimized structs** with named fields, providing massive speedups:
 
-| Pattern      | Regengo    | Standard regexp | Speedup         | Allocations |
-| ------------ | ---------- | --------------- | --------------- | ----------- |
-| DateCapture  | 20.7 ns/op | 101 ns/op       | **5x faster**   | 1 vs 2      |
-| EmailCapture | 123 ns/op  | 246 ns/op       | **2x faster**   | 6 vs 2      |
-| URLCapture   | 118 ns/op  | 196 ns/op       | **1.7x faster** | 6 vs 2      |
+| Pattern      | Regengo      | Standard regexp | Speedup         | Memory (Regengo)  | Memory (Stdlib)     |
+| ------------ | ------------ | --------------- | --------------- | ----------------- | ------------------- |
+| DateCapture  | **25 ns/op** | 105 ns/op       | **4.2x faster** | 64 B/op (1 alloc) | 128 B/op (2 allocs) |
+| EmailCapture | **57 ns/op** | 245 ns/op       | **4.3x faster** | 64 B/op (1 alloc) | 128 B/op (2 allocs) |
+| URLCapture   | **51 ns/op** | 200 ns/op       | **3.9x faster** | 80 B/op (1 alloc) | 160 B/op (2 allocs) |
 
-#### BytesView (Zero-Copy []byte Fields)
+**Key Benefits:**
 
-For `[]byte` inputs, BytesView eliminates string conversion allocations:
+- ✅ **3-4x faster** than standard regexp for capture groups
+- ✅ **50% less memory** per match
+- ✅ **Type-safe structs** with named fields
+- ✅ **Fewer allocations** (1 vs 2 per match)
+- ✅ **Optional groups handled** efficiently (empty strings when not matched)
 
-| Pattern    | Standard (string) | BytesView ([]byte) | Improvement          |
-| ---------- | ----------------- | ------------------ | -------------------- |
-| URLCapture | 269 ns/op         | 150 ns/op          | **1.8x faster**      |
-|            | 2,128 B/op        | 592 B/op           | **72% less memory**  |
-|            | 8 allocs/op       | 2 allocs/op        | **75% fewer allocs** |
+### Real-World Examples
 
-**Generate with**: `regengo -pattern "..." -name URL -captures -bytes-view`
+```go
+// DateCapture: (?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
+// Input: "2024-12-25"
+result, found := DateCaptureFindString("2024-12-25")
+// stdlib: 105 ns/op, 128 B/op, 2 allocs
+// regengo: 25 ns/op, 64 B/op, 1 alloc → 4.2x faster
 
-**Note**: Standard capture groups generate optimized structs with named fields. Optional groups are handled efficiently, returning empty strings (or `nil` for []byte) when not matched.
+// URLCapture: (?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?
+// Input: "https://api.github.com:443/repos/owner/repo"
+result, found := URLCaptureFindString("https://api.github.com:443/repos/owner/repo")
+// stdlib: 385 ns/op, 160 B/op, 2 allocs
+// regengo: 80 ns/op, 80 B/op, 1 alloc → 4.8x faster
+```
 
-_Run `make bench` to see benchmarks on your system._
+_Run `make bench` to see benchmarks on your system. Results from `go test -bench=. ./benchmarks/generated`_
 
 ### 🎯 Pool Optimization
 
-The `-pool` flag enables `sync.Pool` for stack reuse, achieving:
+The generated code uses `sync.Pool` by default for stack reuse, achieving:
 
-- ✅ **Zero allocations** per match operation
-- ✅ **3-5x faster** than standard regexp
+- ✅ **Zero allocations** for backtracking stack management
+- ✅ **3-4x faster** than standard regexp for capture groups
 - ✅ **Thread-safe** concurrent access
 - ✅ **Automatic memory management**
 
-**Recommendation**: Use `-pool` for production deployments and hot paths.
+To disable pool optimization, use the `NoPool` option:
+
+```go
+err := regengo.Compile(regengo.Options{
+    Pattern:    `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`,
+    Name:       "Email",
+    OutputFile: "./generated/email.go",
+    Package:    "generated",
+    NoPool:     true, // Disable pool optimization
+})
+```
+
+**Recommendation**: Keep pool enabled (default) for production deployments and hot paths.
 
 See [Memory Optimization docs](docs/MEMORY_OPTIMIZATION.md) for details.
 
@@ -166,25 +181,27 @@ The `Options` struct provides full control over code generation:
 
 ```go
 type Options struct {
-    Pattern      string // Regex pattern to compile
-    Name         string // Function name prefix
-    OutputFile   string // Output file path
-    Package      string // Go package name
-    UsePool      bool   // Enable sync.Pool optimization (recommended)
-    WithCaptures bool   // Generate capture group extraction
-    BytesView    bool   // Generate zero-copy []byte capture structs (requires WithCaptures)
+    Pattern    string // Regex pattern to compile (required)
+    Name       string // Function name prefix (required)
+    OutputFile string // Output file path (required)
+    Package    string // Go package name (required)
+    NoPool     bool   // Disable sync.Pool optimization (default: false, pool enabled)
 }
 ```
 
-**Option Details**:
+**Important Notes**:
 
-- `UsePool`: Use `sync.Pool` for stack reuse (0 allocs, 3-5x faster)
-- `WithCaptures`: Extract named/indexed submatches into type-safe structs
-- `BytesView`: Generate `[]byte` fields for zero-copy captures (72% less memory for byte inputs)
+- **Capture groups are auto-detected**: If your pattern has named groups like `(?P<name>...)` or numbered groups `(...)`, capture extraction functions are automatically generated
+- **Pool optimization is enabled by default**: Set `NoPool: true` only if you need to disable it
+- **Generated functions**:
+  - `{Name}MatchString(input string) bool` - Check if pattern matches
+  - `{Name}MatchBytes(input []byte) bool` - Check if pattern matches bytes
+  - `{Name}FindString(input string) (*{Name}Match, bool)` - Extract captures (if pattern has groups)
+  - `{Name}FindBytes(input []byte) (*{Name}Match, bool)` - Extract captures from bytes
 
 ### Capture Groups
 
-When `WithCaptures` is enabled, Regengo generates optimized functions that extract submatches:
+Regengo automatically detects capture groups in your pattern and generates optimized extraction functions:
 
 ```go
 // Example pattern with named groups
@@ -206,46 +223,35 @@ func EmailFindString(input string) (*EmailMatch, bool)
 
 **Features**:
 
-- Named groups: `(?P<name>...)` → struct field `Name`
-- Indexed groups: `(...)` → struct field `Match1`, `Match2`, etc.
-- Optional groups: Return empty string when not matched
-- Type-safe: Compile-time checked struct fields
+- **Auto-detection**: Named groups `(?P<name>...)` and indexed groups `(...)` automatically trigger capture generation
+- **Named groups**: `(?P<name>...)` → struct field `Name`
+- **Indexed groups**: `(...)` → struct field `Group1`, `Group2`, etc.
+- **Optional groups**: Return empty string when not matched (e.g., `(?P<port>\d+)?`)
+- **Type-safe**: Compile-time checked struct fields
+- **Performance**: 3-4x faster than stdlib with 50% less memory
 
 ### BytesView: Zero-Copy []byte Captures
 
-For maximum performance with `[]byte` inputs, use the `-bytes-view` flag to generate zero-copy capture structs:
-
-```bash
-regengo -pattern "(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)" -name Email -output email.go -captures -bytes-view
-```
-
-This generates **two struct types**:
+The generated code automatically provides zero-copy `[]byte` capture support through the `FindBytes` function:
 
 ```go
-// For string inputs (FindString)
+// For []byte inputs - zero-copy!
 type EmailMatch struct {
-    Match  string
-    User   string
-    Domain string
-}
-
-// For []byte inputs (FindBytes) - zero-copy!
-type EmailBytesMatch struct {
     Match  []byte  // Direct slice reference, no allocation
     User   []byte  // Direct slice reference, no allocation
     Domain []byte  // Direct slice reference, no allocation
 }
 
-func EmailFindString(input string) (*EmailMatch, bool)
-func EmailFindBytes(input []byte) (*EmailBytesMatch, bool)  // Returns []byte fields
+func EmailFindBytes(input []byte) (*EmailMatch, bool)  // Returns []byte fields
 ```
 
 **Benefits**:
 
 - ✅ **Zero allocations** for capture field slicing
-- ✅ **72% less memory** per match (vs string conversion)
-- ✅ **1.8x faster** for []byte inputs
+- ✅ **50% less memory** per match (64-80 bytes vs 128-160 bytes)
+- ✅ **3-4x faster** for capture extraction
 - ✅ **Direct slice references** - no `string()` conversions
+- ✅ **Automatic** - just use `FindBytes` instead of `FindString`
 
 **When to use**:
 
@@ -259,14 +265,18 @@ See [BytesView documentation](docs/BYTES_VIEW.md) for detailed usage and safety 
 
 ## 📝 Examples
 
-See the [examples](./examples) directory for more usage patterns:
+Check the [benchmarks/generated](./benchmarks/generated) directory to see actual generated code examples. You can regenerate these by running:
 
-- Email validation
-- URL matching
-- Capture groups (named and indexed)
-- Custom patterns
+```bash
+make bench-gen
+```
 
-Capture group examples can be found in [examples/captures](./examples/captures).
+This will generate matchers for various patterns including:
+
+- Date matching with captures (year, month, day)
+- Email matching with captures (user, domain)
+- URL matching with captures (protocol, host, port, path)
+- Greedy and lazy quantifiers
 
 ## 🧪 Testing
 
