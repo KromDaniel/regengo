@@ -1,0 +1,62 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - errcheck
+    - typecheck
+    - gocyclo
+    - misspell
+    - unconvert
+    - unparam
+    - nakedret
+    - prealloc
+    - exportloopref
+    - gocritic
+    - revive
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  govet:
+    check-shadowing: true
+  misspell:
+    locale: US
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - "checkPrivateReceivers"
+          - "sayRepetitiveInsteadOfStutters"
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gocritic
+
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+  max-same-issues: 0
+
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - benchmarks/generated
+    - examples/generated
+    - output
+    - vendor
