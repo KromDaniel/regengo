@@ -30,6 +30,7 @@ type Compiler struct {
 	file                 *jen.File
 	captureNames         []string // Capture group names (empty string for unnamed groups)
 	hasRepeatingCaptures bool     // True if any capture groups are in repeating context
+	needsBacktracking    bool     // True if the program contains alternation instructions
 }
 
 // New creates a new compiler instance.
@@ -43,6 +44,11 @@ func New(config Config) *Compiler {
 	if config.WithCaptures && config.RegexAST != nil {
 		compiler.captureNames = extractCaptureNames(config.RegexAST)
 		compiler.hasRepeatingCaptures = hasRepeatingCaptures(config.RegexAST)
+	}
+
+	// Check if the program needs backtracking
+	if config.Program != nil {
+		compiler.needsBacktracking = needsBacktracking(config.Program)
 	}
 
 	return compiler
@@ -64,8 +70,8 @@ func (c *Compiler) Generate() error {
 	c.file.Comment("DO NOT EDIT.")
 	c.file.Line()
 
-	// Add sync.Pool if enabled
-	if c.config.UsePool {
+	// Add sync.Pool if enabled and backtracking is needed
+	if c.config.UsePool && c.needsBacktracking {
 		c.generateStackPool()
 	}
 
@@ -120,13 +126,16 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
 	}
 
-	// Add stack initialization (pooled or regular)
-	if c.config.UsePool {
-		code = append(code, c.generatePooledStackInit()...)
-	} else {
-		code = append(code,
-			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-		)
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization (pooled or regular)
+		if c.config.UsePool {
+			code = append(code, c.generatePooledStackInit()...)
+		} else {
+			code = append(code,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
 	}
 
 	code = append(code,
@@ -136,8 +145,16 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 		jen.Goto().Id(codegen.StepSelectName),
 	)
 
-	// Add backtracking logic
-	code = append(code, c.generateBacktracking()...)
+	// Only add backtracking logic if needed
+	if c.needsBacktracking {
+		code = append(code, c.generateBacktracking()...)
+	} else {
+		// For patterns without backtracking, add a simple fallback that returns false
+		code = append(code,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Return(jen.False()),
+		)
+	}
 
 	// Add step selector
 	code = append(code, c.generateStepSelector()...)
@@ -413,13 +430,78 @@ func (c *Compiler) generateAltMatchInst(label *jen.Statement, inst *syntax.Inst)
 
 // generateEmptyWidthInst generates code for InstEmptyWidth (position assertions).
 func (c *Compiler) generateEmptyWidthInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	// For now, simple implementation - just continue
-	return []jen.Code{
-		label,
-		jen.Block(
+	emptyOp := syntax.EmptyOp(inst.Arg)
+
+	var checks []jen.Code
+
+	// Check for beginning of text (^)
+	if emptyOp&syntax.EmptyBeginText != 0 {
+		// offset must be 0
+		checks = append(checks,
+			jen.If(jen.Id(codegen.OffsetName).Op("!=").Lit(0)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for end of text ($)
+	if emptyOp&syntax.EmptyEndText != 0 {
+		// offset must equal length
+		checks = append(checks,
+			jen.If(jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for beginning of line
+	if emptyOp&syntax.EmptyBeginLine != 0 {
+		// offset must be 0 OR previous character must be newline
+		checks = append(checks,
+			jen.If(
+				jen.Id(codegen.OffsetName).Op("!=").Lit(0).Op("&&").
+					Parens(
+						jen.Id(codegen.OffsetName).Op("==").Lit(0).Op("||").
+							Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1)).Op("!=").LitRune('\n'),
+					),
+			).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for end of line
+	if emptyOp&syntax.EmptyEndLine != 0 {
+		// offset must equal length OR current character must be newline
+		checks = append(checks,
+			jen.If(
+				jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName).Op("&&").
+					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").LitRune('\n'),
+			).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Word boundary checks would go here if needed
+	// For now, we'll leave them unimplemented
+	if emptyOp&(syntax.EmptyWordBoundary|syntax.EmptyNoWordBoundary) != 0 {
+		return nil, fmt.Errorf("word boundary assertions (\\b, \\B) are not yet implemented")
+	}
+
+	// Add the checks and continue to next instruction
+	code := []jen.Code{label}
+	if len(checks) > 0 {
+		code = append(code, jen.Block(append(checks,
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
+		)...))
+	} else {
+		code = append(code, jen.Block(
+			jen.Goto().Id(codegen.InstructionName(inst.Out)),
+		))
+	}
+
+	return code, nil
 }
 
 // generateNopInst generates code for InstNop (no operation).
@@ -490,6 +572,22 @@ func extractCaptureNames(re *syntax.Regexp) []string {
 // from repeating groups. For example, (\w)+ matching "abc" will capture "c", not ["a","b","c"].
 func hasRepeatingCaptures(re *syntax.Regexp) bool {
 	return walkCheckRepeating(re, false)
+}
+
+// needsBacktracking checks if the compiled program requires backtracking.
+// Returns true if the program contains InstAlt instructions (alternations).
+func needsBacktracking(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	for i := range prog.Inst {
+		if prog.Inst[i].Op == syntax.InstAlt {
+			return true
+		}
+	}
+
+	return false
 }
 
 // walkCheckRepeating recursively walks the AST to detect captures in repeating context.
@@ -713,24 +811,27 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
 	}
 
-	// Add stack initialization
-	if c.config.UsePool {
-		poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
-		loopBody = append(loopBody,
-			jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
-			jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
-			jen.Defer().Func().Params().Block(
-				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
-					jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
-				),
-				jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
-				jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
-			).Call(),
-		)
-	} else {
-		loopBody = append(loopBody,
-			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-		)
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization
+		if c.config.UsePool {
+			poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
+			loopBody = append(loopBody,
+				jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
+				jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
+				jen.Defer().Func().Params().Block(
+					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
+						jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
+					),
+					jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+					jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
+				).Call(),
+			)
+		} else {
+			loopBody = append(loopBody,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
 	}
 
 	// Continue with matching logic
@@ -743,20 +844,30 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 	)
 
 	// Add backtracking logic that continues to next position on failure
-	loopBody = append(loopBody,
-		jen.Id(codegen.TryFallbackName).Op(":"),
-		jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
-			jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
-			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
-			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-			jen.Goto().Id(codegen.StepSelectName),
-		).Else().Block(
-			// No match at this position, try next
+	// Only if backtracking is needed
+	if c.needsBacktracking {
+		loopBody = append(loopBody,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+				jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+				jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+				jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+				jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+				jen.Goto().Id(codegen.StepSelectName),
+			).Else().Block(
+				// No match at this position, try next
+				jen.Id("searchStart").Op("++"),
+				jen.Continue(),
+			),
+		)
+	} else {
+		// For patterns without backtracking, just move to next position on failure
+		loopBody = append(loopBody,
+			jen.Id(codegen.TryFallbackName).Op(":"),
 			jen.Id("searchStart").Op("++"),
 			jen.Continue(),
-		),
-	)
+		)
+	}
 
 	// Add step selector
 	loopBody = append(loopBody, c.generateStepSelector()...)
@@ -903,13 +1014,16 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
 	}
 
-	// Add stack initialization (pooled or regular)
-	if c.config.UsePool {
-		code = append(code, c.generatePooledStackInit()...)
-	} else {
-		code = append(code,
-			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-		)
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization (pooled or regular)
+		if c.config.UsePool {
+			code = append(code, c.generatePooledStackInit()...)
+		} else {
+			code = append(code,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
 	}
 
 	code = append(code,
@@ -922,7 +1036,16 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 	)
 
 	// Add backtracking logic (with nil return for captures)
-	code = append(code, c.generateBacktrackingWithCaptures()...)
+	// Only if backtracking is needed
+	if c.needsBacktracking {
+		code = append(code, c.generateBacktrackingWithCaptures()...)
+	} else {
+		// For patterns without backtracking, add a simple fallback that returns nil, false
+		code = append(code,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Return(jen.Nil(), jen.False()),
+		)
+	}
 
 	// Add step selector
 	code = append(code, c.generateStepSelector()...)

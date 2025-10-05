@@ -46,3 +46,5 @@ final_test.go
 benchmarks/bytes_view/
 examples/captures/
 examples/*.go
+
+benchmarks/mass_generated_*
