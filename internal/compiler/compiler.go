@@ -31,6 +31,7 @@ type Compiler struct {
 	captureNames         []string // Capture group names (empty string for unnamed groups)
 	hasRepeatingCaptures bool     // True if any capture groups are in repeating context
 	needsBacktracking    bool     // True if the program contains alternation instructions
+	generatingCaptures   bool     // True when generating Find* functions (needs capture checkpoints)
 }
 
 // New creates a new compiler instance.
@@ -191,6 +192,7 @@ func (c *Compiler) generateBacktracking() []jen.Code {
 }
 
 // generateBacktrackingWithCaptures generates the backtracking logic for capture functions.
+// Uses capture checkpointing to avoid resetting all captures on every backtrack.
 func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 	return []jen.Code{
 		jen.Id(codegen.TryFallbackName).Op(":"),
@@ -199,6 +201,12 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			// Restore capture state from checkpoint stack
+			jen.If(jen.Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
+				jen.Id("saved").Op(":=").Id("captureStack").Index(jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
+				jen.Copy(jen.Id(codegen.CapturesName), jen.Id("saved")),
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
+			),
 			jen.Goto().Id(codegen.StepSelectName),
 		).Else().Block(
 			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
@@ -207,6 +215,8 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
 					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
 				),
+				// Clear capture checkpoint stack
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
 				// Set capture[0] to mark start of match attempt (after incrementing offset)
 				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
 				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
@@ -579,6 +589,25 @@ func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.I
 
 // generateAltInst generates code for InstAlt (alternation with backtracking).
 func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	// Optimization #1: When generating Find* functions with captures, save capture checkpoint
+	if c.generatingCaptures {
+		return []jen.Code{
+			label,
+			jen.Block(
+				// Save current capture state as checkpoint
+				jen.Id("checkpoint").Op(":=").Make(jen.Index().Int(), jen.Len(jen.Id(codegen.CapturesName))),
+				jen.Copy(jen.Id("checkpoint"), jen.Id(codegen.CapturesName)),
+				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id("checkpoint")),
+				// Push to backtracking stack
+				jen.Id(codegen.StackName).Op("=").Append(
+					jen.Id(codegen.StackName),
+					jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+				),
+				jen.Goto().Id(codegen.InstructionName(inst.Out)),
+			),
+		}, nil
+	}
+
 	// Optimized: Just use append - Go's runtime handles capacity efficiently
 	return []jen.Code{
 		label,
@@ -956,6 +985,10 @@ func (c *Compiler) generateFindAllBytesFunction(structName string) error {
 func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]jen.Code, error) {
 	numCaptures := c.config.Program.NumCap
 
+	// Enable capture checkpoint optimization
+	c.generatingCaptures = true
+	defer func() { c.generatingCaptures = false }()
+
 	code := []jen.Code{
 		// Handle n parameter
 		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
@@ -983,6 +1016,11 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
 		// Initialize captures array
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+	}
+
+	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
+	if c.needsBacktracking {
+		loopBody = append(loopBody, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
 	}
 
 	// Only add stack initialization if backtracking is needed
@@ -1179,6 +1217,10 @@ func (c *Compiler) generateMatchInstForFindAll(id uint32, structName string, isB
 func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.Code, error) {
 	numCaptures := c.config.Program.NumCap
 
+	// Enable capture checkpoint optimization
+	c.generatingCaptures = true
+	defer func() { c.generatingCaptures = false }()
+
 	code := []jen.Code{
 		// Initialize length
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
@@ -1186,6 +1228,11 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
 		// Initialize captures array
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+	}
+
+	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
+	if c.needsBacktracking {
+		code = append(code, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
 	}
 
 	// Only add stack initialization if backtracking is needed

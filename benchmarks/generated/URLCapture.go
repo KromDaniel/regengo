@@ -688,6 +688,7 @@ func URLCaptureFindString(input string) (*URLCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 10)
+	captureStack := make([][]int, 0, 16)
 	stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
 	stack := (*stackPtr)[:0]
 	defer func() {
@@ -706,6 +707,11 @@ TryFallback:
 		offset = last[0]
 		nextInstruction = last[1]
 		stack = stack[:len(stack)-1]
+		if len(captureStack) > 0 {
+			saved := captureStack[len(captureStack)-1]
+			copy(captures, saved)
+			captureStack = captureStack[:len(captureStack)-1]
+		}
 		goto StepSelect
 	} else {
 		if l > offset {
@@ -713,6 +719,7 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
+			captureStack = captureStack[:0]
 			captures[0] = offset
 			nextInstruction = 1
 			goto StepSelect
@@ -857,6 +864,9 @@ Ins6:
 	}
 Ins7:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
@@ -926,6 +936,9 @@ Ins13:
 	}
 Ins14:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
@@ -969,6 +982,9 @@ Ins18:
 	}
 Ins19:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
@@ -980,6 +996,9 @@ Ins20:
 	}
 Ins21:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
@@ -1017,6 +1036,9 @@ Ins24:
 	}
 Ins25:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
@@ -1028,6 +1050,9 @@ Ins26:
 	}
 Ins27:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
@@ -1079,6 +1104,7 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 		offset := searchStart
 		captures := make([]int, 10)
+		captureStack := make([][]int, 0, 16)
 		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
 		stack := (*stackPtr)[:0]
 		defer func() {
@@ -1240,6 +1266,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins7:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
@@ -1309,6 +1338,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins14:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
@@ -1352,6 +1384,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins19:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
@@ -1363,6 +1398,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins21:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
@@ -1400,6 +1438,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins25:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
@@ -1411,6 +1452,9 @@ func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
 		}
 	Ins27:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}
@@ -1458,6 +1502,7 @@ func URLCaptureFindBytes(input []byte) (*URLCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 10)
+	captureStack := make([][]int, 0, 16)
 	stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
 	stack := (*stackPtr)[:0]
 	defer func() {
@@ -1476,6 +1521,11 @@ TryFallback:
 		offset = last[0]
 		nextInstruction = last[1]
 		stack = stack[:len(stack)-1]
+		if len(captureStack) > 0 {
+			saved := captureStack[len(captureStack)-1]
+			copy(captures, saved)
+			captureStack = captureStack[:len(captureStack)-1]
+		}
 		goto StepSelect
 	} else {
 		if l > offset {
@@ -1483,6 +1533,7 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
+			captureStack = captureStack[:0]
 			captures[0] = offset
 			nextInstruction = 1
 			goto StepSelect
@@ -1627,6 +1678,9 @@ Ins6:
 	}
 Ins7:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
@@ -1696,6 +1750,9 @@ Ins13:
 	}
 Ins14:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
@@ -1739,6 +1796,9 @@ Ins18:
 	}
 Ins19:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
@@ -1750,6 +1810,9 @@ Ins20:
 	}
 Ins21:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
@@ -1787,6 +1850,9 @@ Ins24:
 	}
 Ins25:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
@@ -1798,6 +1864,9 @@ Ins26:
 	}
 Ins27:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
@@ -1849,6 +1918,7 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 		offset := searchStart
 		captures := make([]int, 10)
+		captureStack := make([][]int, 0, 16)
 		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
 		stack := (*stackPtr)[:0]
 		defer func() {
@@ -2010,6 +2080,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins7:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
@@ -2079,6 +2152,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins14:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
@@ -2122,6 +2198,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins19:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
@@ -2133,6 +2212,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins21:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
@@ -2170,6 +2252,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins25:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
@@ -2181,6 +2266,9 @@ func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
 		}
 	Ins27:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}

@@ -376,6 +376,7 @@ func EmailCaptureFindString(input string) (*EmailCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
+	captureStack := make([][]int, 0, 16)
 	stackPtr := emailCaptureStackPool.Get().(*[][2]int)
 	stack := (*stackPtr)[:0]
 	defer func() {
@@ -394,6 +395,11 @@ TryFallback:
 		offset = last[0]
 		nextInstruction = last[1]
 		stack = stack[:len(stack)-1]
+		if len(captureStack) > 0 {
+			saved := captureStack[len(captureStack)-1]
+			copy(captures, saved)
+			captureStack = captureStack[:len(captureStack)-1]
+		}
 		goto StepSelect
 	} else {
 		if l > offset {
@@ -401,6 +407,7 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
+			captureStack = captureStack[:0]
 			captures[0] = offset
 			nextInstruction = 1
 			goto StepSelect
@@ -467,6 +474,9 @@ Ins2:
 	}
 Ins3:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
@@ -510,6 +520,9 @@ Ins7:
 	}
 Ins8:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
@@ -553,6 +566,9 @@ Ins12:
 	}
 Ins13:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
@@ -604,6 +620,7 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 		offset := searchStart
 		captures := make([]int, 8)
+		captureStack := make([][]int, 0, 16)
 		stackPtr := emailCaptureStackPool.Get().(*[][2]int)
 		stack := (*stackPtr)[:0]
 		defer func() {
@@ -687,6 +704,9 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins3:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
@@ -730,6 +750,9 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins8:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
@@ -773,6 +796,9 @@ func EmailCaptureFindAllString(input string, n int) []*EmailCaptureMatch {
 		}
 	Ins13:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}
@@ -820,6 +846,7 @@ func EmailCaptureFindBytes(input []byte) (*EmailCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
+	captureStack := make([][]int, 0, 16)
 	stackPtr := emailCaptureStackPool.Get().(*[][2]int)
 	stack := (*stackPtr)[:0]
 	defer func() {
@@ -838,6 +865,11 @@ TryFallback:
 		offset = last[0]
 		nextInstruction = last[1]
 		stack = stack[:len(stack)-1]
+		if len(captureStack) > 0 {
+			saved := captureStack[len(captureStack)-1]
+			copy(captures, saved)
+			captureStack = captureStack[:len(captureStack)-1]
+		}
 		goto StepSelect
 	} else {
 		if l > offset {
@@ -845,6 +877,7 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
+			captureStack = captureStack[:0]
 			captures[0] = offset
 			nextInstruction = 1
 			goto StepSelect
@@ -911,6 +944,9 @@ Ins2:
 	}
 Ins3:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
@@ -954,6 +990,9 @@ Ins7:
 	}
 Ins8:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
@@ -997,6 +1036,9 @@ Ins12:
 	}
 Ins13:
 	{
+		checkpoint := make([]int, len(captures))
+		copy(checkpoint, captures)
+		captureStack = append(captureStack, checkpoint)
 		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
@@ -1048,6 +1090,7 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 		offset := searchStart
 		captures := make([]int, 8)
+		captureStack := make([][]int, 0, 16)
 		stackPtr := emailCaptureStackPool.Get().(*[][2]int)
 		stack := (*stackPtr)[:0]
 		defer func() {
@@ -1131,6 +1174,9 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins3:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
@@ -1174,6 +1220,9 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins8:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
@@ -1217,6 +1266,9 @@ func EmailCaptureFindAllBytes(input []byte, n int) []*EmailCaptureMatch {
 		}
 	Ins13:
 		{
+			checkpoint := make([]int, len(captures))
+			copy(checkpoint, captures)
+			captureStack = append(captureStack, checkpoint)
 			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}

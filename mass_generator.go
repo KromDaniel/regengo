@@ -57,6 +57,15 @@ type benchmarkComparison struct {
 	StdlibAvgBytes   float64
 	RegengoAvgAllocs float64
 	StdlibAvgAllocs  float64
+	SlowerPatterns   []slowPattern // Patterns where regengo is slower
+}
+
+type slowPattern struct {
+	Name        string
+	Pattern     string
+	RegengoNs   float64
+	StdlibNs    float64
+	SlowerByPct float64
 }
 
 func main() {
@@ -568,6 +577,15 @@ func analyzeBenchmarks(output string, specs []patternSpec) map[patternCategory]*
 			comp.RegengoFaster++
 		} else {
 			comp.StdlibFaster++
+			// Track patterns where regengo is slower
+			slowerByPct := ((result.NsPerOp - stdlibResult.NsPerOp) / stdlibResult.NsPerOp) * 100
+			comp.SlowerPatterns = append(comp.SlowerPatterns, slowPattern{
+				Name:        patternName,
+				Pattern:     "", // Will be filled in later
+				RegengoNs:   result.NsPerOp,
+				StdlibNs:    stdlibResult.NsPerOp,
+				SlowerByPct: slowerByPct,
+			})
 		}
 
 		// Accumulate for averages
@@ -577,6 +595,26 @@ func analyzeBenchmarks(output string, specs []patternSpec) map[patternCategory]*
 		comp.StdlibAvgBytes += float64(stdlibResult.BytesPerOp)
 		comp.RegengoAvgAllocs += float64(result.AllocsPerOp)
 		comp.StdlibAvgAllocs += float64(stdlibResult.AllocsPerOp)
+	}
+
+	// Fill in pattern strings and sort by slowdown percentage
+	specsMap := make(map[string]string)
+	for _, spec := range specs {
+		specsMap[spec.Name] = spec.Pattern
+	}
+
+	for _, comp := range comparisons {
+		for i := range comp.SlowerPatterns {
+			comp.SlowerPatterns[i].Pattern = specsMap[comp.SlowerPatterns[i].Name]
+		}
+		// Sort slower patterns by percentage (worst first)
+		for i := 0; i < len(comp.SlowerPatterns)-1; i++ {
+			for j := i + 1; j < len(comp.SlowerPatterns); j++ {
+				if comp.SlowerPatterns[i].SlowerByPct < comp.SlowerPatterns[j].SlowerByPct {
+					comp.SlowerPatterns[i], comp.SlowerPatterns[j] = comp.SlowerPatterns[j], comp.SlowerPatterns[i]
+				}
+			}
+		}
 	}
 
 	// Calculate averages
@@ -754,6 +792,47 @@ func printBenchmarkAnalysis(output string, specs []patternSpec) {
 			fmt.Printf("[%.1f%% more]\n", -overallAllocsDiff)
 		}
 	}
+
+	// Print detailed analysis of slower patterns
+	printSlowerPatternsAnalysis(comparisons, orderedCategories)
+}
+
+func printSlowerPatternsAnalysis(comparisons map[patternCategory]*benchmarkComparison, orderedCategories []patternCategory) {
+	fmt.Println()
+	fmt.Println("========== PATTERNS WHERE STDLIB WINS ==========")
+
+	hasSlowerPatterns := false
+	for _, cat := range orderedCategories {
+		comp := comparisons[cat]
+		if len(comp.SlowerPatterns) == 0 {
+			continue
+		}
+
+		hasSlowerPatterns = true
+		fmt.Printf("\nCategory: %s (%d patterns slower)\n", cat, len(comp.SlowerPatterns))
+
+		// Show top 10 worst performers
+		limit := 10
+		if len(comp.SlowerPatterns) < limit {
+			limit = len(comp.SlowerPatterns)
+		}
+
+		for i := 0; i < limit; i++ {
+			sp := comp.SlowerPatterns[i]
+			fmt.Printf("  %2d. %s\n", i+1, sp.Name)
+			fmt.Printf("      Pattern: %s\n", sp.Pattern)
+			fmt.Printf("      Regengo: %.0f ns/op | Stdlib: %.0f ns/op | Slower by: %.1f%%\n",
+				sp.RegengoNs, sp.StdlibNs, sp.SlowerByPct)
+		}
+
+		if len(comp.SlowerPatterns) > limit {
+			fmt.Printf("  ... and %d more patterns\n", len(comp.SlowerPatterns)-limit)
+		}
+	}
+
+	if !hasSlowerPatterns {
+		fmt.Println("\n  🎉 No patterns where stdlib is faster!")
+	}
 }
 
 func printCommandSummary(result commandResult) {
@@ -763,6 +842,9 @@ func printCommandSummary(result commandResult) {
 	}
 	fmt.Printf("Command: %s\n", result.Command)
 	fmt.Printf("Status: %s (duration %s)\n", status, result.Duration.Round(time.Millisecond))
+	if result.Err != nil {
+		fmt.Printf("Error output:\n%s\n", result.Output)
+	}
 }
 
 func validateSpecs(specs []patternSpec) error {
