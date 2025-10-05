@@ -263,6 +263,47 @@ func EmailFindBytes(input []byte) (*EmailMatch, bool)  // Returns []byte fields
 
 See [BytesView documentation](docs/BYTES_VIEW.md) for detailed usage and safety considerations.
 
+### Repeating Capture Groups
+
+**Important**: Regex patterns with repeating capture groups (e.g., `(\w)+` or `(\d)*`) follow standard POSIX regex behavior.
+
+Go's `regexp` package (like most regex engines) **captures only the LAST match** from repeating groups:
+
+```go
+// Pattern: (\w)+@(\w+)\.com
+// Input: "abc@example.com"
+
+// Group 1: (\w)+ matches "a", "b", "c" sequentially
+// But only captures: "c" (the last character)
+
+// Generated code includes warning:
+// Warning: This pattern contains repeating capture groups (e.g., (\w)+ or (\d)*).
+// Go's regex engine (like most regex implementations) captures only the LAST match from repeating groups.
+// For example, pattern (\w)+ matching 'abc' will capture 'c', not ['a', 'b', 'c'].
+
+type EmailMatch struct {
+    Match  string // Full match: "abc@example.com"
+    Group1 string // Only last char: "c"
+    Group2 string // Complete match: "example"
+}
+```
+
+**Examples of repeating captures**:
+
+- `(\w)+` - Matches one or more word characters, captures LAST one
+- `(\d)*` - Matches zero or more digits, captures LAST one
+- `(\w){3,5}` - Matches 3-5 word characters, captures LAST one
+- `(\w)(\d)+` - Group 1 captures normally, Group 2 captures LAST digit
+
+**Non-repeating alternatives**:
+
+- `(\w+)` - Captures ALL matched characters (not repeating the group itself)
+- `(?P<user>\w+)@(?P<domain>\w+)` - Each group captures its full match
+
+This is standard regex behavior across all implementations (Perl, Python, JavaScript, etc.), not a regengo limitation. The generated code includes automatic warnings when repeating captures are detected.
+
+See [Repeating Captures Documentation](docs/REPEATING_CAPTURES.md) for detailed explanation and [examples/repeating_captures_demo.go](./examples/repeating_captures_demo.go) for a working demonstration.
+
 ## 📝 Examples
 
 Check the [benchmarks/generated](./benchmarks/generated) directory to see actual generated code examples. You can regenerate these by running:

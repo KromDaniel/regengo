@@ -743,6 +743,11 @@ Ins28:
 	}
 }
 
+// Note: This pattern contains capture groups in repeating/optional context.
+// Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).
+// For example: (\w)+ matching 'abc' captures 'c', not ['a','b','c'].
+// Optional groups (?) return empty string when not matched.
+
 type URLCaptureMatch struct {
 	Match    string // Full match
 	Protocol string

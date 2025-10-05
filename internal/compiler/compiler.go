@@ -26,9 +26,10 @@ type Config struct {
 
 // Compiler generates optimized Go code from regex patterns.
 type Compiler struct {
-	config       Config
-	file         *jen.File
-	captureNames []string // Capture group names (empty string for unnamed groups)
+	config               Config
+	file                 *jen.File
+	captureNames         []string // Capture group names (empty string for unnamed groups)
+	hasRepeatingCaptures bool     // True if any capture groups are in repeating context
 }
 
 // New creates a new compiler instance.
@@ -41,6 +42,7 @@ func New(config Config) *Compiler {
 	// Extract capture group names if WithCaptures is enabled
 	if config.WithCaptures && config.RegexAST != nil {
 		compiler.captureNames = extractCaptureNames(config.RegexAST)
+		compiler.hasRepeatingCaptures = hasRepeatingCaptures(config.RegexAST)
 	}
 
 	return compiler
@@ -482,6 +484,38 @@ func extractCaptureNames(re *syntax.Regexp) []string {
 	return names
 }
 
+// hasRepeatingCaptures checks if the regex has any capture groups in repeating context.
+// Repeating contexts include *, +, ?, and {n,m} quantifiers.
+// Note: Standard regex behavior (including Go's stdlib) captures only the LAST match
+// from repeating groups. For example, (\w)+ matching "abc" will capture "c", not ["a","b","c"].
+func hasRepeatingCaptures(re *syntax.Regexp) bool {
+	return walkCheckRepeating(re, false)
+}
+
+// walkCheckRepeating recursively walks the AST to detect captures in repeating context.
+func walkCheckRepeating(re *syntax.Regexp, inRepeat bool) bool {
+	// If this is a capture and we're in a repeating context
+	if re.Op == syntax.OpCapture && inRepeat {
+		return true
+	}
+
+	// Check if this node introduces repetition
+	isRepeating := false
+	switch re.Op {
+	case syntax.OpStar, syntax.OpPlus, syntax.OpQuest, syntax.OpRepeat:
+		isRepeating = true
+	}
+
+	// Recursively check children
+	for _, sub := range re.Sub {
+		if walkCheckRepeating(sub, inRepeat || isRepeating) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // generateCaptureFunctions generates Find and FindAll functions with capture groups.
 func (c *Compiler) generateCaptureFunctions() error {
 	// Generate capture struct
@@ -512,6 +546,15 @@ func (c *Compiler) generateCaptureFunctions() error {
 
 // generateCaptureStruct generates the Match struct with string fields.
 func (c *Compiler) generateCaptureStruct(structName string) {
+	// Add warning comment if there are repeating captures
+	if c.hasRepeatingCaptures {
+		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
+		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
+		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
+		c.file.Comment("Optional groups (?) return empty string when not matched.")
+		c.file.Line()
+	}
+
 	fields := []jen.Code{
 		jen.Id("Match").String().Comment("Full match"),
 	}
@@ -533,6 +576,15 @@ func (c *Compiler) generateCaptureStruct(structName string) {
 
 // generateCaptureStructBytes generates the Match struct with []byte fields for BytesView.
 func (c *Compiler) generateCaptureStructBytes(structName string) {
+	// Add warning comment if there are repeating captures
+	if c.hasRepeatingCaptures {
+		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
+		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
+		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
+		c.file.Comment("Optional groups (?) return empty slice when not matched.")
+		c.file.Line()
+	}
+
 	fields := []jen.Code{
 		jen.Id("Match").Index().Byte().Comment("Full match"),
 	}
