@@ -198,6 +198,50 @@ type Options struct {
   - `{Name}MatchBytes(input []byte) bool` - Check if pattern matches bytes
   - `{Name}FindString(input string) (*{Name}Match, bool)` - Extract captures (if pattern has groups)
   - `{Name}FindBytes(input []byte) (*{Name}Match, bool)` - Extract captures from bytes
+  - `{Name}FindAllString(input string, n int) []*{Name}Match` - Find all matches (if pattern has groups)
+  - `{Name}FindAllBytes(input []byte, n int) []*{Name}Match` - Find all matches from bytes (if pattern has groups)
+
+### FindAll: Multiple Match Extraction
+
+When your pattern has capture groups, Regengo generates `FindAll` functions to extract **all matches** from the input, similar to Go's stdlib `regexp.FindAllStringSubmatch`:
+
+```go
+// Example: Find all dates in a string
+pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+
+// Generated functions
+func DateCaptureFindAllString(input string, n int) []*DateCaptureMatch
+func DateCaptureFindAllBytes(input []byte, n int) []*DateCaptureMatch
+
+// Usage
+text := "Dates: 2024-01-15 and 2024-12-25 and 2025-06-30"
+
+// Find all matches
+matches := DateCaptureFindAllString(text, -1)
+// Returns 3 matches with filled Year, Month, Day fields
+
+// Find up to 2 matches
+matches := DateCaptureFindAllString(text, 2)
+// Returns 2 matches
+
+// Find no matches
+matches := DateCaptureFindAllString(text, 0)
+// Returns nil
+```
+
+**Parameter `n` controls max matches**:
+
+- `n < 0`: Find all matches (unlimited)
+- `n = 0`: Return nil immediately (no search)
+- `n > 0`: Return up to n matches
+
+**Features**:
+
+- ✅ **Compatible with stdlib**: Same semantics as `regexp.FindAllStringSubmatch`
+- ✅ **Type-safe**: Returns slice of typed structs, not `[][]string`
+- ✅ **Zero-width match handling**: Automatically advances to prevent infinite loops
+- ✅ **Pool-optimized**: Reuses stack allocations for performance
+- ✅ **Non-overlapping**: Finds matches sequentially (standard regex behavior)
 
 ### Capture Groups
 

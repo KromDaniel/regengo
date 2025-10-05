@@ -750,6 +750,288 @@ Ins17:
 		}, true
 	}
 }
+func DateCaptureFindAllString(input string, n int) []*DateCaptureMatch {
+	if n == 0 {
+		return nil
+	}
+	var result []*DateCaptureMatch
+	l := len(input)
+	searchStart := 0
+	for true {
+		if n > 0 && len(result) >= n {
+			break
+		}
+		if searchStart >= l {
+			break
+		}
+		offset := searchStart
+		captures := make([]int, 8)
+		stackPtr := dateCaptureStackPool.Get().(*[][2]int)
+		stack := (*stackPtr)[:0]
+		defer func() {
+			for i := range stack {
+				stack[i] = [2]int{0, 0}
+			}
+			*stackPtr = stack[:0]
+			dateCaptureStackPool.Put(stackPtr)
+		}()
+		captures[0] = searchStart
+		nextInstruction := 1
+		goto StepSelect
+	TryFallback:
+		if len(stack) > 0 {
+			last := stack[len(stack)-1]
+			offset = last[0]
+			nextInstruction = last[1]
+			stack = stack[:len(stack)-1]
+			goto StepSelect
+		} else {
+			searchStart++
+			continue
+		}
+	StepSelect:
+		switch nextInstruction {
+		case 0:
+			goto Ins0
+		case 1:
+			goto Ins1
+		case 2:
+			goto Ins2
+		case 3:
+			goto Ins3
+		case 4:
+			goto Ins4
+		case 5:
+			goto Ins5
+		case 6:
+			goto Ins6
+		case 7:
+			goto Ins7
+		case 8:
+			goto Ins8
+		case 9:
+			goto Ins9
+		case 10:
+			goto Ins10
+		case 11:
+			goto Ins11
+		case 12:
+			goto Ins12
+		case 13:
+			goto Ins13
+		case 14:
+			goto Ins14
+		case 15:
+			goto Ins15
+		case 16:
+			goto Ins16
+		case 17:
+			goto Ins17
+		}
+	Ins0:
+		{
+			goto TryFallback
+		}
+	Ins1:
+		{
+			captures[2] = offset
+			nextInstruction = 2
+			goto StepSelect
+		}
+	Ins2:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins3
+		}
+	Ins3:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins4
+		}
+	Ins4:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins5
+		}
+	Ins5:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins6
+		}
+	Ins6:
+		{
+			captures[3] = offset
+			nextInstruction = 7
+			goto StepSelect
+		}
+	Ins7:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2d) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins8
+		}
+	Ins8:
+		{
+			captures[4] = offset
+			nextInstruction = 9
+			goto StepSelect
+		}
+	Ins9:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins10
+		}
+	Ins10:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins11
+		}
+	Ins11:
+		{
+			captures[5] = offset
+			nextInstruction = 12
+			goto StepSelect
+		}
+	Ins12:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2d) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins13
+		}
+	Ins13:
+		{
+			captures[6] = offset
+			nextInstruction = 14
+			goto StepSelect
+		}
+	Ins14:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins15
+		}
+	Ins15:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins16
+		}
+	Ins16:
+		{
+			captures[7] = offset
+			nextInstruction = 17
+			goto StepSelect
+		}
+	Ins17:
+		{
+			captures[1] = offset
+			result = append(result, &DateCaptureMatch{
+				Day: func() string {
+					if captures[6] <= captures[7] && captures[7] <= len(input) {
+						return string(input[captures[6]:captures[7]])
+					}
+					return ""
+				}(),
+				Match: string(input[captures[0]:captures[1]]),
+				Month: func() string {
+					if captures[4] <= captures[5] && captures[5] <= len(input) {
+						return string(input[captures[4]:captures[5]])
+					}
+					return ""
+				}(),
+				Year: func() string {
+					if captures[2] <= captures[3] && captures[3] <= len(input) {
+						return string(input[captures[2]:captures[3]])
+					}
+					return ""
+				}(),
+			})
+			if captures[1] > searchStart {
+				searchStart = captures[1]
+			} else {
+				searchStart++
+			}
+			continue
+		}
+	}
+	return result
+}
 func DateCaptureFindBytes(input []byte) (*DateCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
@@ -1019,4 +1301,286 @@ Ins17:
 			}(),
 		}, true
 	}
+}
+func DateCaptureFindAllBytes(input []byte, n int) []*DateCaptureMatch {
+	if n == 0 {
+		return nil
+	}
+	var result []*DateCaptureMatch
+	l := len(input)
+	searchStart := 0
+	for true {
+		if n > 0 && len(result) >= n {
+			break
+		}
+		if searchStart >= l {
+			break
+		}
+		offset := searchStart
+		captures := make([]int, 8)
+		stackPtr := dateCaptureStackPool.Get().(*[][2]int)
+		stack := (*stackPtr)[:0]
+		defer func() {
+			for i := range stack {
+				stack[i] = [2]int{0, 0}
+			}
+			*stackPtr = stack[:0]
+			dateCaptureStackPool.Put(stackPtr)
+		}()
+		captures[0] = searchStart
+		nextInstruction := 1
+		goto StepSelect
+	TryFallback:
+		if len(stack) > 0 {
+			last := stack[len(stack)-1]
+			offset = last[0]
+			nextInstruction = last[1]
+			stack = stack[:len(stack)-1]
+			goto StepSelect
+		} else {
+			searchStart++
+			continue
+		}
+	StepSelect:
+		switch nextInstruction {
+		case 0:
+			goto Ins0
+		case 1:
+			goto Ins1
+		case 2:
+			goto Ins2
+		case 3:
+			goto Ins3
+		case 4:
+			goto Ins4
+		case 5:
+			goto Ins5
+		case 6:
+			goto Ins6
+		case 7:
+			goto Ins7
+		case 8:
+			goto Ins8
+		case 9:
+			goto Ins9
+		case 10:
+			goto Ins10
+		case 11:
+			goto Ins11
+		case 12:
+			goto Ins12
+		case 13:
+			goto Ins13
+		case 14:
+			goto Ins14
+		case 15:
+			goto Ins15
+		case 16:
+			goto Ins16
+		case 17:
+			goto Ins17
+		}
+	Ins0:
+		{
+			goto TryFallback
+		}
+	Ins1:
+		{
+			captures[2] = offset
+			nextInstruction = 2
+			goto StepSelect
+		}
+	Ins2:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins3
+		}
+	Ins3:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins4
+		}
+	Ins4:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins5
+		}
+	Ins5:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins6
+		}
+	Ins6:
+		{
+			captures[3] = offset
+			nextInstruction = 7
+			goto StepSelect
+		}
+	Ins7:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2d) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins8
+		}
+	Ins8:
+		{
+			captures[4] = offset
+			nextInstruction = 9
+			goto StepSelect
+		}
+	Ins9:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins10
+		}
+	Ins10:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins11
+		}
+	Ins11:
+		{
+			captures[5] = offset
+			nextInstruction = 12
+			goto StepSelect
+		}
+	Ins12:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2d) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins13
+		}
+	Ins13:
+		{
+			captures[6] = offset
+			nextInstruction = 14
+			goto StepSelect
+		}
+	Ins14:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins15
+		}
+	Ins15:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins16
+		}
+	Ins16:
+		{
+			captures[7] = offset
+			nextInstruction = 17
+			goto StepSelect
+		}
+	Ins17:
+		{
+			captures[1] = offset
+			result = append(result, &DateCaptureMatch{
+				Day: func() string {
+					if captures[6] <= captures[7] && captures[7] <= len(input) {
+						return string(input[captures[6]:captures[7]])
+					}
+					return ""
+				}(),
+				Match: string(input[captures[0]:captures[1]]),
+				Month: func() string {
+					if captures[4] <= captures[5] && captures[5] <= len(input) {
+						return string(input[captures[4]:captures[5]])
+					}
+					return ""
+				}(),
+				Year: func() string {
+					if captures[2] <= captures[3] && captures[3] <= len(input) {
+						return string(input[captures[2]:captures[3]])
+					}
+					return ""
+				}(),
+			})
+			if captures[1] > searchStart {
+				searchStart = captures[1]
+			} else {
+				searchStart++
+			}
+			continue
+		}
+	}
+	return result
 }

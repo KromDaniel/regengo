@@ -527,6 +527,11 @@ func (c *Compiler) generateCaptureFunctions() error {
 		return fmt.Errorf("failed to generate FindString: %w", err)
 	}
 
+	// Generate FindAllString function
+	if err := c.generateFindAllStringFunction(structName); err != nil {
+		return fmt.Errorf("failed to generate FindAllString: %w", err)
+	}
+
 	// Generate FindBytes function
 	if c.config.BytesView {
 		bytesStructName := fmt.Sprintf("%sMatchBytes", c.config.Name)
@@ -534,10 +539,16 @@ func (c *Compiler) generateCaptureFunctions() error {
 		if err := c.generateFindBytesFunction(bytesStructName); err != nil {
 			return fmt.Errorf("failed to generate FindBytes: %w", err)
 		}
+		if err := c.generateFindAllBytesFunction(bytesStructName); err != nil {
+			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
+		}
 	} else {
 		// Use same struct, convert []byte to string
 		if err := c.generateFindBytesFunction(structName); err != nil {
 			return fmt.Errorf("failed to generate FindBytes: %w", err)
+		}
+		if err := c.generateFindAllBytesFunction(structName); err != nil {
+			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
 		}
 	}
 
@@ -634,6 +645,249 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 		Block(code...)
 
 	return nil
+}
+
+// generateFindAllStringFunction generates the FindAllString function with captures.
+func (c *Compiler) generateFindAllStringFunction(structName string) error {
+	code, err := c.generateFindAllFunction(structName, false)
+	if err != nil {
+		return err
+	}
+
+	c.file.Func().
+		Id(fmt.Sprintf("%sFindAllString", c.config.Name)).
+		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(code...)
+
+	return nil
+}
+
+// generateFindAllBytesFunction generates the FindAllBytes function with captures.
+func (c *Compiler) generateFindAllBytesFunction(structName string) error {
+	code, err := c.generateFindAllFunction(structName, c.config.BytesView)
+	if err != nil {
+		return err
+	}
+
+	c.file.Func().
+		Id(fmt.Sprintf("%sFindAllBytes", c.config.Name)).
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(code...)
+
+	return nil
+}
+
+// generateFindAllFunction generates the main FindAll logic with captures.
+// Parameter n specifies the maximum number of matches to return (-1 for all matches).
+func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]jen.Code, error) {
+	numCaptures := c.config.Program.NumCap
+
+	code := []jen.Code{
+		// Handle n parameter
+		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
+			jen.Return(jen.Nil()),
+		),
+		// Initialize result slice
+		jen.Var().Id("result").Index().Op("*").Id(structName),
+		// Initialize length
+		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
+		// Initialize search start position
+		jen.Id("searchStart").Op(":=").Lit(0),
+	}
+
+	// Build the loop body statements
+	loopBody := []jen.Code{
+		// Check if we've found enough matches
+		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
+			jen.Break(),
+		),
+		// Check if we've reached end of input
+		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(
+			jen.Break(),
+		),
+		// Initialize offset
+		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
+		// Initialize captures array
+		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+	}
+
+	// Add stack initialization
+	if c.config.UsePool {
+		poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
+		loopBody = append(loopBody,
+			jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
+			jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
+			jen.Defer().Func().Params().Block(
+				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
+					jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
+				),
+				jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+				jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
+			).Call(),
+		)
+	} else {
+		loopBody = append(loopBody,
+			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+		)
+	}
+
+	// Continue with matching logic
+	loopBody = append(loopBody,
+		// Set captures[0] to mark start of match attempt
+		jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id("searchStart"),
+		// Initialize next instruction
+		jen.Id(codegen.NextInstructionName).Op(":=").Lit(int(c.config.Program.Start)),
+		jen.Goto().Id(codegen.StepSelectName),
+	)
+
+	// Add backtracking logic that continues to next position on failure
+	loopBody = append(loopBody,
+		jen.Id(codegen.TryFallbackName).Op(":"),
+		jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+			jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			jen.Goto().Id(codegen.StepSelectName),
+		).Else().Block(
+			// No match at this position, try next
+			jen.Id("searchStart").Op("++"),
+			jen.Continue(),
+		),
+	)
+
+	// Add step selector
+	loopBody = append(loopBody, c.generateStepSelector()...)
+
+	// Generate instructions with captures - but modified to continue loop instead of returning
+	instructions, err := c.generateInstructionsForFindAll(structName, isBytes)
+	if err != nil {
+		return nil, err
+	}
+	loopBody = append(loopBody, instructions...)
+
+	// Add the loop
+	code = append(code,
+		jen.For(jen.True()).Block(loopBody...),
+		jen.Return(jen.Id("result")),
+	)
+
+	return code, nil
+}
+
+// generateInstructionsForFindAll generates instructions where Match adds to result and continues.
+func (c *Compiler) generateInstructionsForFindAll(structName string, isBytes bool) ([]jen.Code, error) {
+	var code []jen.Code
+
+	for i, inst := range c.config.Program.Inst {
+		var instCode []jen.Code
+		var err error
+
+		if inst.Op == syntax.InstMatch {
+			// Special handling for Match instruction in FindAll
+			instCode, err = c.generateMatchInstForFindAll(uint32(i), structName, isBytes)
+		} else if inst.Op == syntax.InstFail {
+			// Special handling for Fail instruction in FindAll - goto fallback instead of return
+			label := jen.Id(codegen.InstructionName(uint32(i))).Op(":")
+			instCode = []jen.Code{
+				label,
+				jen.Block(jen.Goto().Id(codegen.TryFallbackName)),
+			}
+		} else {
+			// Use regular instruction generation for other instructions
+			instCode, err = c.generateInstructionWithCaptures(uint32(i), &inst, structName, isBytes)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate instruction %d: %w", i, err)
+		}
+		code = append(code, instCode...)
+	}
+
+	return code, nil
+}
+
+// generateMatchInstForFindAll generates Match instruction that adds to result and continues loop.
+func (c *Compiler) generateMatchInstForFindAll(id uint32, structName string, isBytes bool) ([]jen.Code, error) {
+	label := jen.Id(codegen.InstructionName(id)).Op(":")
+
+	// Build struct fields from captures array
+	structFields := jen.Dict{}
+
+	if isBytes {
+		structFields[jen.Id("Match")] = jen.Id(codegen.InputName).Index(
+			jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		)
+	} else {
+		structFields[jen.Id("Match")] = jen.String().Call(
+			jen.Id(codegen.InputName).Index(
+				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+			),
+		)
+	}
+
+	// Add capture group fields
+	for i := 1; i < len(c.captureNames); i++ {
+		fieldName := c.captureNames[i]
+		if fieldName == "" {
+			fieldName = fmt.Sprintf("Group%d", i)
+		} else {
+			fieldName = codegen.UpperFirst(fieldName)
+		}
+
+		captureStart := i * 2
+		captureEnd := i*2 + 1
+
+		if isBytes {
+			structFields[jen.Id(fieldName)] = jen.Func().Params().Index().Byte().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					)),
+				),
+				jen.Return(jen.Nil()),
+			).Call()
+		} else {
+			structFields[jen.Id(fieldName)] = jen.Func().Params().String().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.String().Call(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					))),
+				),
+				jen.Return(jen.Lit("")),
+			).Call()
+		}
+	}
+
+	return []jen.Code{
+		label,
+		jen.Block(
+			// Set captures[1] to mark end of match
+			jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
+			// Add match to results
+			jen.Id("result").Op("=").Append(
+				jen.Id("result"),
+				jen.Op("&").Id(structName).Values(structFields),
+			),
+			// Move search position past this match
+			jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op(">").Id("searchStart")).Block(
+				jen.Id("searchStart").Op("=").Id(codegen.CapturesName).Index(jen.Lit(1)),
+			).Else().Block(
+				// Prevent infinite loop on zero-width matches
+				jen.Id("searchStart").Op("++"),
+			),
+			// Continue searching
+			jen.Continue(),
+		),
+	}, nil
 }
 
 // generateFindFunction generates the main Find logic with captures.

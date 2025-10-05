@@ -1171,6 +1171,433 @@ Ins28:
 		}, true
 	}
 }
+func URLCaptureFindAllString(input string, n int) []*URLCaptureMatch {
+	if n == 0 {
+		return nil
+	}
+	var result []*URLCaptureMatch
+	l := len(input)
+	searchStart := 0
+	for true {
+		if n > 0 && len(result) >= n {
+			break
+		}
+		if searchStart >= l {
+			break
+		}
+		offset := searchStart
+		captures := make([]int, 10)
+		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
+		stack := (*stackPtr)[:0]
+		defer func() {
+			for i := range stack {
+				stack[i] = [2]int{0, 0}
+			}
+			*stackPtr = stack[:0]
+			uRLCaptureStackPool.Put(stackPtr)
+		}()
+		captures[0] = searchStart
+		nextInstruction := 1
+		goto StepSelect
+	TryFallback:
+		if len(stack) > 0 {
+			last := stack[len(stack)-1]
+			offset = last[0]
+			nextInstruction = last[1]
+			stack = stack[:len(stack)-1]
+			goto StepSelect
+		} else {
+			searchStart++
+			continue
+		}
+	StepSelect:
+		switch nextInstruction {
+		case 0:
+			goto Ins0
+		case 1:
+			goto Ins1
+		case 2:
+			goto Ins2
+		case 3:
+			goto Ins3
+		case 4:
+			goto Ins4
+		case 5:
+			goto Ins5
+		case 6:
+			goto Ins6
+		case 7:
+			goto Ins7
+		case 8:
+			goto Ins8
+		case 9:
+			goto Ins9
+		case 10:
+			goto Ins10
+		case 11:
+			goto Ins11
+		case 12:
+			goto Ins12
+		case 13:
+			goto Ins13
+		case 14:
+			goto Ins14
+		case 15:
+			goto Ins15
+		case 16:
+			goto Ins16
+		case 17:
+			goto Ins17
+		case 18:
+			goto Ins18
+		case 19:
+			goto Ins19
+		case 20:
+			goto Ins20
+		case 21:
+			goto Ins21
+		case 22:
+			goto Ins22
+		case 23:
+			goto Ins23
+		case 24:
+			goto Ins24
+		case 25:
+			goto Ins25
+		case 26:
+			goto Ins26
+		case 27:
+			goto Ins27
+		case 28:
+			goto Ins28
+		}
+	Ins0:
+		{
+			goto TryFallback
+		}
+	Ins1:
+		{
+			captures[2] = offset
+			nextInstruction = 2
+			goto StepSelect
+		}
+	Ins2:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x68) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins3
+		}
+	Ins3:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x74) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins4
+		}
+	Ins4:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x74) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins5
+		}
+	Ins5:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x70) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins7
+		}
+	Ins6:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x73) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins8
+		}
+	Ins7:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 8
+			} else {
+				stack = append(stack, [2]int{offset, 8})
+			}
+			goto Ins6
+		}
+	Ins8:
+		{
+			captures[3] = offset
+			nextInstruction = 9
+			goto StepSelect
+		}
+	Ins9:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x3a) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins10
+		}
+	Ins10:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins11
+		}
+	Ins11:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins12
+		}
+	Ins12:
+		{
+			captures[4] = offset
+			nextInstruction = 13
+			goto StepSelect
+		}
+	Ins13:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if (input[offset] < uint8(0x2d) || input[offset] > uint8(0x2e)) && (input[offset] < uint8(0x30) || input[offset] > uint8(0x39)) && (input[offset] < uint8(0x41) || input[offset] > uint8(0x5a)) && input[offset] != uint8(0x5f) && (input[offset] < uint8(0x61) || input[offset] > uint8(0x7a)) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins14
+		}
+	Ins14:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 15
+			} else {
+				stack = append(stack, [2]int{offset, 15})
+			}
+			goto Ins13
+		}
+	Ins15:
+		{
+			captures[5] = offset
+			nextInstruction = 21
+			goto StepSelect
+		}
+	Ins16:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x3a) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins17
+		}
+	Ins17:
+		{
+			captures[6] = offset
+			nextInstruction = 18
+			goto StepSelect
+		}
+	Ins18:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins19
+		}
+	Ins19:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 20
+			} else {
+				stack = append(stack, [2]int{offset, 20})
+			}
+			goto Ins18
+		}
+	Ins20:
+		{
+			captures[7] = offset
+			nextInstruction = 27
+			goto StepSelect
+		}
+	Ins21:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 27
+			} else {
+				stack = append(stack, [2]int{offset, 27})
+			}
+			goto Ins16
+		}
+	Ins22:
+		{
+			captures[8] = offset
+			nextInstruction = 23
+			goto StepSelect
+		}
+	Ins23:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins25
+		}
+	Ins24:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if (input[offset] < uint8(0x2e) || input[offset] > uint8(0x39)) && (input[offset] < uint8(0x41) || input[offset] > uint8(0x5a)) && input[offset] != uint8(0x5f) && (input[offset] < uint8(0x61) || input[offset] > uint8(0x7a)) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins25
+		}
+	Ins25:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 26
+			} else {
+				stack = append(stack, [2]int{offset, 26})
+			}
+			goto Ins24
+		}
+	Ins26:
+		{
+			captures[9] = offset
+			nextInstruction = 28
+			goto StepSelect
+		}
+	Ins27:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 28
+			} else {
+				stack = append(stack, [2]int{offset, 28})
+			}
+			goto Ins22
+		}
+	Ins28:
+		{
+			captures[1] = offset
+			result = append(result, &URLCaptureMatch{
+				Host: func() string {
+					if captures[4] <= captures[5] && captures[5] <= len(input) {
+						return string(input[captures[4]:captures[5]])
+					}
+					return ""
+				}(),
+				Match: string(input[captures[0]:captures[1]]),
+				Path: func() string {
+					if captures[8] <= captures[9] && captures[9] <= len(input) {
+						return string(input[captures[8]:captures[9]])
+					}
+					return ""
+				}(),
+				Port: func() string {
+					if captures[6] <= captures[7] && captures[7] <= len(input) {
+						return string(input[captures[6]:captures[7]])
+					}
+					return ""
+				}(),
+				Protocol: func() string {
+					if captures[2] <= captures[3] && captures[3] <= len(input) {
+						return string(input[captures[2]:captures[3]])
+					}
+					return ""
+				}(),
+			})
+			if captures[1] > searchStart {
+				searchStart = captures[1]
+			} else {
+				searchStart++
+			}
+			continue
+		}
+	}
+	return result
+}
 func URLCaptureFindBytes(input []byte) (*URLCaptureMatch, bool) {
 	l := len(input)
 	offset := 0
@@ -1585,4 +2012,431 @@ Ins28:
 			}(),
 		}, true
 	}
+}
+func URLCaptureFindAllBytes(input []byte, n int) []*URLCaptureMatch {
+	if n == 0 {
+		return nil
+	}
+	var result []*URLCaptureMatch
+	l := len(input)
+	searchStart := 0
+	for true {
+		if n > 0 && len(result) >= n {
+			break
+		}
+		if searchStart >= l {
+			break
+		}
+		offset := searchStart
+		captures := make([]int, 10)
+		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
+		stack := (*stackPtr)[:0]
+		defer func() {
+			for i := range stack {
+				stack[i] = [2]int{0, 0}
+			}
+			*stackPtr = stack[:0]
+			uRLCaptureStackPool.Put(stackPtr)
+		}()
+		captures[0] = searchStart
+		nextInstruction := 1
+		goto StepSelect
+	TryFallback:
+		if len(stack) > 0 {
+			last := stack[len(stack)-1]
+			offset = last[0]
+			nextInstruction = last[1]
+			stack = stack[:len(stack)-1]
+			goto StepSelect
+		} else {
+			searchStart++
+			continue
+		}
+	StepSelect:
+		switch nextInstruction {
+		case 0:
+			goto Ins0
+		case 1:
+			goto Ins1
+		case 2:
+			goto Ins2
+		case 3:
+			goto Ins3
+		case 4:
+			goto Ins4
+		case 5:
+			goto Ins5
+		case 6:
+			goto Ins6
+		case 7:
+			goto Ins7
+		case 8:
+			goto Ins8
+		case 9:
+			goto Ins9
+		case 10:
+			goto Ins10
+		case 11:
+			goto Ins11
+		case 12:
+			goto Ins12
+		case 13:
+			goto Ins13
+		case 14:
+			goto Ins14
+		case 15:
+			goto Ins15
+		case 16:
+			goto Ins16
+		case 17:
+			goto Ins17
+		case 18:
+			goto Ins18
+		case 19:
+			goto Ins19
+		case 20:
+			goto Ins20
+		case 21:
+			goto Ins21
+		case 22:
+			goto Ins22
+		case 23:
+			goto Ins23
+		case 24:
+			goto Ins24
+		case 25:
+			goto Ins25
+		case 26:
+			goto Ins26
+		case 27:
+			goto Ins27
+		case 28:
+			goto Ins28
+		}
+	Ins0:
+		{
+			goto TryFallback
+		}
+	Ins1:
+		{
+			captures[2] = offset
+			nextInstruction = 2
+			goto StepSelect
+		}
+	Ins2:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x68) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins3
+		}
+	Ins3:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x74) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins4
+		}
+	Ins4:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x74) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins5
+		}
+	Ins5:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x70) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins7
+		}
+	Ins6:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x73) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins8
+		}
+	Ins7:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 8
+			} else {
+				stack = append(stack, [2]int{offset, 8})
+			}
+			goto Ins6
+		}
+	Ins8:
+		{
+			captures[3] = offset
+			nextInstruction = 9
+			goto StepSelect
+		}
+	Ins9:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x3a) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins10
+		}
+	Ins10:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins11
+		}
+	Ins11:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins12
+		}
+	Ins12:
+		{
+			captures[4] = offset
+			nextInstruction = 13
+			goto StepSelect
+		}
+	Ins13:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if (input[offset] < uint8(0x2d) || input[offset] > uint8(0x2e)) && (input[offset] < uint8(0x30) || input[offset] > uint8(0x39)) && (input[offset] < uint8(0x41) || input[offset] > uint8(0x5a)) && input[offset] != uint8(0x5f) && (input[offset] < uint8(0x61) || input[offset] > uint8(0x7a)) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins14
+		}
+	Ins14:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 15
+			} else {
+				stack = append(stack, [2]int{offset, 15})
+			}
+			goto Ins13
+		}
+	Ins15:
+		{
+			captures[5] = offset
+			nextInstruction = 21
+			goto StepSelect
+		}
+	Ins16:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x3a) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins17
+		}
+	Ins17:
+		{
+			captures[6] = offset
+			nextInstruction = 18
+			goto StepSelect
+		}
+	Ins18:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins19
+		}
+	Ins19:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 20
+			} else {
+				stack = append(stack, [2]int{offset, 20})
+			}
+			goto Ins18
+		}
+	Ins20:
+		{
+			captures[7] = offset
+			nextInstruction = 27
+			goto StepSelect
+		}
+	Ins21:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 27
+			} else {
+				stack = append(stack, [2]int{offset, 27})
+			}
+			goto Ins16
+		}
+	Ins22:
+		{
+			captures[8] = offset
+			nextInstruction = 23
+			goto StepSelect
+		}
+	Ins23:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if input[offset] != uint8(0x2f) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins25
+		}
+	Ins24:
+		{
+			if l <= offset {
+				goto TryFallback
+			}
+		}
+		{
+			if (input[offset] < uint8(0x2e) || input[offset] > uint8(0x39)) && (input[offset] < uint8(0x41) || input[offset] > uint8(0x5a)) && input[offset] != uint8(0x5f) && (input[offset] < uint8(0x61) || input[offset] > uint8(0x7a)) {
+				goto TryFallback
+			}
+			offset++
+			goto Ins25
+		}
+	Ins25:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 26
+			} else {
+				stack = append(stack, [2]int{offset, 26})
+			}
+			goto Ins24
+		}
+	Ins26:
+		{
+			captures[9] = offset
+			nextInstruction = 28
+			goto StepSelect
+		}
+	Ins27:
+		{
+			if cap(stack) > len(stack) {
+				stack = stack[:len(stack)+1]
+				stack[len(stack)-1][0] = offset
+				stack[len(stack)-1][1] = 28
+			} else {
+				stack = append(stack, [2]int{offset, 28})
+			}
+			goto Ins22
+		}
+	Ins28:
+		{
+			captures[1] = offset
+			result = append(result, &URLCaptureMatch{
+				Host: func() string {
+					if captures[4] <= captures[5] && captures[5] <= len(input) {
+						return string(input[captures[4]:captures[5]])
+					}
+					return ""
+				}(),
+				Match: string(input[captures[0]:captures[1]]),
+				Path: func() string {
+					if captures[8] <= captures[9] && captures[9] <= len(input) {
+						return string(input[captures[8]:captures[9]])
+					}
+					return ""
+				}(),
+				Port: func() string {
+					if captures[6] <= captures[7] && captures[7] <= len(input) {
+						return string(input[captures[6]:captures[7]])
+					}
+					return ""
+				}(),
+				Protocol: func() string {
+					if captures[2] <= captures[3] && captures[3] <= len(input) {
+						return string(input[captures[2]:captures[3]])
+					}
+					return ""
+				}(),
+			})
+			if captures[1] > searchStart {
+				searchStart = captures[1]
+			} else {
+				searchStart++
+			}
+			continue
+		}
+	}
+	return result
 }
