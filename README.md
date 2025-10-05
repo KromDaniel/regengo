@@ -322,7 +322,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] More regex operations (FindAll, Replace, etc.)
 - [ ] Parallel matching optimization
 - [ ] Web-based playground
-- [ ] VSCode extension
 
 ## 📧 Contact
 
