@@ -242,11 +242,11 @@ func main() {
 	// Generate capture group matchers
 	for _, captureCase := range captureCases {
 		if err := regengo.Compile(regengo.Options{
-			Pattern:      captureCase.Pattern,
-			Name:         captureCase.Name,
-			OutputFile:   filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s.go", captureCase.Name)),
-			Package:      "generated",
-			WithCaptures: true,
+			Pattern:    captureCase.Pattern,
+			Name:       captureCase.Name,
+			OutputFile: filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s.go", captureCase.Name)),
+			Package:    "generated",
+			// WithCaptures removed - now auto-detected from pattern
 		}); err != nil {
 			panic(err)
 		}

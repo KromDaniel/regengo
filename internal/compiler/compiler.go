@@ -183,10 +183,14 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.Goto().Id(codegen.StepSelectName),
 		).Else().Block(
 			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
 				jen.Id(codegen.OffsetName).Op("++"),
-				// Set capture[0] to mark start of match attempt
+				// Reset captures array for new match attempt
+				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
+					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
+				),
+				// Set capture[0] to mark start of match attempt (after incrementing offset)
 				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
+				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
 				jen.Goto().Id(codegen.StepSelectName),
 			),
 			jen.Return(jen.Nil(), jen.False()),
@@ -716,19 +720,35 @@ func (c *Compiler) generateMatchInstWithCaptures(label *jen.Statement, structNam
 			fieldName = codegen.UpperFirst(fieldName)
 		}
 
-		captureStart := jen.Id(codegen.CapturesName).Index(jen.Lit(i * 2))
-		captureEnd := jen.Id(codegen.CapturesName).Index(jen.Lit(i*2 + 1))
+		captureStart := i * 2
+		captureEnd := i*2 + 1
 
+		// Generate a ternary-like expression using function call to handle invalid captures
+		// If start > end (invalid capture), use empty string/slice
 		if isBytes {
-			structFields[jen.Id(fieldName)] = jen.Id(codegen.InputName).Index(
-				captureStart.Clone().Op(":").Add(captureEnd.Clone()),
-			)
-		} else {
-			structFields[jen.Id(fieldName)] = jen.String().Call(
-				jen.Id(codegen.InputName).Index(
-					captureStart.Clone().Op(":").Add(captureEnd.Clone()),
+			structFields[jen.Id(fieldName)] = jen.Func().Params().Index().Byte().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					)),
 				),
-			)
+				jen.Return(jen.Nil()),
+			).Call()
+		} else {
+			structFields[jen.Id(fieldName)] = jen.Func().Params().String().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.String().Call(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					))),
+				),
+				jen.Return(jen.Lit("")),
+			).Call()
 		}
 	}
 
