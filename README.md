@@ -13,8 +13,24 @@ Regengo is a high-performance regex-to-Go code generator that compiles regular e
 - **Type-Safe**: Generated functions are type-checked by the Go compiler
 - **High Performance**: Benchmarks show significant speedups over `regexp` package
 - **Capture Groups**: Extract named and indexed submatches with optimized struct generation
+- **FindAll Support**: Extract all matches from input with `FindAllString` and `FindAllBytes`
 - **Easy Integration**: Simple API for code generation
 - **CLI Tool**: Command-line interface for batch generation
+- **🎮 Interactive Playground**: Try patterns in your browser
+
+## 🎮 Try It Now!
+
+Experiment with Regengo patterns in your browser:
+
+**[→ Open Interactive Playground](playground/index.html)** *(no installation needed)*
+
+Or try in a full environment:
+```bash
+# Local playground
+git clone https://github.com/KromDaniel/regengo
+cd regengo/playground
+go run playground.go
+```
 
 ## 📦 Installation
 
