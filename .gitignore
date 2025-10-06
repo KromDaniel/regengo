@@ -48,3 +48,7 @@ examples/captures/
 examples/*.go
 
 benchmarks/mass_generated_*
+
+# Built binaries
+bin/
+regengo

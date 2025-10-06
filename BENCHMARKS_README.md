@@ -4,9 +4,9 @@ This directory contains benchmark results for the regengo regex compiler, allowi
 
 ## Files
 
-- **BENCHMARK_RESULTS.txt** - Current benchmark results from mass_generator.go
+- **BENCHMARK_RESULTS.txt** - Current benchmark results from benchmarks/mass_generator.go
 - **OPTIMIZATION_RESULTS.md** - Detailed analysis of optimization implementations
-- **mass_generator.go** - Tool for generating and benchmarking regex patterns
+- **benchmarks/mass_generator.go** - Tool for generating and benchmarking regex patterns
 
 ## Running Benchmarks
 
@@ -14,10 +14,10 @@ To generate new benchmark results:
 
 ```bash
 # Run the mass generator (takes ~1-2 minutes)
-go run mass_generator.go > BENCHMARK_RESULTS.txt 2>&1
+go run benchmarks/mass_generator.go > BENCHMARK_RESULTS.txt 2>&1
 
 # Or run in background
-go run mass_generator.go > /tmp/mass_bench_new.txt 2>&1 &
+go run benchmarks/mass_generator.go > /tmp/mass_bench_new.txt 2>&1 &
 ```
 
 ## Benchmark Categories
@@ -52,7 +52,7 @@ To compare benchmark results between versions:
 
 ```bash
 # Run new benchmarks
-go run mass_generator.go > /tmp/new_results.txt 2>&1
+go run benchmarks/mass_generator.go > /tmp/new_results.txt 2>&1
 
 # Compare key metrics
 echo "=== PREVIOUS RESULTS ==="
@@ -165,9 +165,9 @@ A regression is indicated if:
 
 When adding new optimizations:
 
-1. Run benchmarks before changes: `go run mass_generator.go > before.txt 2>&1`
+1. Run benchmarks before changes: `go run benchmarks/mass_generator.go > before.txt 2>&1`
 2. Implement optimization
-3. Run benchmarks after changes: `go run mass_generator.go > after.txt 2>&1`
+3. Run benchmarks after changes: `go run benchmarks/mass_generator.go > after.txt 2>&1`
 4. Compare results and document in OPTIMIZATION_RESULTS.md
 5. Update this file if targets or characteristics change
 6. Commit BENCHMARK_RESULTS.txt with the latest results
@@ -189,13 +189,13 @@ When adding new optimizations:
 
 ### Out of memory
 
-- Reduce pattern count in mass_generator.go
+- Reduce pattern count in benchmarks/mass_generator.go
 - Run categories separately (modify buildPatternSpecs())
 - Increase system memory or swap
 
 ---
 
 **Last Updated:** 2025-01-05  
-**Benchmark Version:** mass_generator.go with 155 patterns  
+**Benchmark Version:** benchmarks/mass_generator.go with 155 patterns  
 **Go Version:** go1.x (check with `go version`)  
 **Hardware:** Apple M4 Pro (update for your system)

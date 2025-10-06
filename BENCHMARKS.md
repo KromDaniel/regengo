@@ -24,20 +24,20 @@ This file provides quick access to the benchmark results and comparison tools.
 
 ```bash
 # Run and save to file (takes ~1-2 minutes)
-go run mass_generator.go > /tmp/new_results.txt 2>&1
+go run benchmarks/mass_generator.go > /tmp/new_results.txt 2>&1
 
 # View progress in real-time
-go run mass_generator.go 2>&1 | tee /tmp/new_results.txt
+go run benchmarks/mass_generator.go 2>&1 | tee /tmp/new_results.txt
 ```
 
 ### Compare Results
 
 ```bash
 # Compare new results against baseline
-./compare_benchmarks.sh /tmp/new_results.txt
+./benchmarks/compare_benchmarks.sh /tmp/new_results.txt
 
 # Compare two specific files
-./compare_benchmarks.sh /tmp/new_results.txt BENCHMARK_RESULTS.txt
+./benchmarks/compare_benchmarks.sh /tmp/new_results.txt BENCHMARK_RESULTS.txt
 ```
 
 ### Update Baseline
@@ -55,8 +55,8 @@ git commit -m "Update benchmark results after [optimization/change]"
 
 - **BENCHMARK_RESULTS.txt** - Current benchmark baseline (commit this)
 - **BENCHMARKS_README.md** - Detailed guide to benchmarking
-- **mass_generator.go** - Benchmark generation tool
-- **compare_benchmarks.sh** - Script to compare results
+- **benchmarks/mass_generator.go** - Benchmark generation tool
+- **benchmarks/compare_benchmarks.sh** - Script to compare results
 
 ### Documentation
 
@@ -89,8 +89,8 @@ After making changes, run this quick check:
 
 ```bash
 # Quick benchmark and comparison
-go run mass_generator.go > /tmp/quick_bench.txt 2>&1 && \
-./compare_benchmarks.sh /tmp/quick_bench.txt && \
+go run benchmarks/mass_generator.go > /tmp/quick_bench.txt 2>&1 && \
+./benchmarks/compare_benchmarks.sh /tmp/quick_bench.txt && \
 echo "✅ Check complete!"
 ```
 
@@ -120,9 +120,9 @@ Expected output should show:
 
 ```bash
 # Run just one category at a time
-# Edit mass_generator.go:
+# Edit benchmarks/mass_generator.go:
 # - Comment out generateComplexSpecs() and generateVeryComplexSpecs()
-# - Run: go run mass_generator.go > /tmp/simple_only.txt 2>&1
+# - Run: go run benchmarks/mass_generator.go > /tmp/simple_only.txt 2>&1
 ```
 
 ### Results seem inconsistent
@@ -131,7 +131,7 @@ Expected output should show:
 # Run multiple times and average
 for i in {1..3}; do
     echo "Run $i of 3..."
-    go run mass_generator.go > /tmp/bench_run_$i.txt 2>&1
+    go run benchmarks/mass_generator.go > /tmp/bench_run_$i.txt 2>&1
 done
 
 # Then manually compare the OVERALL SUMMARY sections
@@ -140,7 +140,7 @@ done
 ### Memory issues
 
 ```bash
-# Reduce pattern count in mass_generator.go
+# Reduce pattern count in benchmarks/mass_generator.go
 # In buildPatternSpecs(), change:
 #   generateSimpleSpecs(90) -> generateSimpleSpecs(30)
 #   generateComplexSpecs(45) -> generateComplexSpecs(15)
@@ -160,7 +160,7 @@ When submitting PRs with performance changes:
 1. Run benchmarks before changes
 2. Make your changes
 3. Run benchmarks after changes
-4. Use `compare_benchmarks.sh` to show improvement
+4. Use `benchmarks/compare_benchmarks.sh` to show improvement
 5. Include comparison in PR description
 6. Update BENCHMARK_RESULTS.txt if significant improvement
 

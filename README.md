@@ -22,9 +22,10 @@ Regengo is a high-performance regex-to-Go code generator that compiles regular e
 
 Experiment with Regengo patterns in your browser:
 
-**[→ Open Interactive Playground](playground/index.html)** *(no installation needed)*
+**[→ Open Interactive Playground](playground/index.html)** _(no installation needed)_
 
 Or try in a full environment:
+
 ```bash
 # Local playground
 git clone https://github.com/KromDaniel/regengo
@@ -422,7 +423,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Support for capture groups
 - [ ] More regex operations (FindAll, Replace, etc.)
 - [ ] Parallel matching optimization
-- [ ] Web-based playground
 
 ## 📧 Contact
 

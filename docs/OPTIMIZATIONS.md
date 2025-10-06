@@ -161,7 +161,7 @@ Overall: 0.6% faster, 20.2% more memory
 
 ### After Optimizations (Expected)
 
-_Run `go run mass_generator.go` to measure improvements_
+_Run `go run benchmarks/mass_generator.go` to measure improvements_
 
 Expected improvements:
 
@@ -217,7 +217,7 @@ go test ./internal/compiler/... ./pkg/regengo/...
 go test ./tests/integration/...
 
 # Benchmark suite
-go run mass_generator.go
+go run benchmarks/mass_generator.go
 
 # Quick pattern tests
 go run cmd/regengo/main.go -name Test -pattern '\w+' -output /tmp/test.go
