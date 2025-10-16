@@ -47,7 +47,7 @@ benchmarks/bytes_view/
 examples/captures/
 examples/*.go
 
-benchmarks/mass_generated_*
+benchmarks/generated
 
 # Built binaries
 bin/

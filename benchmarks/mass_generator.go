@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -68,12 +69,34 @@ type slowPattern struct {
 	SlowerByPct float64
 }
 
-func main() {
-	start := time.Now()
+var (
+	command   = flag.String("command", "", "Command to run: generate, benchmark, delete")
+	outputDir = flag.String("output-dir", "", "Output directory for generated tests (default: benchmarks/generated)")
+	helpFlag  = flag.Bool("help", false, "Show help message")
+	version   = flag.Bool("version", false, "Print version information")
+)
 
-	specs := buildPatternSpecs()
-	if err := validateSpecs(specs); err != nil {
-		fmt.Fprintf(os.Stderr, "spec validation failed: %v\n", err)
+const (
+	appVersion = "1.0.0"
+	appName    = "mass_generator"
+)
+
+func main() {
+	flag.Parse()
+
+	if *helpFlag {
+		printHelp()
+		return
+	}
+
+	if *version {
+		fmt.Printf("%s version %s\n", appName, appVersion)
+		return
+	}
+
+	if *command == "" {
+		fmt.Fprintf(os.Stderr, "Error: -command flag is required\n\n")
+		printHelp()
 		os.Exit(1)
 	}
 
@@ -83,70 +106,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputDir := filepath.Join(workingDir, "benchmarks", fmt.Sprintf("mass_generated_%d", time.Now().UnixNano()))
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create output directory: %v\n", err)
+	// Set default output directory if not provided
+	var targetDir string
+	if *outputDir == "" {
+		targetDir = filepath.Join(workingDir, "benchmarks", "generated")
+	} else {
+		targetDir = *outputDir
+	}
+
+	switch *command {
+	case "generate":
+		if err := generateTests(targetDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating tests: %v\n", err)
+			os.Exit(1)
+		}
+	case "benchmark":
+		if err := runBenchmarks(targetDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Error running benchmarks: %v\n", err)
+			os.Exit(1)
+		}
+	case "delete":
+		if err := deleteGeneratedTests(targetDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Error deleting tests: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'. Use 'generate', 'benchmark', or 'delete'\n", *command)
 		os.Exit(1)
-	}
-
-	// Ensure cleanup happens even on panic
-	defer func() {
-		if err := os.RemoveAll(outputDir); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to remove generated directory %s: %v\n", outputDir, err)
-		} else {
-			fmt.Printf("Cleaned up generated test directory: %s\n", outputDir)
-		}
-	}()
-
-	packageName := "massgenerated"
-	stats := map[patternCategory]*categoryStats{}
-	totalTestCases := 0
-
-	for _, spec := range specs {
-		caseDir := filepath.Join(outputDir, spec.Name)
-		if err := os.MkdirAll(caseDir, 0o755); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to create directory for %s: %v\n", spec.Name, err)
-			os.Exit(1)
-		}
-
-		opts := regengo.Options{
-			Pattern:          spec.Pattern,
-			Name:             spec.Name,
-			OutputFile:       filepath.Join(caseDir, fmt.Sprintf("%s.go", spec.Name)),
-			Package:          packageName,
-			GenerateTestFile: true,
-			TestFileInputs:   spec.Inputs,
-		}
-
-		if err := regengo.Compile(opts); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to generate artifacts for %s: %v\n", spec.Name, err)
-			os.Exit(1)
-		}
-
-		bucket := stats[spec.Category]
-		if bucket == nil {
-			bucket = &categoryStats{}
-			stats[spec.Category] = bucket
-		}
-		bucket.Patterns++
-		bucket.TestCases += len(spec.Inputs)
-		totalTestCases += len(spec.Inputs)
-	}
-
-	testResult := runGoCommand(outputDir, "go", "test", "./...")
-	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "-benchtime=1x", "./...")
-
-	printSummary(stats, len(specs), totalTestCases, outputDir, testResult, benchResult, start, specs)
-
-	// Cleanup is handled by defer above
-
-	exitCode := 0
-	if testResult.Err != nil || benchResult.Err != nil {
-		exitCode = 1
-	}
-
-	if exitCode != 0 {
-		os.Exit(exitCode)
 	}
 }
 
@@ -873,5 +859,147 @@ func validateSpecs(specs []patternSpec) error {
 		return fmt.Errorf("only %d test cases generated; expected at least 500", total)
 	}
 
+	return nil
+}
+
+func printHelp() {
+	fmt.Printf("Usage: %s [OPTIONS]\n\n", appName)
+	fmt.Println("Mass test generator for regengo benchmark testing")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  generate   Generate test files for benchmarking")
+	fmt.Println("  benchmark  Run benchmarks on generated tests")
+	fmt.Println("  delete     Delete all generated test files")
+	fmt.Println()
+	fmt.Println("Options:")
+	flag.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Printf("  %s -command=generate                    # Generate tests in benchmarks/generated\n", appName)
+	fmt.Printf("  %s -command=benchmark                   # Run benchmarks (preserves tests)\n", appName)
+	fmt.Printf("  %s -command=delete                      # Delete generated tests\n", appName)
+	fmt.Printf("  %s -command=generate -output-dir=/tmp/tests  # Generate in custom directory\n", appName)
+	fmt.Printf("\n  # Complete workflow:\n")
+	fmt.Printf("  %s -command=generate && %s -command=benchmark && %s -command=delete\n", appName, appName, appName)
+}
+
+func generateTests(outputDir string) error {
+	fmt.Printf("Generating tests in directory: %s\n", outputDir)
+	start := time.Now()
+
+	specs := buildPatternSpecs()
+	if err := validateSpecs(specs); err != nil {
+		return fmt.Errorf("spec validation failed: %v", err)
+	}
+
+	// Clean existing directory if it exists
+	if err := os.RemoveAll(outputDir); err != nil {
+		return fmt.Errorf("failed to clean existing directory: %v", err)
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create output directory: %v", err)
+	}
+
+	packageName := "generated"
+	stats := map[patternCategory]*categoryStats{}
+	totalTestCases := 0
+
+	for _, spec := range specs {
+		caseDir := filepath.Join(outputDir, spec.Name)
+		if err := os.MkdirAll(caseDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory for %s: %v", spec.Name, err)
+		}
+
+		opts := regengo.Options{
+			Pattern:          spec.Pattern,
+			Name:             spec.Name,
+			OutputFile:       filepath.Join(caseDir, fmt.Sprintf("%s.go", spec.Name)),
+			Package:          packageName,
+			GenerateTestFile: true,
+			TestFileInputs:   spec.Inputs,
+		}
+
+		if err := regengo.Compile(opts); err != nil {
+			return fmt.Errorf("failed to generate artifacts for %s: %v", spec.Name, err)
+		}
+
+		bucket := stats[spec.Category]
+		if bucket == nil {
+			bucket = &categoryStats{}
+			stats[spec.Category] = bucket
+		}
+		bucket.Patterns++
+		bucket.TestCases += len(spec.Inputs)
+		totalTestCases += len(spec.Inputs)
+	}
+
+	duration := time.Since(start)
+	fmt.Printf("✅ Successfully generated %d patterns (%d test cases) in %v\n", len(specs), totalTestCases, duration.Round(time.Millisecond))
+
+	// Print category breakdown
+	fmt.Println("\nGenerated patterns by category:")
+	for category, stat := range stats {
+		fmt.Printf("  %s: %d patterns, %d test cases\n", category, stat.Patterns, stat.TestCases)
+	}
+
+	return nil
+}
+
+func runBenchmarks(outputDir string) error {
+	// Check if tests exist
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		return fmt.Errorf("no generated tests found in %s. Run 'generate' command first", outputDir)
+	}
+
+	fmt.Printf("Running benchmarks on tests in: %s\n", outputDir)
+	start := time.Now()
+
+	specs := buildPatternSpecs()
+	if err := validateSpecs(specs); err != nil {
+		return fmt.Errorf("spec validation failed: %v", err)
+	}
+
+	stats := map[patternCategory]*categoryStats{}
+	totalTestCases := 0
+	for _, spec := range specs {
+		bucket := stats[spec.Category]
+		if bucket == nil {
+			bucket = &categoryStats{}
+			stats[spec.Category] = bucket
+		}
+		bucket.Patterns++
+		bucket.TestCases += len(spec.Inputs)
+		totalTestCases += len(spec.Inputs)
+	}
+
+	testResult := runGoCommand(outputDir, "go", "test", "./...")
+	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "-benchtime=1x", "./...")
+
+	printSummary(stats, len(specs), totalTestCases, outputDir, testResult, benchResult, start, specs)
+
+	if testResult.Err != nil || benchResult.Err != nil {
+		return fmt.Errorf("benchmark execution failed")
+	}
+
+	fmt.Printf("\n📁 Benchmark completed. Tests preserved in: %s\n", outputDir)
+	fmt.Printf("💡 Use '%s -command=delete' to clean up when done\n", appName)
+
+	return nil
+}
+
+func deleteGeneratedTests(outputDir string) error {
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		fmt.Printf("No generated tests found in %s\n", outputDir)
+		return nil
+	}
+
+	fmt.Printf("Deleting generated tests from: %s\n", outputDir)
+
+	if err := os.RemoveAll(outputDir); err != nil {
+		return fmt.Errorf("failed to delete directory %s: %v", outputDir, err)
+	}
+
+	fmt.Printf("✅ Successfully deleted generated tests from %s\n", outputDir)
 	return nil
 }
