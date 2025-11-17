@@ -56,9 +56,56 @@ func EmailFindString(input string) (*EmailMatch, bool) {
 func EmailFindBytes(input []byte) (*EmailMatch, bool) {
     // ... optimized matching code ...
 }
+
+func EmailFindAllString(input string, n int) []*EmailMatch {
+    // ... find all matches ...
+}
+
+func EmailFindAllBytes(input []byte, n int) []*EmailMatch {
+    // ... find all matches from bytes ...
+}
 ```
 
 ## Examples
+
+### FindAll: Multiple Matches
+
+```go
+// Pattern: (?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
+text := "Dates: 2024-01-15 and 2024-12-25 and 2025-06-30"
+
+// Find all matches (n = -1 means unlimited)
+matches := DateCaptureFindAllString(text, -1)
+for _, m := range matches {
+    fmt.Printf("%s: Year=%s, Month=%s, Day=%s\n", m.Match, m.Year, m.Month, m.Day)
+}
+// Output:
+// 2024-01-15: Year=2024, Month=01, Day=15
+// 2024-12-25: Year=2024, Month=12, Day=25
+// 2025-06-30: Year=2025, Month=06, Day=30
+
+// Find up to 2 matches
+matches := DateCaptureFindAllString(text, 2)
+// Returns first 2 matches only
+
+// Find no matches
+matches := DateCaptureFindAllString(text, 0)
+// Returns nil immediately
+```
+
+**Parameter `n` controls max matches**:
+
+- `n < 0`: Find all matches (unlimited)
+- `n = 0`: Return nil immediately (no search)
+- `n > 0`: Return up to n matches
+
+**Behavior**:
+
+- ✅ Returns slice of match pointers (`[]*EmailMatch`)
+- ✅ Non-overlapping matches (standard regex behavior)
+- ✅ Advances past each match to find the next
+- ✅ Handles zero-width matches (advances by 1 to prevent infinite loops)
+- ✅ Compatible with stdlib `regexp.FindAllStringSubmatch` semantics
 
 ### Named Groups
 

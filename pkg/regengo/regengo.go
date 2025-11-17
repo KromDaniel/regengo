@@ -70,6 +70,9 @@ func Compile(opts Options) error {
 	// Simplify the regex syntax tree
 	regexAST = regexAST.Simplify()
 
+	// Optimization #2: Unroll small bounded repetitions ({2}, {3})
+	regexAST = unrollSmallRepetitions(regexAST)
+
 	// Compile to instruction program
 	prog, err := syntax.Compile(regexAST)
 	if err != nil {
@@ -117,4 +120,108 @@ func Compile(opts Options) error {
 	}
 
 	return nil
+}
+
+// unrollSmallRepetitions transforms small bounded repetitions into explicit sequences.
+// Optimization #2: Converts {2}, {3} into repeated sequences to reduce goto complexity.
+// Example: (?:foo|bar){2} becomes (?:foo|bar)(?:foo|bar)
+func unrollSmallRepetitions(re *syntax.Regexp) *syntax.Regexp {
+	if re == nil {
+		return nil
+	}
+
+	// Recursively process children first
+	for i, sub := range re.Sub {
+		re.Sub[i] = unrollSmallRepetitions(sub)
+	}
+
+	// Check if this is a small bounded repetition that should be unrolled
+	if re.Op == syntax.OpRepeat {
+		// Only unroll if Min == Max and it's a small number (2 or 3)
+		if re.Min == re.Max && re.Min >= 2 && re.Min <= 3 {
+			// Only unroll if the sub-expression is reasonably simple
+			// (not too complex to avoid code explosion)
+			if shouldUnrollExpression(re.Sub[0]) {
+				// Create a concatenation of N copies
+				copies := make([]*syntax.Regexp, re.Min)
+				for i := 0; i < re.Min; i++ {
+					// Deep copy the sub-expression
+					copies[i] = copyRegexp(re.Sub[0])
+				}
+
+				// Return a concatenation node
+				return &syntax.Regexp{
+					Op:    syntax.OpConcat,
+					Sub:   copies,
+					Flags: re.Flags,
+				}
+			}
+		}
+	}
+
+	return re
+}
+
+// shouldUnrollExpression determines if an expression is simple enough to unroll.
+// We avoid unrolling very complex expressions to prevent code bloat.
+func shouldUnrollExpression(re *syntax.Regexp) bool {
+	// Count complexity recursively
+	complexity := countComplexity(re)
+	// Unroll if complexity is reasonable (less than 10 nodes)
+	// For {2}: max 20 nodes, for {3}: max 30 nodes - both acceptable
+	return complexity < 10
+}
+
+// countComplexity returns a rough measure of expression complexity.
+func countComplexity(re *syntax.Regexp) int {
+	if re == nil {
+		return 0
+	}
+
+	count := 1 // Count this node
+	for _, sub := range re.Sub {
+		count += countComplexity(sub)
+	}
+
+	// Weighted by operation type
+	switch re.Op {
+	case syntax.OpCapture, syntax.OpConcat, syntax.OpAlternate:
+		count += 1
+	case syntax.OpStar, syntax.OpPlus, syntax.OpQuest, syntax.OpRepeat:
+		count += 2 // Repetitions are more complex
+	}
+
+	return count
+}
+
+// copyRegexp creates a deep copy of a Regexp node.
+func copyRegexp(re *syntax.Regexp) *syntax.Regexp {
+	if re == nil {
+		return nil
+	}
+
+	copied := &syntax.Regexp{
+		Op:    re.Op,
+		Flags: re.Flags,
+		Min:   re.Min,
+		Max:   re.Max,
+		Cap:   re.Cap,
+		Name:  re.Name,
+	}
+
+	// Copy runes if present
+	if len(re.Rune) > 0 {
+		copied.Rune = make([]rune, len(re.Rune))
+		copy(copied.Rune, re.Rune)
+	}
+
+	// Deep copy sub-expressions
+	if len(re.Sub) > 0 {
+		copied.Sub = make([]*syntax.Regexp, len(re.Sub))
+		for i, sub := range re.Sub {
+			copied.Sub[i] = copyRegexp(sub)
+		}
+	}
+
+	return copied
 }

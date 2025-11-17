@@ -26,9 +26,12 @@ type Config struct {
 
 // Compiler generates optimized Go code from regex patterns.
 type Compiler struct {
-	config       Config
-	file         *jen.File
-	captureNames []string // Capture group names (empty string for unnamed groups)
+	config               Config
+	file                 *jen.File
+	captureNames         []string // Capture group names (empty string for unnamed groups)
+	hasRepeatingCaptures bool     // True if any capture groups are in repeating context
+	needsBacktracking    bool     // True if the program contains alternation instructions
+	generatingCaptures   bool     // True when generating Find* functions (needs capture checkpoints)
 }
 
 // New creates a new compiler instance.
@@ -41,6 +44,12 @@ func New(config Config) *Compiler {
 	// Extract capture group names if WithCaptures is enabled
 	if config.WithCaptures && config.RegexAST != nil {
 		compiler.captureNames = extractCaptureNames(config.RegexAST)
+		compiler.hasRepeatingCaptures = hasRepeatingCaptures(config.RegexAST)
+	}
+
+	// Check if the program needs backtracking
+	if config.Program != nil {
+		compiler.needsBacktracking = needsBacktracking(config.Program)
 	}
 
 	return compiler
@@ -62,8 +71,8 @@ func (c *Compiler) Generate() error {
 	c.file.Comment("DO NOT EDIT.")
 	c.file.Line()
 
-	// Add sync.Pool if enabled
-	if c.config.UsePool {
+	// Add sync.Pool if enabled and backtracking is needed
+	if c.config.UsePool && c.needsBacktracking {
 		c.generateStackPool()
 	}
 
@@ -118,13 +127,16 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
 	}
 
-	// Add stack initialization (pooled or regular)
-	if c.config.UsePool {
-		code = append(code, c.generatePooledStackInit()...)
-	} else {
-		code = append(code,
-			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-		)
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization (pooled or regular)
+		if c.config.UsePool {
+			code = append(code, c.generatePooledStackInit()...)
+		} else {
+			code = append(code,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
 	}
 
 	code = append(code,
@@ -134,8 +146,16 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 		jen.Goto().Id(codegen.StepSelectName),
 	)
 
-	// Add backtracking logic
-	code = append(code, c.generateBacktracking()...)
+	// Only add backtracking logic if needed
+	if c.needsBacktracking {
+		code = append(code, c.generateBacktracking()...)
+	} else {
+		// For patterns without backtracking, add a simple fallback that returns false
+		code = append(code,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Return(jen.False()),
+		)
+	}
 
 	// Add step selector
 	code = append(code, c.generateStepSelector()...)
@@ -172,6 +192,7 @@ func (c *Compiler) generateBacktracking() []jen.Code {
 }
 
 // generateBacktrackingWithCaptures generates the backtracking logic for capture functions.
+// Uses capture checkpointing to avoid resetting all captures on every backtrack.
 func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 	return []jen.Code{
 		jen.Id(codegen.TryFallbackName).Op(":"),
@@ -180,6 +201,12 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			// Restore capture state from checkpoint stack
+			jen.If(jen.Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
+				jen.Id("saved").Op(":=").Id("captureStack").Index(jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
+				jen.Copy(jen.Id(codegen.CapturesName), jen.Id("saved")),
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
+			),
 			jen.Goto().Id(codegen.StepSelectName),
 		).Else().Block(
 			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
@@ -188,6 +215,8 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
 					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
 				),
+				// Clear capture checkpoint stack
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
 				// Set capture[0] to mark start of match attempt (after incrementing offset)
 				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
 				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
@@ -327,6 +356,21 @@ func (c *Compiler) generateRuneCheck(runes []rune) *jen.Statement {
 		return jen.True()
 	}
 
+	// Check for common character classes and use optimized checks
+	if charClass := detectCharacterClass(runes); charClass != "" {
+		return c.generateOptimizedCharClassCheck(charClass)
+	}
+
+	// For small sets (3 or fewer distinct values), use switch-like OR conditions
+	if len(runes) <= 6 && allSingleChars(runes) {
+		return c.generateSmallSetCheck(runes)
+	}
+
+	// For larger character classes with many ranges, use a more optimized approach
+	if len(runes) > 10 {
+		return c.generateLargeCharClassCheck(runes)
+	}
+
 	// Build condition for character class
 	// We need to check if the byte does NOT match any of the ranges
 	var stmt *jen.Statement
@@ -351,7 +395,168 @@ func (c *Compiler) generateRuneCheck(runes []rune) *jen.Statement {
 	}
 
 	return stmt
-} // generateRuneAnyInst generates code for InstRuneAny (match any character).
+}
+
+// detectCharacterClass checks if runes match a common character class pattern.
+func detectCharacterClass(runes []rune) string {
+	// \w: [0-9A-Za-z_]
+	if len(runes) == 8 &&
+		runes[0] == '0' && runes[1] == '9' &&
+		runes[2] == 'A' && runes[3] == 'Z' &&
+		runes[4] == '_' && runes[5] == '_' &&
+		runes[6] == 'a' && runes[7] == 'z' {
+		return "word"
+	}
+
+	// \d: [0-9]
+	if len(runes) == 2 && runes[0] == '0' && runes[1] == '9' {
+		return "digit"
+	}
+
+	// \s: [ \t\n\r\f\v]
+	if len(runes) == 12 &&
+		runes[0] == '\t' && runes[1] == '\n' &&
+		runes[2] == '\f' && runes[3] == '\r' &&
+		runes[4] == ' ' && runes[5] == ' ' {
+		return "space"
+	}
+
+	// [a-z]
+	if len(runes) == 2 && runes[0] == 'a' && runes[1] == 'z' {
+		return "lowercase"
+	}
+
+	// [A-Z]
+	if len(runes) == 2 && runes[0] == 'A' && runes[1] == 'Z' {
+		return "uppercase"
+	}
+
+	// [a-zA-Z]
+	if len(runes) == 4 &&
+		runes[0] == 'A' && runes[1] == 'Z' &&
+		runes[2] == 'a' && runes[3] == 'z' {
+		return "alpha"
+	}
+
+	return ""
+}
+
+// generateOptimizedCharClassCheck generates optimized code for common character classes.
+func (c *Compiler) generateOptimizedCharClassCheck(charClass string) *jen.Statement {
+	// Helper to create input[offset] expression
+	inputAt := func() *jen.Statement {
+		return jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName))
+	}
+
+	switch charClass {
+	case "word":
+		// \w: [0-9A-Za-z_] - NOT (< '0' || (> '9' && < 'A') || (> 'Z' && < '_') || (> '_' && < 'a') || > 'z')
+		part1 := inputAt().Op("<").Lit(byte('0'))
+		part2 := jen.Parens(inputAt().Op(">").Lit(byte('9')).Op("&&").Add(inputAt()).Op("<").Lit(byte('A')))
+		part3 := jen.Parens(inputAt().Op(">").Lit(byte('Z')).Op("&&").Add(inputAt()).Op("<").Lit(byte('_')))
+		part4 := jen.Parens(inputAt().Op(">").Lit(byte('_')).Op("&&").Add(inputAt()).Op("<").Lit(byte('a')))
+		part5 := inputAt().Op(">").Lit(byte('z'))
+		return jen.Parens(part1.Op("||").Add(part2).Op("||").Add(part3).Op("||").Add(part4).Op("||").Add(part5))
+
+	case "digit":
+		// \d: [0-9] - NOT (< '0' || > '9')
+		return jen.Parens(inputAt().Op("<").Lit(byte('0')).Op("||").Add(inputAt()).Op(">").Lit(byte('9')))
+
+	case "space":
+		// \s: whitespace - NOT (== ' ' || == '\t' || ... )
+		// Using != for all since we want "not in set"
+		part1 := inputAt().Op("!=").Lit(byte(' '))
+		part2 := inputAt().Op("!=").Lit(byte('\t'))
+		part3 := inputAt().Op("!=").Lit(byte('\n'))
+		part4 := inputAt().Op("!=").Lit(byte('\r'))
+		part5 := inputAt().Op("!=").Lit(byte('\f'))
+		return jen.Parens(part1.Op("&&").Add(part2).Op("&&").Add(part3).Op("&&").Add(part4).Op("&&").Add(part5))
+
+	case "lowercase":
+		// [a-z] - NOT (< 'a' || > 'z')
+		return jen.Parens(inputAt().Op("<").Lit(byte('a')).Op("||").Add(inputAt()).Op(">").Lit(byte('z')))
+
+	case "uppercase":
+		// [A-Z] - NOT (< 'A' || > 'Z')
+		return jen.Parens(inputAt().Op("<").Lit(byte('A')).Op("||").Add(inputAt()).Op(">").Lit(byte('Z')))
+
+	case "alpha":
+		// [a-zA-Z] - NOT ((< 'A' || > 'Z') && (< 'a' || > 'z'))
+		upper := jen.Parens(inputAt().Op("<").Lit(byte('A')).Op("||").Add(inputAt()).Op(">").Lit(byte('Z')))
+		lower := jen.Parens(inputAt().Op("<").Lit(byte('a')).Op("||").Add(inputAt()).Op(">").Lit(byte('z')))
+		return jen.Parens(upper.Op("&&").Add(lower))
+	}
+
+	return jen.True()
+}
+
+// allSingleChars checks if all ranges are single characters.
+func allSingleChars(runes []rune) bool {
+	for i := 0; i < len(runes); i += 2 {
+		if runes[i] != runes[i+1] {
+			return false
+		}
+	}
+	return true
+}
+
+// generateSmallSetCheck generates optimized code for small character sets using OR conditions.
+func (c *Compiler) generateSmallSetCheck(runes []rune) *jen.Statement {
+	ch := jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName))
+
+	var stmt *jen.Statement
+	for i := 0; i < len(runes); i += 2 {
+		condition := ch.Clone().Op("!=").Lit(byte(runes[i]))
+		if stmt == nil {
+			stmt = condition
+		} else {
+			stmt = stmt.Op("&&").Add(condition)
+		}
+	}
+
+	return stmt
+}
+
+// generateLargeCharClassCheck generates optimized code for large character classes.
+// Uses grouped range checks to reduce condition length.
+func (c *Compiler) generateLargeCharClassCheck(runes []rune) *jen.Statement {
+	// Helper to create input[offset] expression
+	inputAt := func() *jen.Statement {
+		return jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName))
+	}
+
+	// Group consecutive ranges
+	type rangeGroup struct {
+		start, end byte
+	}
+
+	var groups []rangeGroup
+	for i := 0; i < len(runes); i += 2 {
+		lo, hi := byte(runes[i]), byte(runes[i+1])
+		groups = append(groups, rangeGroup{lo, hi})
+	}
+
+	// Generate condition: not in any range
+	var stmt *jen.Statement
+	for _, g := range groups {
+		var condition *jen.Statement
+		if g.start == g.end {
+			condition = inputAt().Op("!=").Lit(g.start)
+		} else {
+			condition = jen.Parens(inputAt().Op("<").Lit(g.start).Op("||").Add(inputAt()).Op(">").Lit(g.end))
+		}
+
+		if stmt == nil {
+			stmt = condition
+		} else {
+			stmt = stmt.Op("&&").Add(condition)
+		}
+	}
+
+	return stmt
+}
+
+// generateRuneAnyInst generates code for InstRuneAny (match any character).
 func (c *Compiler) generateRuneAnyInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
 	return []jen.Code{
 		label,
@@ -384,15 +589,32 @@ func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.I
 
 // generateAltInst generates code for InstAlt (alternation with backtracking).
 func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	// Optimization #1: When generating Find* functions with captures, save capture checkpoint
+	if c.generatingCaptures {
+		return []jen.Code{
+			label,
+			jen.Block(
+				// Save current capture state as checkpoint
+				jen.Id("checkpoint").Op(":=").Make(jen.Index().Int(), jen.Len(jen.Id(codegen.CapturesName))),
+				jen.Copy(jen.Id("checkpoint"), jen.Id(codegen.CapturesName)),
+				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id("checkpoint")),
+				// Push to backtracking stack
+				jen.Id(codegen.StackName).Op("=").Append(
+					jen.Id(codegen.StackName),
+					jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+				),
+				jen.Goto().Id(codegen.InstructionName(inst.Out)),
+			),
+		}, nil
+	}
+
+	// Optimized: Just use append - Go's runtime handles capacity efficiently
 	return []jen.Code{
 		label,
 		jen.Block(
-			jen.If(jen.Cap(jen.Id(codegen.StackName)).Op(">").Len(jen.Id(codegen.StackName))).Block(
-				jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("+").Lit(1)),
-				jen.Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
-				jen.Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)).Index(jen.Lit(1)).Op("=").Lit(int(inst.Arg)),
-			).Else().Block(
-				jen.Id(codegen.StackName).Op("=").Append(jen.Id(codegen.StackName), jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg)))),
+			jen.Id(codegen.StackName).Op("=").Append(
+				jen.Id(codegen.StackName),
+				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
 			),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
@@ -411,13 +633,78 @@ func (c *Compiler) generateAltMatchInst(label *jen.Statement, inst *syntax.Inst)
 
 // generateEmptyWidthInst generates code for InstEmptyWidth (position assertions).
 func (c *Compiler) generateEmptyWidthInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	// For now, simple implementation - just continue
-	return []jen.Code{
-		label,
-		jen.Block(
+	emptyOp := syntax.EmptyOp(inst.Arg)
+
+	var checks []jen.Code
+
+	// Check for beginning of text (^)
+	if emptyOp&syntax.EmptyBeginText != 0 {
+		// offset must be 0
+		checks = append(checks,
+			jen.If(jen.Id(codegen.OffsetName).Op("!=").Lit(0)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for end of text ($)
+	if emptyOp&syntax.EmptyEndText != 0 {
+		// offset must equal length
+		checks = append(checks,
+			jen.If(jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for beginning of line
+	if emptyOp&syntax.EmptyBeginLine != 0 {
+		// offset must be 0 OR previous character must be newline
+		checks = append(checks,
+			jen.If(
+				jen.Id(codegen.OffsetName).Op("!=").Lit(0).Op("&&").
+					Parens(
+						jen.Id(codegen.OffsetName).Op("==").Lit(0).Op("||").
+							Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1)).Op("!=").LitRune('\n'),
+					),
+			).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Check for end of line
+	if emptyOp&syntax.EmptyEndLine != 0 {
+		// offset must equal length OR current character must be newline
+		checks = append(checks,
+			jen.If(
+				jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName).Op("&&").
+					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").LitRune('\n'),
+			).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Word boundary checks would go here if needed
+	// For now, we'll leave them unimplemented
+	if emptyOp&(syntax.EmptyWordBoundary|syntax.EmptyNoWordBoundary) != 0 {
+		return nil, fmt.Errorf("word boundary assertions (\\b, \\B) are not yet implemented")
+	}
+
+	// Add the checks and continue to next instruction
+	code := []jen.Code{label}
+	if len(checks) > 0 {
+		code = append(code, jen.Block(append(checks,
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
+		)...))
+	} else {
+		code = append(code, jen.Block(
+			jen.Goto().Id(codegen.InstructionName(inst.Out)),
+		))
+	}
+
+	return code, nil
 }
 
 // generateNopInst generates code for InstNop (no operation).
@@ -482,6 +769,54 @@ func extractCaptureNames(re *syntax.Regexp) []string {
 	return names
 }
 
+// hasRepeatingCaptures checks if the regex has any capture groups in repeating context.
+// Repeating contexts include *, +, ?, and {n,m} quantifiers.
+// Note: Standard regex behavior (including Go's stdlib) captures only the LAST match
+// from repeating groups. For example, (\w)+ matching "abc" will capture "c", not ["a","b","c"].
+func hasRepeatingCaptures(re *syntax.Regexp) bool {
+	return walkCheckRepeating(re, false)
+}
+
+// needsBacktracking checks if the compiled program requires backtracking.
+// Returns true if the program contains InstAlt instructions (alternations).
+func needsBacktracking(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	for i := range prog.Inst {
+		if prog.Inst[i].Op == syntax.InstAlt {
+			return true
+		}
+	}
+
+	return false
+}
+
+// walkCheckRepeating recursively walks the AST to detect captures in repeating context.
+func walkCheckRepeating(re *syntax.Regexp, inRepeat bool) bool {
+	// If this is a capture and we're in a repeating context
+	if re.Op == syntax.OpCapture && inRepeat {
+		return true
+	}
+
+	// Check if this node introduces repetition
+	isRepeating := false
+	switch re.Op {
+	case syntax.OpStar, syntax.OpPlus, syntax.OpQuest, syntax.OpRepeat:
+		isRepeating = true
+	}
+
+	// Recursively check children
+	for _, sub := range re.Sub {
+		if walkCheckRepeating(sub, inRepeat || isRepeating) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // generateCaptureFunctions generates Find and FindAll functions with capture groups.
 func (c *Compiler) generateCaptureFunctions() error {
 	// Generate capture struct
@@ -493,6 +828,11 @@ func (c *Compiler) generateCaptureFunctions() error {
 		return fmt.Errorf("failed to generate FindString: %w", err)
 	}
 
+	// Generate FindAllString function
+	if err := c.generateFindAllStringFunction(structName); err != nil {
+		return fmt.Errorf("failed to generate FindAllString: %w", err)
+	}
+
 	// Generate FindBytes function
 	if c.config.BytesView {
 		bytesStructName := fmt.Sprintf("%sMatchBytes", c.config.Name)
@@ -500,10 +840,16 @@ func (c *Compiler) generateCaptureFunctions() error {
 		if err := c.generateFindBytesFunction(bytesStructName); err != nil {
 			return fmt.Errorf("failed to generate FindBytes: %w", err)
 		}
+		if err := c.generateFindAllBytesFunction(bytesStructName); err != nil {
+			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
+		}
 	} else {
 		// Use same struct, convert []byte to string
 		if err := c.generateFindBytesFunction(structName); err != nil {
 			return fmt.Errorf("failed to generate FindBytes: %w", err)
+		}
+		if err := c.generateFindAllBytesFunction(structName); err != nil {
+			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
 		}
 	}
 
@@ -512,6 +858,15 @@ func (c *Compiler) generateCaptureFunctions() error {
 
 // generateCaptureStruct generates the Match struct with string fields.
 func (c *Compiler) generateCaptureStruct(structName string) {
+	// Add warning comment if there are repeating captures
+	if c.hasRepeatingCaptures {
+		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
+		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
+		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
+		c.file.Comment("Optional groups (?) return empty string when not matched.")
+		c.file.Line()
+	}
+
 	fields := []jen.Code{
 		jen.Id("Match").String().Comment("Full match"),
 	}
@@ -533,6 +888,15 @@ func (c *Compiler) generateCaptureStruct(structName string) {
 
 // generateCaptureStructBytes generates the Match struct with []byte fields for BytesView.
 func (c *Compiler) generateCaptureStructBytes(structName string) {
+	// Add warning comment if there are repeating captures
+	if c.hasRepeatingCaptures {
+		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
+		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
+		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
+		c.file.Comment("Optional groups (?) return empty slice when not matched.")
+		c.file.Line()
+	}
+
 	fields := []jen.Code{
 		jen.Id("Match").Index().Byte().Comment("Full match"),
 	}
@@ -584,9 +948,278 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 	return nil
 }
 
+// generateFindAllStringFunction generates the FindAllString function with captures.
+func (c *Compiler) generateFindAllStringFunction(structName string) error {
+	code, err := c.generateFindAllFunction(structName, false)
+	if err != nil {
+		return err
+	}
+
+	c.file.Func().
+		Id(fmt.Sprintf("%sFindAllString", c.config.Name)).
+		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(code...)
+
+	return nil
+}
+
+// generateFindAllBytesFunction generates the FindAllBytes function with captures.
+func (c *Compiler) generateFindAllBytesFunction(structName string) error {
+	code, err := c.generateFindAllFunction(structName, c.config.BytesView)
+	if err != nil {
+		return err
+	}
+
+	c.file.Func().
+		Id(fmt.Sprintf("%sFindAllBytes", c.config.Name)).
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(code...)
+
+	return nil
+}
+
+// generateFindAllFunction generates the main FindAll logic with captures.
+// Parameter n specifies the maximum number of matches to return (-1 for all matches).
+func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]jen.Code, error) {
+	numCaptures := c.config.Program.NumCap
+
+	// Enable capture checkpoint optimization
+	c.generatingCaptures = true
+	defer func() { c.generatingCaptures = false }()
+
+	code := []jen.Code{
+		// Handle n parameter
+		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
+			jen.Return(jen.Nil()),
+		),
+		// Initialize result slice
+		jen.Var().Id("result").Index().Op("*").Id(structName),
+		// Initialize length
+		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
+		// Initialize search start position
+		jen.Id("searchStart").Op(":=").Lit(0),
+	}
+
+	// Build the loop body statements
+	loopBody := []jen.Code{
+		// Check if we've found enough matches
+		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
+			jen.Break(),
+		),
+		// Check if we've reached end of input
+		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(
+			jen.Break(),
+		),
+		// Initialize offset
+		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
+		// Initialize captures array
+		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+	}
+
+	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
+	if c.needsBacktracking {
+		loopBody = append(loopBody, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
+	}
+
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization
+		if c.config.UsePool {
+			poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
+			loopBody = append(loopBody,
+				jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
+				jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
+				jen.Defer().Func().Params().Block(
+					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
+						jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
+					),
+					jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+					jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
+				).Call(),
+			)
+		} else {
+			loopBody = append(loopBody,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
+	}
+
+	// Continue with matching logic
+	loopBody = append(loopBody,
+		// Set captures[0] to mark start of match attempt
+		jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id("searchStart"),
+		// Initialize next instruction
+		jen.Id(codegen.NextInstructionName).Op(":=").Lit(int(c.config.Program.Start)),
+		jen.Goto().Id(codegen.StepSelectName),
+	)
+
+	// Add backtracking logic that continues to next position on failure
+	// Only if backtracking is needed
+	if c.needsBacktracking {
+		loopBody = append(loopBody,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+				jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+				jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+				jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+				jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+				jen.Goto().Id(codegen.StepSelectName),
+			).Else().Block(
+				// No match at this position, try next
+				jen.Id("searchStart").Op("++"),
+				jen.Continue(),
+			),
+		)
+	} else {
+		// For patterns without backtracking, just move to next position on failure
+		loopBody = append(loopBody,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Id("searchStart").Op("++"),
+			jen.Continue(),
+		)
+	}
+
+	// Add step selector
+	loopBody = append(loopBody, c.generateStepSelector()...)
+
+	// Generate instructions with captures - but modified to continue loop instead of returning
+	instructions, err := c.generateInstructionsForFindAll(structName, isBytes)
+	if err != nil {
+		return nil, err
+	}
+	loopBody = append(loopBody, instructions...)
+
+	// Add the loop
+	code = append(code,
+		jen.For(jen.True()).Block(loopBody...),
+		jen.Return(jen.Id("result")),
+	)
+
+	return code, nil
+}
+
+// generateInstructionsForFindAll generates instructions where Match adds to result and continues.
+func (c *Compiler) generateInstructionsForFindAll(structName string, isBytes bool) ([]jen.Code, error) {
+	var code []jen.Code
+
+	for i, inst := range c.config.Program.Inst {
+		var instCode []jen.Code
+		var err error
+
+		if inst.Op == syntax.InstMatch {
+			// Special handling for Match instruction in FindAll
+			instCode, err = c.generateMatchInstForFindAll(uint32(i), structName, isBytes)
+		} else if inst.Op == syntax.InstFail {
+			// Special handling for Fail instruction in FindAll - goto fallback instead of return
+			label := jen.Id(codegen.InstructionName(uint32(i))).Op(":")
+			instCode = []jen.Code{
+				label,
+				jen.Block(jen.Goto().Id(codegen.TryFallbackName)),
+			}
+		} else {
+			// Use regular instruction generation for other instructions
+			instCode, err = c.generateInstructionWithCaptures(uint32(i), &inst, structName, isBytes)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate instruction %d: %w", i, err)
+		}
+		code = append(code, instCode...)
+	}
+
+	return code, nil
+}
+
+// generateMatchInstForFindAll generates Match instruction that adds to result and continues loop.
+func (c *Compiler) generateMatchInstForFindAll(id uint32, structName string, isBytes bool) ([]jen.Code, error) {
+	label := jen.Id(codegen.InstructionName(id)).Op(":")
+
+	// Build struct fields from captures array
+	structFields := jen.Dict{}
+
+	if isBytes {
+		structFields[jen.Id("Match")] = jen.Id(codegen.InputName).Index(
+			jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		)
+	} else {
+		structFields[jen.Id("Match")] = jen.String().Call(
+			jen.Id(codegen.InputName).Index(
+				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+			),
+		)
+	}
+
+	// Add capture group fields
+	for i := 1; i < len(c.captureNames); i++ {
+		fieldName := c.captureNames[i]
+		if fieldName == "" {
+			fieldName = fmt.Sprintf("Group%d", i)
+		} else {
+			fieldName = codegen.UpperFirst(fieldName)
+		}
+
+		captureStart := i * 2
+		captureEnd := i*2 + 1
+
+		if isBytes {
+			structFields[jen.Id(fieldName)] = jen.Func().Params().Index().Byte().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					)),
+				),
+				jen.Return(jen.Nil()),
+			).Call()
+		} else {
+			structFields[jen.Id(fieldName)] = jen.Func().Params().String().Block(
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Return(jen.String().Call(jen.Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					))),
+				),
+				jen.Return(jen.Lit("")),
+			).Call()
+		}
+	}
+
+	return []jen.Code{
+		label,
+		jen.Block(
+			// Set captures[1] to mark end of match
+			jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
+			// Add match to results
+			jen.Id("result").Op("=").Append(
+				jen.Id("result"),
+				jen.Op("&").Id(structName).Values(structFields),
+			),
+			// Move search position past this match
+			jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op(">").Id("searchStart")).Block(
+				jen.Id("searchStart").Op("=").Id(codegen.CapturesName).Index(jen.Lit(1)),
+			).Else().Block(
+				// Prevent infinite loop on zero-width matches
+				jen.Id("searchStart").Op("++"),
+			),
+			// Continue searching
+			jen.Continue(),
+		),
+	}, nil
+}
+
 // generateFindFunction generates the main Find logic with captures.
 func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.Code, error) {
 	numCaptures := c.config.Program.NumCap
+
+	// Enable capture checkpoint optimization
+	c.generatingCaptures = true
+	defer func() { c.generatingCaptures = false }()
 
 	code := []jen.Code{
 		// Initialize length
@@ -597,13 +1230,21 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
 	}
 
-	// Add stack initialization (pooled or regular)
-	if c.config.UsePool {
-		code = append(code, c.generatePooledStackInit()...)
-	} else {
-		code = append(code,
-			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-		)
+	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
+	if c.needsBacktracking {
+		code = append(code, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
+	}
+
+	// Only add stack initialization if backtracking is needed
+	if c.needsBacktracking {
+		// Add stack initialization (pooled or regular)
+		if c.config.UsePool {
+			code = append(code, c.generatePooledStackInit()...)
+		} else {
+			code = append(code,
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
 	}
 
 	code = append(code,
@@ -616,7 +1257,16 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 	)
 
 	// Add backtracking logic (with nil return for captures)
-	code = append(code, c.generateBacktrackingWithCaptures()...)
+	// Only if backtracking is needed
+	if c.needsBacktracking {
+		code = append(code, c.generateBacktrackingWithCaptures()...)
+	} else {
+		// For patterns without backtracking, add a simple fallback that returns nil, false
+		code = append(code,
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Return(jen.Nil(), jen.False()),
+		)
+	}
 
 	// Add step selector
 	code = append(code, c.generateStepSelector()...)

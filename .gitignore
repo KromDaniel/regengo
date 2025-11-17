@@ -46,3 +46,9 @@ final_test.go
 benchmarks/bytes_view/
 examples/captures/
 examples/*.go
+
+benchmarks/generated
+
+# Built binaries
+bin/
+regengo

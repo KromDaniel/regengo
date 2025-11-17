@@ -1,8 +1,10 @@
-.PHONY: all build test bench bench-gen clean fmt lint install help
+.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build
 
 # Variables
 BINARY_NAME=regengo
 CMD_PATH=./cmd/regengo
+MASS_GEN_BINARY=bin/mass_generator
+MASS_GEN_SOURCE=./benchmarks/mass_generator.go
 PKG_LIST=$$(go list ./... | grep -v /vendor/ | grep -v /benchmarks/generated)
 
 # Default target
@@ -68,6 +70,7 @@ clean:
 	@echo "Cleaning..."
 	@rm -rf bin/
 	@rm -rf benchmarks/generated/
+	@rm -rf benchmarks/benchmarks/generated/
 	@rm -rf examples/generated/
 	@rm -rf output/
 	@rm -f coverage.txt coverage.html
@@ -103,3 +106,40 @@ ci: fmt lint test
 ## version: Display Go version
 version:
 	@go version
+
+## mass-build: Build the mass_generator binary
+mass-build:
+	@echo "Building mass_generator..."
+	@mkdir -p bin
+	@go build -o $(MASS_GEN_BINARY) $(MASS_GEN_SOURCE)
+
+## mass-gen: Generate mass test files (compiles binary if needed)
+mass-gen: 
+	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
+		echo "mass_generator binary not found, building..."; \
+		$(MAKE) mass-build; \
+	fi
+	@echo "Generating mass tests..."
+	@$(MASS_GEN_BINARY) -command=generate
+
+## mass-bench: Run mass benchmarks (compiles binary if needed)
+mass-bench:
+	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
+		echo "mass_generator binary not found, building..."; \
+		$(MAKE) mass-build; \
+	fi
+	@echo "Running mass benchmarks..."
+	@$(MASS_GEN_BINARY) -command=benchmark
+
+## mass-delete: Delete generated mass tests (compiles binary if needed)
+mass-delete:
+	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
+		echo "mass_generator binary not found, building..."; \
+		$(MAKE) mass-build; \
+	fi
+	@echo "Deleting mass tests..."
+	@$(MASS_GEN_BINARY) -command=delete
+
+## mass-workflow: Run complete mass test workflow (generate -> benchmark -> delete)
+mass-workflow: mass-gen mass-bench mass-delete
+	@echo "Mass test workflow completed!"

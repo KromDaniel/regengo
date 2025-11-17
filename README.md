@@ -13,8 +13,25 @@ Regengo is a high-performance regex-to-Go code generator that compiles regular e
 - **Type-Safe**: Generated functions are type-checked by the Go compiler
 - **High Performance**: Benchmarks show significant speedups over `regexp` package
 - **Capture Groups**: Extract named and indexed submatches with optimized struct generation
+- **FindAll Support**: Extract all matches from input with `FindAllString` and `FindAllBytes`
 - **Easy Integration**: Simple API for code generation
 - **CLI Tool**: Command-line interface for batch generation
+- **🎮 Interactive Playground**: Try patterns in your browser
+
+## 🎮 Try It Now!
+
+Experiment with Regengo patterns in your browser:
+
+**[→ Open Interactive Playground](playground/index.html)** _(no installation needed)_
+
+Or try in a full environment:
+
+```bash
+# Local playground
+git clone https://github.com/KromDaniel/regengo
+cd regengo/playground
+go run playground.go
+```
 
 ## 📦 Installation
 
@@ -198,6 +215,50 @@ type Options struct {
   - `{Name}MatchBytes(input []byte) bool` - Check if pattern matches bytes
   - `{Name}FindString(input string) (*{Name}Match, bool)` - Extract captures (if pattern has groups)
   - `{Name}FindBytes(input []byte) (*{Name}Match, bool)` - Extract captures from bytes
+  - `{Name}FindAllString(input string, n int) []*{Name}Match` - Find all matches (if pattern has groups)
+  - `{Name}FindAllBytes(input []byte, n int) []*{Name}Match` - Find all matches from bytes (if pattern has groups)
+
+### FindAll: Multiple Match Extraction
+
+When your pattern has capture groups, Regengo generates `FindAll` functions to extract **all matches** from the input, similar to Go's stdlib `regexp.FindAllStringSubmatch`:
+
+```go
+// Example: Find all dates in a string
+pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+
+// Generated functions
+func DateCaptureFindAllString(input string, n int) []*DateCaptureMatch
+func DateCaptureFindAllBytes(input []byte, n int) []*DateCaptureMatch
+
+// Usage
+text := "Dates: 2024-01-15 and 2024-12-25 and 2025-06-30"
+
+// Find all matches
+matches := DateCaptureFindAllString(text, -1)
+// Returns 3 matches with filled Year, Month, Day fields
+
+// Find up to 2 matches
+matches := DateCaptureFindAllString(text, 2)
+// Returns 2 matches
+
+// Find no matches
+matches := DateCaptureFindAllString(text, 0)
+// Returns nil
+```
+
+**Parameter `n` controls max matches**:
+
+- `n < 0`: Find all matches (unlimited)
+- `n = 0`: Return nil immediately (no search)
+- `n > 0`: Return up to n matches
+
+**Features**:
+
+- ✅ **Compatible with stdlib**: Same semantics as `regexp.FindAllStringSubmatch`
+- ✅ **Type-safe**: Returns slice of typed structs, not `[][]string`
+- ✅ **Zero-width match handling**: Automatically advances to prevent infinite loops
+- ✅ **Pool-optimized**: Reuses stack allocations for performance
+- ✅ **Non-overlapping**: Finds matches sequentially (standard regex behavior)
 
 ### Capture Groups
 
@@ -263,6 +324,47 @@ func EmailFindBytes(input []byte) (*EmailMatch, bool)  // Returns []byte fields
 
 See [BytesView documentation](docs/BYTES_VIEW.md) for detailed usage and safety considerations.
 
+### Repeating Capture Groups
+
+**Important**: Regex patterns with repeating capture groups (e.g., `(\w)+` or `(\d)*`) follow standard POSIX regex behavior.
+
+Go's `regexp` package (like most regex engines) **captures only the LAST match** from repeating groups:
+
+```go
+// Pattern: (\w)+@(\w+)\.com
+// Input: "abc@example.com"
+
+// Group 1: (\w)+ matches "a", "b", "c" sequentially
+// But only captures: "c" (the last character)
+
+// Generated code includes warning:
+// Warning: This pattern contains repeating capture groups (e.g., (\w)+ or (\d)*).
+// Go's regex engine (like most regex implementations) captures only the LAST match from repeating groups.
+// For example, pattern (\w)+ matching 'abc' will capture 'c', not ['a', 'b', 'c'].
+
+type EmailMatch struct {
+    Match  string // Full match: "abc@example.com"
+    Group1 string // Only last char: "c"
+    Group2 string // Complete match: "example"
+}
+```
+
+**Examples of repeating captures**:
+
+- `(\w)+` - Matches one or more word characters, captures LAST one
+- `(\d)*` - Matches zero or more digits, captures LAST one
+- `(\w){3,5}` - Matches 3-5 word characters, captures LAST one
+- `(\w)(\d)+` - Group 1 captures normally, Group 2 captures LAST digit
+
+**Non-repeating alternatives**:
+
+- `(\w+)` - Captures ALL matched characters (not repeating the group itself)
+- `(?P<user>\w+)@(?P<domain>\w+)` - Each group captures its full match
+
+This is standard regex behavior across all implementations (Perl, Python, JavaScript, etc.), not a regengo limitation. The generated code includes automatic warnings when repeating captures are detected.
+
+See [Repeating Captures Documentation](docs/REPEATING_CAPTURES.md) for detailed explanation and [examples/repeating_captures_demo.go](./examples/repeating_captures_demo.go) for a working demonstration.
+
 ## 📝 Examples
 
 Check the [benchmarks/generated](./benchmarks/generated) directory to see actual generated code examples. You can regenerate these by running:
@@ -321,7 +423,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Support for capture groups
 - [ ] More regex operations (FindAll, Replace, etc.)
 - [ ] Parallel matching optimization
-- [ ] Web-based playground
 
 ## 📧 Contact
 
