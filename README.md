@@ -109,31 +109,33 @@ Regengo provides **dramatic performance improvements** over the standard `regexp
 
 ### Pattern Matching (MatchString)
 
-| Pattern | Regengo  | Standard regexp | Speedup         | Memory   |
-| ------- | -------- | --------------- | --------------- | -------- |
-| Greedy  | 201 ns   | 776 ns          | **3.9x faster** | 0 allocs |
-| Lazy    | 427 ns   | 1,363 ns        | **3.2x faster** | 0 allocs |
-| Email   | 6,753 ns | 1,600 ns        | _0.2x_          | 0 allocs |
+| Pattern | Regengo    | Standard regexp | Speedup          | Memory   |
+| ------- | ---------- | --------------- | ---------------- | -------- |
+| Email   | **480 ns** | 1,505 ns        | **3.1x faster**  | 0 allocs |
+| Greedy  | 623 ns     | 738 ns          | **1.2x faster**  | 0 allocs |
+| Lazy    | 880 ns     | 1,244 ns        | **1.4x faster**  | 0 allocs |
 
-_Note: Complex backtracking patterns (like the Email MatchString test) may be slower. Use capture variants or simpler patterns for better performance._
+**🚀 Greedy Loop Optimization**: Regengo includes intelligent auto-detection for greedy quantifiers (`+`, `*`, `{n,}`). Simple character class loops like `[\w]+` or `[a-z]*` are automatically optimized to avoid O(N²) backtracking, resulting in massive speedups for patterns like email matching.
 
 ### Capture Groups (FindStringSubmatch)
 
 Regengo generates **optimized structs** with named fields, providing massive speedups:
 
-| Pattern      | Regengo      | Standard regexp | Speedup         | Memory (Regengo)  | Memory (Stdlib)     |
-| ------------ | ------------ | --------------- | --------------- | ----------------- | ------------------- |
-| DateCapture  | **25 ns/op** | 105 ns/op       | **4.2x faster** | 64 B/op (1 alloc) | 128 B/op (2 allocs) |
-| EmailCapture | **57 ns/op** | 245 ns/op       | **4.3x faster** | 64 B/op (1 alloc) | 128 B/op (2 allocs) |
-| URLCapture   | **51 ns/op** | 200 ns/op       | **3.9x faster** | 80 B/op (1 alloc) | 160 B/op (2 allocs) |
+| Pattern      | Regengo       | Standard regexp | Speedup          | Memory (Regengo)  | Memory (Stdlib)     |
+| ------------ | ------------- | --------------- | ---------------- | ----------------- | ------------------- |
+| DateCapture  | **19 ns/op**  | 101 ns/op       | **5.3x faster**  | 64 B/op (1 alloc) | 128 B/op (2 allocs) |
+| EmailCapture | **243 ns/op** | 249 ns/op       | **1.0x faster**  | 1216 B/op (19 allocs) | 128 B/op (2 allocs) |
+| URLCapture   | **226 ns/op** | 183 ns/op       | _0.8x_           | 1200 B/op (15 allocs) | 160 B/op (2 allocs) |
 
 **Key Benefits:**
 
-- ✅ **3-4x faster** than standard regexp for capture groups
-- ✅ **50% less memory** per match
+- ✅ **Up to 5x faster** than standard regexp for simple capture groups
+- ✅ **50% less memory** for simple patterns
 - ✅ **Type-safe structs** with named fields
-- ✅ **Fewer allocations** (1 vs 2 per match)
+- ✅ **Fewer allocations** for simple patterns
 - ✅ **Optional groups handled** efficiently (empty strings when not matched)
+
+_Note: Complex patterns with many alternations may have more allocations. Email/URL capture performance is being actively optimized._
 
 ### Real-World Examples
 
@@ -141,14 +143,14 @@ Regengo generates **optimized structs** with named fields, providing massive spe
 // DateCapture: (?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
 // Input: "2024-12-25"
 result, found := DateCaptureFindString("2024-12-25")
-// stdlib: 105 ns/op, 128 B/op, 2 allocs
-// regengo: 25 ns/op, 64 B/op, 1 alloc → 4.2x faster
+// stdlib: 101 ns/op, 128 B/op, 2 allocs
+// regengo: 19 ns/op, 64 B/op, 1 alloc → 5.3x faster
 
-// URLCapture: (?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?
-// Input: "https://api.github.com:443/repos/owner/repo"
-result, found := URLCaptureFindString("https://api.github.com:443/repos/owner/repo")
-// stdlib: 385 ns/op, 160 B/op, 2 allocs
-// regengo: 80 ns/op, 80 B/op, 1 alloc → 4.8x faster
+// EmailMatchString: [\w\.+-]+@[\w\.-]+\.[\w\.-]+
+// Input: "aaa...aaa| me@myself.com" (100 'a's + email)
+result := EmailMatchString(input)
+// stdlib: 1,505 ns/op, 0 B/op, 0 allocs
+// regengo: 480 ns/op, 0 B/op, 0 allocs → 3.1x faster (greedy loop optimization)
 ```
 
 _Run `make bench` to see benchmarks on your system. Results from `go test -bench=. ./benchmarks/generated`_
