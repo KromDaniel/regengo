@@ -74,6 +74,9 @@ func (c *Compiler) Generate() error {
 	// Add sync.Pool if enabled and backtracking is needed
 	if c.config.UsePool && c.needsBacktracking {
 		c.generateStackPool()
+		if c.config.WithCaptures {
+			c.generateCaptureStackPool()
+		}
 	}
 
 	// Always generate Match functions
@@ -203,9 +206,10 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
 			// Restore capture state from checkpoint stack
 			jen.If(jen.Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
-				jen.Id("saved").Op(":=").Id("captureStack").Index(jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
-				jen.Copy(jen.Id(codegen.CapturesName), jen.Id("saved")),
-				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Len(jen.Id("captureStack")).Op("-").Lit(1)),
+				jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
+				jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
+				jen.Copy(jen.Id(codegen.CapturesName), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
 			),
 			jen.Goto().Id(codegen.StepSelectName),
 		).Else().Block(
@@ -598,10 +602,8 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 		return []jen.Code{
 			label,
 			jen.Block(
-				// Save current capture state as checkpoint
-				jen.Id("checkpoint").Op(":=").Make(jen.Index().Int(), jen.Len(jen.Id(codegen.CapturesName))),
-				jen.Copy(jen.Id("checkpoint"), jen.Id(codegen.CapturesName)),
-				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id("checkpoint")),
+				// Save current capture state as checkpoint (flattened)
+				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Op("...")),
 				// Push to backtracking stack
 				jen.Id(codegen.StackName).Op("=").Append(
 					jen.Id(codegen.StackName),
@@ -775,6 +777,20 @@ func (c *Compiler) generateStackPool() {
 	c.file.Line()
 }
 
+// generateCaptureStackPool generates the sync.Pool for capture stacks.
+func (c *Compiler) generateCaptureStackPool() {
+	poolName := fmt.Sprintf("%sCaptureStackPool", codegen.LowerFirst(c.config.Name))
+
+	c.file.Var().Id(poolName).Op("=").Qual("sync", "Pool").Values(jen.Dict{
+		jen.Id("New"): jen.Func().Params().Interface().Block(
+			// Initial capacity: 16 checkpoints * numCaptures
+			jen.Id("stack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*c.config.Program.NumCap)),
+			jen.Return(jen.Op("&").Id("stack")),
+		),
+	})
+	c.file.Line()
+}
+
 // generatePooledStackInit generates code to get a stack from the pool.
 func (c *Compiler) generatePooledStackInit() []jen.Code {
 	poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
@@ -791,6 +807,24 @@ func (c *Compiler) generatePooledStackInit() []jen.Code {
 			),
 			jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
 			jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
+		).Call(),
+	}
+}
+
+// generatePooledCaptureStackInit generates code to get a capture stack from the pool.
+func (c *Compiler) generatePooledCaptureStackInit() []jen.Code {
+	poolName := fmt.Sprintf("%sCaptureStackPool", codegen.LowerFirst(c.config.Name))
+
+	return []jen.Code{
+		// Get stack from pool
+		jen.Id("captureStackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Int()),
+		jen.Id("captureStack").Op(":=").Parens(jen.Op("*").Id("captureStackPtr")).Index(jen.Empty(), jen.Lit(0)),
+		// Defer return to pool
+		jen.Defer().Func().Params().Block(
+			// Clear references to prevent memory leaks (not strictly needed for []int but good practice if we change types later)
+			// For []int we just need to reset length
+			jen.Op("*").Id("captureStackPtr").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+			jen.Id(poolName).Dot("Put").Call(jen.Id("captureStackPtr")),
 		).Call(),
 	}
 }
@@ -1065,7 +1099,11 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
 	if c.needsBacktracking {
-		loopBody = append(loopBody, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
+		if c.config.UsePool {
+			loopBody = append(loopBody, c.generatePooledCaptureStackInit()...)
+		} else {
+			loopBody = append(loopBody, jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)))
+		}
 	}
 
 	// Only add stack initialization if backtracking is needed
@@ -1277,7 +1315,12 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
 	if c.needsBacktracking {
-		code = append(code, jen.Id("captureStack").Op(":=").Make(jen.Index().Index().Int(), jen.Lit(0), jen.Lit(16)))
+		if c.config.UsePool {
+			code = append(code, c.generatePooledCaptureStackInit()...)
+		} else {
+			// Initial capacity: 16 checkpoints * numCaptures
+			code = append(code, jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)))
+		}
 	}
 
 	// Only add stack initialization if backtracking is needed
