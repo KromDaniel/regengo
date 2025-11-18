@@ -296,7 +296,7 @@ func (c *Compiler) generateInstruction(id uint32, inst *syntax.Inst) ([]jen.Code
 		return c.generateRuneAnyNotNLInst(label, inst)
 
 	case syntax.InstAlt:
-		return c.generateAltInst(label, inst)
+		return c.generateAltInst(label, inst, id)
 
 	case syntax.InstAltMatch:
 		return c.generateAltMatchInst(label, inst)
@@ -588,7 +588,11 @@ func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.I
 }
 
 // generateAltInst generates code for InstAlt (alternation with backtracking).
-func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id uint32) ([]jen.Code, error) {
+	// Detect greedy loop: inst.Out points backward (to earlier instruction)
+	// This indicates patterns like +, *, {n,} quantifiers
+	isGreedyLoop := inst.Out < id
+
 	// Optimization #1: When generating Find* functions with captures, save capture checkpoint
 	if c.generatingCaptures {
 		return []jen.Code{
@@ -608,7 +612,26 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst) ([]j
 		}, nil
 	}
 
-	// Optimized: Just use append - Go's runtime handles capacity efficiently
+	// Optimization #2: Greedy loop optimization (auto-detected)
+	// Only optimize simple greedy loops where the target is a character-matching instruction
+	// Avoid optimizing nested alternations (like in complex patterns) to prevent regressions
+	if isGreedyLoop && c.isSimpleGreedyLoop(inst) {
+		return []jen.Code{
+			label,
+			jen.Block(
+				// For greedy loops, push to stack with the loop start (for backtracking)
+				// Then try the continuation instruction first
+				jen.Id(codegen.StackName).Op("=").Append(
+					jen.Id(codegen.StackName),
+					jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out))),
+				),
+				// Try continuation first (greedy behavior: we've matched, now try what comes next)
+				jen.Goto().Id(codegen.InstructionName(inst.Arg)),
+			),
+		}, nil
+	}
+
+	// Standard alternation: Just use append - Go's runtime handles capacity efficiently
 	return []jen.Code{
 		label,
 		jen.Block(
@@ -619,6 +642,28 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst) ([]j
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
 	}, nil
+}
+
+// isSimpleGreedyLoop checks if a greedy loop is safe to optimize.
+// Returns true for simple character-matching loops (like [\w]+ or a+)
+// Returns false for complex nested alternations to avoid regressions.
+func (c *Compiler) isSimpleGreedyLoop(inst *syntax.Inst) bool {
+	// Check what instruction the loop jumps back to
+	loopTarget := c.config.Program.Inst[inst.Out]
+
+	// Optimize only if the loop target is a simple character-matching instruction
+	// Don't optimize if it's another alternation (nested structure)
+	switch loopTarget.Op {
+	case syntax.InstRune, syntax.InstRune1, syntax.InstRuneAny, syntax.InstRuneAnyNotNL:
+		// Simple character matching - safe to optimize
+		return true
+	case syntax.InstAlt:
+		// Nested alternation - not safe to optimize (causes regression in complex patterns)
+		return false
+	default:
+		// Other instruction types - conservatively don't optimize
+		return false
+	}
 }
 
 // generateAltMatchInst generates code for InstAltMatch (alternation without backtracking).
@@ -1326,7 +1371,7 @@ func (c *Compiler) generateInstructionWithCaptures(id uint32, inst *syntax.Inst,
 		return c.generateRuneAnyNotNLInstWithCaptures(label, inst)
 
 	case syntax.InstAlt:
-		return c.generateAltInst(label, inst)
+		return c.generateAltInst(label, inst, id)
 
 	case syntax.InstAltMatch:
 		return c.generateAltMatchInst(label, inst)
