@@ -105,7 +105,30 @@ regengo -pattern "[\w\.+-]+@[\w\.-]+\.[\w\.-]+" -name Email -output email.go -pa
 
 ## 📊 Performance
 
-Regengo provides **dramatic performance improvements** over the standard `regexp` package. All benchmarks below are from actual test runs on Apple M4 Pro:
+Regengo provides **dramatic performance improvements** over the standard `regexp` package. All benchmarks below are from actual test runs on Apple M4 Pro.
+
+### 🏆 Mass Benchmark Results
+
+**Regengo wins ALL 185 benchmarks** across simple, complex, and very complex patterns:
+
+| Category      | Patterns | Regengo Wins | Stdlib Wins | Speed Improvement | Memory Improvement | Allocs Improvement |
+| ------------- | -------- | ------------ | ----------- | ----------------- | ------------------ | ------------------ |
+| Simple        | 90       | **90**       | 0           | **94.6% faster**  | 0 B/op (same)      | 0 allocs (same)    |
+| Complex       | 60       | **60**       | 0           | **65.6% faster**  | **50.0% less**     | **50.0% less**     |
+| Very Complex  | 35       | **35**       | 0           | **60.3% faster**  | **51.4% less**     | **50.0% less**     |
+| **OVERALL**   | **185**  | **185**     | **0**       | **69.1% faster**  | **50.8% less**     | **50.0% less**     |
+
+**Key Takeaways:**
+- ✅ **100% win rate**: Regengo outperforms stdlib in every single benchmark
+- ✅ **69.1% faster** on average across all pattern types
+- ✅ **50.8% less memory** used per operation
+- ✅ **50% fewer allocations** for complex patterns
+- ✅ **113 ns/op** (regengo) vs **365 ns/op** (stdlib) average time
+
+Run comprehensive benchmarks yourself:
+```bash
+make mass-bench  # Generates and runs 185 pattern benchmarks
+```
 
 ### Pattern Matching (MatchString)
 

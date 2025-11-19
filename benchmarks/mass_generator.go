@@ -974,7 +974,7 @@ func runBenchmarks(outputDir string) error {
 	}
 
 	testResult := runGoCommand(outputDir, "go", "test", "./...")
-	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "-benchtime=1x", "./...")
+	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "./...")
 
 	printSummary(stats, len(specs), totalTestCases, outputDir, testResult, benchResult, start, specs)
 
