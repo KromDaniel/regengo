@@ -32,6 +32,7 @@ type Compiler struct {
 	hasRepeatingCaptures bool     // True if any capture groups are in repeating context
 	needsBacktracking    bool     // True if the program contains alternation instructions
 	generatingCaptures   bool     // True when generating Find* functions (needs capture checkpoints)
+	isAnchored           bool     // True if the pattern is anchored to the start of text
 }
 
 // New creates a new compiler instance.
@@ -50,6 +51,7 @@ func New(config Config) *Compiler {
 	// Check if the program needs backtracking
 	if config.Program != nil {
 		compiler.needsBacktracking = needsBacktracking(config.Program)
+		compiler.isAnchored = isAnchored(config.Program)
 	}
 
 	return compiler
@@ -153,11 +155,22 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 	if c.needsBacktracking {
 		code = append(code, c.generateBacktracking()...)
 	} else {
-		// For patterns without backtracking, add a simple fallback that returns false
-		code = append(code,
-			jen.Id(codegen.TryFallbackName).Op(":"),
-			jen.Return(jen.False()),
-		)
+		// For patterns without backtracking:
+		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
+
+		// If not anchored, we must retry at next offset
+		if !c.isAnchored {
+			fallback = append(fallback,
+				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+					jen.Id(codegen.OffsetName).Op("++"),
+					jen.Goto().Id(codegen.StepSelectName),
+				),
+			)
+		}
+
+		fallback = append(fallback, jen.Return(jen.False()))
+		code = append(code, fallback...)
 	}
 
 	// Add step selector
@@ -175,6 +188,19 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 
 // generateBacktracking generates the backtracking logic.
 func (c *Compiler) generateBacktracking() []jen.Code {
+	retryBlock := []jen.Code{}
+	// Optimization: If anchored, we don't retry at next offset
+	if !c.isAnchored {
+		retryBlock = append(retryBlock,
+			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+				jen.Id(codegen.OffsetName).Op("++"),
+				jen.Goto().Id(codegen.StepSelectName),
+			),
+		)
+	}
+	retryBlock = append(retryBlock, jen.Return(jen.False()))
+
 	return []jen.Code{
 		jen.Id(codegen.TryFallbackName).Op(":"),
 		jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
@@ -183,20 +209,34 @@ func (c *Compiler) generateBacktracking() []jen.Code {
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
 			jen.Goto().Id(codegen.StepSelectName),
-		).Else().Block(
-			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-				jen.Id(codegen.OffsetName).Op("++"),
-				jen.Goto().Id(codegen.StepSelectName),
-			),
-			jen.Return(jen.False()),
-		),
+		).Else().Block(retryBlock...),
 	}
 }
 
 // generateBacktrackingWithCaptures generates the backtracking logic for capture functions.
 // Uses capture checkpointing to avoid resetting all captures on every backtrack.
 func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
+	retryBlock := []jen.Code{}
+	// Optimization: If anchored, we don't retry at next offset
+	if !c.isAnchored {
+		retryBlock = append(retryBlock,
+			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+				jen.Id(codegen.OffsetName).Op("++"),
+				// Reset captures array for new match attempt
+				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
+					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
+				),
+				// Clear capture checkpoint stack
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+				// Set capture[0] to mark start of match attempt (after incrementing offset)
+				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
+				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+				jen.Goto().Id(codegen.StepSelectName),
+			),
+		)
+	}
+	retryBlock = append(retryBlock, jen.Return(jen.Nil(), jen.False()))
+
 	return []jen.Code{
 		jen.Id(codegen.TryFallbackName).Op(":"),
 		jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
@@ -212,22 +252,7 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
 			),
 			jen.Goto().Id(codegen.StepSelectName),
-		).Else().Block(
-			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-				jen.Id(codegen.OffsetName).Op("++"),
-				// Reset captures array for new match attempt
-				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
-					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
-				),
-				// Clear capture checkpoint stack
-				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
-				// Set capture[0] to mark start of match attempt (after incrementing offset)
-				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-				jen.Goto().Id(codegen.StepSelectName),
-			),
-			jen.Return(jen.Nil(), jen.False()),
-		),
+		).Else().Block(retryBlock...),
 	}
 }
 
@@ -1087,6 +1112,18 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
 			jen.Break(),
 		),
+	}
+
+	// Optimization: If anchored, we only run once at offset 0
+	if c.isAnchored {
+		loopBody = append(loopBody,
+			jen.If(jen.Id("searchStart").Op(">").Lit(0)).Block(
+				jen.Break(),
+			),
+		)
+	}
+
+	loopBody = append(loopBody,
 		// Check if we've reached end of input
 		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(
 			jen.Break(),
@@ -1095,7 +1132,7 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
 		// Initialize captures array
 		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
-	}
+	)
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
 	if c.needsBacktracking {
@@ -1349,11 +1386,28 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 	if c.needsBacktracking {
 		code = append(code, c.generateBacktrackingWithCaptures()...)
 	} else {
-		// For patterns without backtracking, add a simple fallback that returns nil, false
-		code = append(code,
-			jen.Id(codegen.TryFallbackName).Op(":"),
-			jen.Return(jen.Nil(), jen.False()),
-		)
+		// For patterns without backtracking:
+		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
+
+		// If not anchored, we must retry at next offset
+		if !c.isAnchored {
+			fallback = append(fallback,
+				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+					jen.Id(codegen.OffsetName).Op("++"),
+					// Reset captures array for new match attempt
+					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
+						jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
+					),
+					// Set capture[0] to mark start of match attempt
+					jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
+					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+					jen.Goto().Id(codegen.StepSelectName),
+				),
+			)
+		}
+
+		fallback = append(fallback, jen.Return(jen.Nil(), jen.False()))
+		code = append(code, fallback...)
 	}
 
 	// Add step selector
@@ -1579,4 +1633,36 @@ func (c *Compiler) generateRuneAnyNotNLInstWithCaptures(label *jen.Statement, in
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
 	}, nil
+}
+
+// isAnchored checks if the pattern is anchored to the start of text.
+// This allows optimizing the search loop to only run at offset 0.
+func isAnchored(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	pc := uint32(prog.Start)
+	for {
+		inst := &prog.Inst[pc]
+		switch inst.Op {
+		case syntax.InstEmptyWidth:
+			// Check for \A or ^ (BeginText)
+			if syntax.EmptyOp(inst.Arg)&syntax.EmptyBeginText != 0 {
+				return true
+			}
+			// Continue if it's another empty width assertion (like \b)
+			// But wait, if we have \b^, it is anchored.
+			// If we have ^\b, it is anchored.
+			// If we have \b, it is NOT anchored.
+			// So we should continue traversing.
+			pc = inst.Out
+		case syntax.InstCapture, syntax.InstNop:
+			pc = inst.Out
+		default:
+			// Any other instruction (Match, Rune, Alt, etc.) means we didn't find an anchor
+			// at the start of the execution path.
+			return false
+		}
+	}
 }
