@@ -82,9 +82,9 @@ func (c *Compiler) Generate() error {
 	}
 
 	// Always generate Match functions
-	matchStringCode, err := c.generateMatchFunction()
+	matchStringCode, err := c.generateMatchFunction(false)
 	if err != nil {
-		return fmt.Errorf("failed to generate match function: %w", err)
+		return fmt.Errorf("failed to generate match string function: %w", err)
 	}
 
 	// Add MatchString function
@@ -94,12 +94,17 @@ func (c *Compiler) Generate() error {
 		Params(jen.Bool()).
 		Block(matchStringCode...)
 
+	matchBytesCode, err := c.generateMatchFunction(true)
+	if err != nil {
+		return fmt.Errorf("failed to generate match bytes function: %w", err)
+	}
+
 	// Add MatchBytes function
 	c.file.Func().
 		Id(fmt.Sprintf("%sMatchBytes", c.config.Name)).
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Bool()).
-		Block(matchStringCode...)
+		Block(matchBytesCode...)
 
 	// Generate capture group functions if pattern has captures
 	if c.config.WithCaptures {
@@ -123,13 +128,56 @@ func (c *Compiler) Generate() error {
 	return nil
 }
 
+// findRequiredPrefix scans the program to find a required starting byte.
+// Returns the byte and true if found, 0 and false otherwise.
+func (c *Compiler) findRequiredPrefix() (byte, bool) {
+	pc := c.config.Program.Start
+	for {
+		inst := c.config.Program.Inst[pc]
+		switch inst.Op {
+		case syntax.InstNop, syntax.InstCapture:
+			pc = int(inst.Out)
+			continue
+		case syntax.InstRune1:
+			// Found a single rune literal
+			if len(inst.Rune) == 1 && inst.Rune[0] < 128 {
+				return byte(inst.Rune[0]), true
+			}
+			return 0, false
+		default:
+			return 0, false
+		}
+	}
+}
+
 // generateMatchFunction generates the main matching logic.
-func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
+func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
+	prefix, hasPrefix := c.findRequiredPrefix()
+
 	code := []jen.Code{
 		// Initialize length
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
-		// Initialize offset
-		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
+	}
+
+	if hasPrefix && !c.isAnchored {
+		var indexCall *jen.Statement
+		if isBytes {
+			indexCall = jen.Qual("bytes", "IndexByte").Call(jen.Id(codegen.InputName), jen.Lit(byte(prefix)))
+		} else {
+			indexCall = jen.Qual("strings", "IndexByte").Call(jen.Id(codegen.InputName), jen.Lit(byte(prefix)))
+		}
+
+		code = append(code,
+			// Fast forward to first occurrence
+			jen.Id("idx").Op(":=").Add(indexCall),
+			jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
+			jen.Id(codegen.OffsetName).Op(":=").Id("idx"),
+		)
+	} else {
+		code = append(code,
+			// Initialize offset
+			jen.Id(codegen.OffsetName).Op(":=").Lit(0),
+		)
 	}
 
 	// Only add stack initialization if backtracking is needed
@@ -153,20 +201,46 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 
 	// Only add backtracking logic if needed
 	if c.needsBacktracking {
-		code = append(code, c.generateBacktracking()...)
+		code = append(code, c.generateBacktracking(prefix, hasPrefix, isBytes)...)
 	} else {
 		// For patterns without backtracking:
 		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
 
 		// If not anchored, we must retry at next offset
 		if !c.isAnchored {
-			fallback = append(fallback,
-				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+			if hasPrefix {
+				var indexCall *jen.Statement
+				if isBytes {
+					indexCall = jen.Qual("bytes", "IndexByte").Call(
+						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+						jen.Lit(byte(prefix)),
+					)
+				} else {
+					indexCall = jen.Qual("strings", "IndexByte").Call(
+						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+						jen.Lit(byte(prefix)),
+					)
+				}
+
+				fallback = append(fallback,
 					jen.Id(codegen.OffsetName).Op("++"),
-					jen.Goto().Id(codegen.StepSelectName),
-				),
-			)
+					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+						jen.Id("idx").Op(":=").Add(indexCall),
+						jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
+						jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
+						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+						jen.Goto().Id(codegen.StepSelectName),
+					),
+				)
+			} else {
+				fallback = append(fallback,
+					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+						jen.Id(codegen.OffsetName).Op("++"),
+						jen.Goto().Id(codegen.StepSelectName),
+					),
+				)
+			}
 		}
 
 		fallback = append(fallback, jen.Return(jen.False()))
@@ -187,17 +261,43 @@ func (c *Compiler) generateMatchFunction() ([]jen.Code, error) {
 }
 
 // generateBacktracking generates the backtracking logic.
-func (c *Compiler) generateBacktracking() []jen.Code {
+func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes bool) []jen.Code {
 	retryBlock := []jen.Code{}
 	// Optimization: If anchored, we don't retry at next offset
 	if !c.isAnchored {
-		retryBlock = append(retryBlock,
-			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+		if hasPrefix {
+			var indexCall *jen.Statement
+			if isBytes {
+				indexCall = jen.Qual("bytes", "IndexByte").Call(
+					jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+					jen.Lit(byte(prefix)),
+				)
+			} else {
+				indexCall = jen.Qual("strings", "IndexByte").Call(
+					jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+					jen.Lit(byte(prefix)),
+				)
+			}
+
+			retryBlock = append(retryBlock,
 				jen.Id(codegen.OffsetName).Op("++"),
-				jen.Goto().Id(codegen.StepSelectName),
-			),
-		)
+				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+					jen.Id("idx").Op(":=").Add(indexCall),
+					jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
+					jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
+					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+					jen.Goto().Id(codegen.StepSelectName),
+				),
+			)
+		} else {
+			retryBlock = append(retryBlock,
+				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
+					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+					jen.Id(codegen.OffsetName).Op("++"),
+					jen.Goto().Id(codegen.StepSelectName),
+				),
+			)
+		}
 	}
 	retryBlock = append(retryBlock, jen.Return(jen.False()))
 
