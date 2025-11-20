@@ -16,22 +16,6 @@ Regengo is a high-performance regex-to-Go code generator that compiles regular e
 - **FindAll Support**: Extract all matches from input with `FindAllString` and `FindAllBytes`
 - **Easy Integration**: Simple API for code generation
 - **CLI Tool**: Command-line interface for batch generation
-- **🎮 Interactive Playground**: Try patterns in your browser
-
-## 🎮 Try It Now!
-
-Experiment with Regengo patterns in your browser:
-
-**[→ Open Interactive Playground](playground/index.html)** _(no installation needed)_
-
-Or try in a full environment:
-
-```bash
-# Local playground
-git clone https://github.com/KromDaniel/regengo
-cd regengo/playground
-go run playground.go
-```
 
 ## 📦 Installation
 
