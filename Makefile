@@ -4,7 +4,7 @@
 BINARY_NAME=regengo
 CMD_PATH=./cmd/regengo
 MASS_GEN_BINARY=bin/mass_generator
-MASS_GEN_SOURCE=./benchmarks/mass_generator.go
+MASS_GEN_SOURCE=./cmd/mass_generator
 PKG_LIST=$$(go list ./... | grep -v /vendor/ | grep -v /benchmarks/generated)
 
 # Default target
@@ -41,7 +41,7 @@ bench-gen:
 	@echo "Generating benchmark code..."
 	@rm -rf ./benchmarks/generated
 	@mkdir -p ./benchmarks/generated
-	@go run ./benchmarks/curated_generator.go
+	@go run ./cmd/curated_generator
 
 ## coverage: Generate and open coverage report
 coverage: test
