@@ -185,8 +185,6 @@ err := regengo.Compile(regengo.Options{
 
 **Recommendation**: Keep pool enabled (default) for production deployments and hot paths.
 
-See [Memory Optimization docs](docs/MEMORY_OPTIMIZATION.md) for details.
-
 ## 🏗️ How It Works
 
 1. **Parse**: Uses Go's `regexp/syntax` to parse the regex pattern
@@ -331,8 +329,6 @@ func EmailFindBytes(input []byte) (*EmailMatch, bool)  // Returns []byte fields
 
 ⚠️ **Important**: The returned `[]byte` slices reference the original input. Do not modify the input while using the result.
 
-See [BytesView documentation](docs/BYTES_VIEW.md) for detailed usage and safety considerations.
-
 ### Repeating Capture Groups
 
 **Important**: Regex patterns with repeating capture groups (e.g., `(\w)+` or `(\d)*`) follow standard POSIX regex behavior.
@@ -371,8 +367,6 @@ type EmailMatch struct {
 - `(?P<user>\w+)@(?P<domain>\w+)` - Each group captures its full match
 
 This is standard regex behavior across all implementations (Perl, Python, JavaScript, etc.), not a regengo limitation. The generated code includes automatic warnings when repeating captures are detected.
-
-See [Repeating Captures Documentation](docs/REPEATING_CAPTURES.md) for detailed explanation and [examples/repeating_captures_demo.go](./examples/repeating_captures_demo.go) for a working demonstration.
 
 ## 📝 Examples
 
