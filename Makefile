@@ -1,10 +1,10 @@
-.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build
+.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build mass-workflow
 
 # Variables
 BINARY_NAME=regengo
 CMD_PATH=./cmd/regengo
 MASS_GEN_BINARY=bin/mass_generator
-MASS_GEN_SOURCE=./benchmarks/mass_generator.go
+MASS_GEN_SOURCE=./cmd/mass_generator
 PKG_LIST=$$(go list ./... | grep -v /vendor/ | grep -v /benchmarks/generated)
 
 # Default target
@@ -41,7 +41,7 @@ bench-gen:
 	@echo "Generating benchmark code..."
 	@rm -rf ./benchmarks/generated
 	@mkdir -p ./benchmarks/generated
-	@go run ./benchmarks/test_gen.go
+	@go run ./cmd/curated_generator
 
 ## coverage: Generate and open coverage report
 coverage: test
@@ -70,8 +70,7 @@ clean:
 	@echo "Cleaning..."
 	@rm -rf bin/
 	@rm -rf benchmarks/generated/
-	@rm -rf benchmarks/benchmarks/generated/
-	@rm -rf examples/generated/
+	@rm -rf benchmarks/mass_generated/
 	@rm -rf output/
 	@rm -f coverage.txt coverage.html
 	@go clean
@@ -92,12 +91,6 @@ update-deps:
 	@echo "Updating dependencies..."
 	@go get -u ./...
 	@go mod tidy
-
-## example: Run example generation
-example:
-	@echo "Running examples..."
-	@mkdir -p examples/generated
-	@go run examples/main.go
 
 ## ci: Run CI pipeline (fmt, lint, test)
 ci: fmt lint test

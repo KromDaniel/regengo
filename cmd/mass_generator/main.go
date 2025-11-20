@@ -71,7 +71,7 @@ type slowPattern struct {
 
 var (
 	command   = flag.String("command", "", "Command to run: generate, benchmark, delete")
-	outputDir = flag.String("output-dir", "", "Output directory for generated tests (default: benchmarks/generated)")
+	outputDir = flag.String("output-dir", "", "Output directory for generated tests (default: benchmarks/mass_generated)")
 	helpFlag  = flag.Bool("help", false, "Show help message")
 	version   = flag.Bool("version", false, "Print version information")
 )
@@ -109,7 +109,7 @@ func main() {
 	// Set default output directory if not provided
 	var targetDir string
 	if *outputDir == "" {
-		targetDir = filepath.Join(workingDir, "benchmarks", "generated")
+		targetDir = filepath.Join(workingDir, "benchmarks", "mass_generated")
 	} else {
 		targetDir = *outputDir
 	}
@@ -875,7 +875,7 @@ func printHelp() {
 	flag.PrintDefaults()
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Printf("  %s -command=generate                    # Generate tests in benchmarks/generated\n", appName)
+	fmt.Printf("  %s -command=generate                    # Generate tests in benchmarks/mass_generated\n", appName)
 	fmt.Printf("  %s -command=benchmark                   # Run benchmarks (preserves tests)\n", appName)
 	fmt.Printf("  %s -command=delete                      # Delete generated tests\n", appName)
 	fmt.Printf("  %s -command=generate -output-dir=/tmp/tests  # Generate in custom directory\n", appName)
@@ -974,7 +974,7 @@ func runBenchmarks(outputDir string) error {
 	}
 
 	testResult := runGoCommand(outputDir, "go", "test", "./...")
-	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "-benchtime=1x", "./...")
+	benchResult := runGoCommand(outputDir, "go", "test", "-run", "^$", "-bench", ".", "-benchmem", "./...")
 
 	printSummary(stats, len(specs), totalTestCases, outputDir, testResult, benchResult, start, specs)
 

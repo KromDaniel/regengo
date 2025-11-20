@@ -479,6 +479,40 @@ func (c *Compiler) generateRuneInst(label *jen.Statement, inst *syntax.Inst) ([]
 	}, nil
 }
 
+// createBitmap creates a 256-bit bitmap for the given runes.
+func createBitmap(runes []rune) [32]byte {
+	var bitmap [32]byte
+	for i := 0; i < len(runes); i += 2 {
+		lo, hi := runes[i], runes[i+1]
+		for c := lo; c <= hi; c++ {
+			if c < 256 {
+				bitmap[c/8] |= 1 << (c % 8)
+			}
+		}
+	}
+	return bitmap
+}
+
+// generateBitmapCheck generates a bitmap-based check for character classes.
+// Returns the condition for FAILURE (i.e., char is NOT in the class).
+func (c *Compiler) generateBitmapCheck(runes []rune) *jen.Statement {
+	bitmap := createBitmap(runes)
+	var values []jen.Code
+	for _, b := range bitmap {
+		values = append(values, jen.Lit(b))
+	}
+
+	// We define the bitmap inline. Go compiler handles this efficiently.
+	// if [32]byte{...}[char/8] & (1 << (char%8)) == 0
+	return jen.Index(jen.Lit(32)).Byte().Values(values...).Index(
+		jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("/").Lit(8),
+	).Op("&").Parens(
+		jen.Lit(1).Op("<<").Parens(
+			jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("%").Lit(8),
+		),
+	).Op("==").Lit(0)
+}
+
 // generateRuneCheck generates the condition for checking if a rune matches.
 func (c *Compiler) generateRuneCheck(runes []rune) *jen.Statement {
 	if len(runes) == 0 {
@@ -495,35 +529,8 @@ func (c *Compiler) generateRuneCheck(runes []rune) *jen.Statement {
 		return c.generateSmallSetCheck(runes)
 	}
 
-	// For larger character classes with many ranges, use a more optimized approach
-	if len(runes) > 10 {
-		return c.generateLargeCharClassCheck(runes)
-	}
-
-	// Build condition for character class
-	// We need to check if the byte does NOT match any of the ranges
-	var stmt *jen.Statement
-	for i := 0; i < len(runes); i += 2 {
-		lo, hi := runes[i], runes[i+1]
-		var condition *jen.Statement
-		if lo == hi {
-			condition = jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(byte(lo))
-		} else {
-			condition = jen.Parens(
-				jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("<").Lit(byte(lo)).
-					Op("||").
-					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op(">").Lit(byte(hi)),
-			)
-		}
-
-		if stmt == nil {
-			stmt = condition
-		} else {
-			stmt = stmt.Op("&&").Add(condition)
-		}
-	}
-
-	return stmt
+	// For everything else, use bitmap-based check (O(1))
+	return c.generateBitmapCheck(runes)
 }
 
 // detectCharacterClass checks if runes match a common character class pattern.
@@ -1556,16 +1563,16 @@ func (c *Compiler) generateInstructionWithCaptures(id uint32, inst *syntax.Inst,
 		}, nil
 
 	case syntax.InstRune:
-		return c.generateRuneInstWithCaptures(label, inst)
+		return c.generateRuneInst(label, inst)
 
 	case syntax.InstRune1:
-		return c.generateRune1InstWithCaptures(label, inst)
+		return c.generateRune1Inst(label, inst)
 
 	case syntax.InstRuneAny:
-		return c.generateRuneAnyInstWithCaptures(label, inst)
+		return c.generateRuneAnyInst(label, inst)
 
 	case syntax.InstRuneAnyNotNL:
-		return c.generateRuneAnyNotNLInstWithCaptures(label, inst)
+		return c.generateRuneAnyNotNLInst(label, inst)
 
 	case syntax.InstAlt:
 		return c.generateAltInst(label, inst, id)
@@ -1669,100 +1676,12 @@ func (c *Compiler) generateCaptureInst(label *jen.Statement, inst *syntax.Inst) 
 	}, nil
 }
 
-// Rune instructions with captures (same as without, but return nil instead of false)
-func (c *Compiler) generateRune1InstWithCaptures(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	return []jen.Code{
-		label,
-		jen.Block(
-			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-		),
-		jen.Block(
-			jen.If(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(byte(inst.Rune[0]))).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-			jen.Id(codegen.OffsetName).Op("++"),
-			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
-}
-
-func (c *Compiler) generateRuneInstWithCaptures(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	return []jen.Code{
-		label,
-		jen.Block(
-			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-		),
-		jen.Block(
-			jen.If(c.generateRuneCheck(inst.Rune)).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-			jen.Id(codegen.OffsetName).Op("++"),
-			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
-}
-
-func (c *Compiler) generateRuneAnyInstWithCaptures(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	return []jen.Code{
-		label,
-		jen.Block(
-			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-			jen.Id(codegen.OffsetName).Op("++"),
-			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
-}
-
-func (c *Compiler) generateRuneAnyNotNLInstWithCaptures(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	return []jen.Code{
-		label,
-		jen.Block(
-			jen.If(
-				jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName).Op("||").
-					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("==").Lit('\n'),
-			).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
-			),
-			jen.Id(codegen.OffsetName).Op("++"),
-			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
-}
-
-// isAnchored checks if the pattern is anchored to the start of text.
-// This allows optimizing the search loop to only run at offset 0.
+// isAnchored checks if the regex is anchored to the start of text.
 func isAnchored(prog *syntax.Prog) bool {
-	if prog == nil {
+	if prog == nil || len(prog.Inst) == 0 {
 		return false
 	}
-
-	pc := uint32(prog.Start)
-	for {
-		inst := &prog.Inst[pc]
-		switch inst.Op {
-		case syntax.InstEmptyWidth:
-			// Check for \A or ^ (BeginText)
-			if syntax.EmptyOp(inst.Arg)&syntax.EmptyBeginText != 0 {
-				return true
-			}
-			// Continue if it's another empty width assertion (like \b)
-			// But wait, if we have \b^, it is anchored.
-			// If we have ^\b, it is anchored.
-			// If we have \b, it is NOT anchored.
-			// So we should continue traversing.
-			pc = inst.Out
-		case syntax.InstCapture, syntax.InstNop:
-			pc = inst.Out
-		default:
-			// Any other instruction (Match, Rune, Alt, etc.) means we didn't find an anchor
-			// at the start of the execution path.
-			return false
-		}
-	}
+	// Check if the first instruction is an empty width assertion for begin text
+	startInst := prog.Inst[prog.Start]
+	return startInst.Op == syntax.InstEmptyWidth && syntax.EmptyOp(startInst.Arg)&syntax.EmptyBeginText != 0
 }
