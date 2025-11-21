@@ -27,7 +27,7 @@ func (c *Compiler) generateFindStringFunction(structName string) error {
 
 // generateFindBytesFunction generates the FindBytes method with captures.
 func (c *Compiler) generateFindBytesFunction(structName string) error {
-	code, err := c.generateFindFunction(structName, c.config.BytesView)
+	code, err := c.generateFindFunction(structName, true)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (c *Compiler) generateFindAllStringFunction(structName string) error {
 
 // generateFindAllBytesFunction generates the FindAllBytes method with captures.
 func (c *Compiler) generateFindAllBytesFunction(structName string) error {
-	code, err := c.generateFindAllFunction(structName, c.config.BytesView)
+	code, err := c.generateFindAllFunction(structName, true)
 	if err != nil {
 		return err
 	}

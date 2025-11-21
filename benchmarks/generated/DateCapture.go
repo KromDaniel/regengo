@@ -443,6 +443,13 @@ type DateCaptureResult struct {
 	Day   string
 }
 
+type DateCaptureBytesResult struct {
+	Match []byte // Full match
+	Year  []byte
+	Month []byte
+	Day   []byte
+}
+
 func (_ DateCapture) FindString(input string) (*DateCaptureResult, bool) {
 	l := len(input)
 	offset := 0
@@ -961,7 +968,7 @@ func (_ DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 	}
 	return result
 }
-func (_ DateCapture) FindBytes(input []byte) (*DateCaptureResult, bool) {
+func (_ DateCapture) FindBytes(input []byte) (*DateCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -1191,34 +1198,34 @@ Ins16:
 Ins17:
 	{
 		captures[1] = offset
-		return &DateCaptureResult{
-			Day: func() string {
+		return &DateCaptureBytesResult{
+			Day: func() []byte {
 				if captures[6] <= captures[7] && captures[7] <= len(input) {
-					return string(input[captures[6]:captures[7]])
+					return input[captures[6]:captures[7]]
 				}
-				return ""
+				return nil
 			}(),
-			Match: string(input[captures[0]:captures[1]]),
-			Month: func() string {
+			Match: input[captures[0]:captures[1]],
+			Month: func() []byte {
 				if captures[4] <= captures[5] && captures[5] <= len(input) {
-					return string(input[captures[4]:captures[5]])
+					return input[captures[4]:captures[5]]
 				}
-				return ""
+				return nil
 			}(),
-			Year: func() string {
+			Year: func() []byte {
 				if captures[2] <= captures[3] && captures[3] <= len(input) {
-					return string(input[captures[2]:captures[3]])
+					return input[captures[2]:captures[3]]
 				}
-				return ""
+				return nil
 			}(),
 		}, true
 	}
 }
-func (_ DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureResult {
+func (_ DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}
-	var result []*DateCaptureResult
+	var result []*DateCaptureBytesResult
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -1448,25 +1455,25 @@ func (_ DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureResult {
 	Ins17:
 		{
 			captures[1] = offset
-			result = append(result, &DateCaptureResult{
-				Day: func() string {
+			result = append(result, &DateCaptureBytesResult{
+				Day: func() []byte {
 					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
+						return input[captures[6]:captures[7]]
 					}
-					return ""
+					return nil
 				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Month: func() string {
+				Match: input[captures[0]:captures[1]],
+				Month: func() []byte {
 					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
+						return input[captures[4]:captures[5]]
 					}
-					return ""
+					return nil
 				}(),
-				Year: func() string {
+				Year: func() []byte {
 					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
+						return input[captures[2]:captures[3]]
 					}
-					return ""
+					return nil
 				}(),
 			})
 			if captures[1] > searchStart {

@@ -19,7 +19,6 @@ type Config struct {
 	RegexAST         *syntax.Regexp // For extracting capture group names
 	UsePool          bool           // Enable sync.Pool for stack reuse
 	WithCaptures     bool           // Generate capture group functions
-	BytesView        bool           // Generate separate []byte struct for FindBytes (zero-copy)
 	GenerateTestFile bool           // Generate test file with tests and benchmarks
 	TestFileInputs   []string       // Test inputs for generated test file
 }

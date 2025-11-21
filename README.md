@@ -69,7 +69,6 @@ type Options struct {
     OutputFile       string   // Output file path (required)
     Package          string   // Package name (required)
     NoPool           bool     // Disable sync.Pool optimization
-    BytesView        bool     // Generate separate []byte result struct
     GenerateTestFile bool     // Generate test file with benchmarks
     TestFileInputs   []string // Test inputs for generated tests
 }
@@ -96,9 +95,9 @@ type DateResult struct {
 func (_ Date) MatchString(input string) bool { /* ... */ }
 func (_ Date) MatchBytes(input []byte) bool { /* ... */ }
 func (_ Date) FindString(input string) (*DateResult, bool) { /* ... */ }
-func (_ Date) FindBytes(input []byte) (*DateResult, bool) { /* ... */ }
+func (_ Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
 func (_ Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
-func (_ Date) FindAllBytes(input []byte, n int) []*DateResult { /* ... */ }
+func (_ Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
 ```
 
 ### Usage of Generated Code
@@ -204,9 +203,9 @@ if ok {
 | `FindString(s string) string` | - | Not implemented |
 | `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | Implemented (typed struct) |
 | `Find(b []byte) []byte` | - | Not implemented |
-| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*Result, bool)` | Implemented (typed struct) |
+| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | Implemented (typed struct) |
 | `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | Implemented |
-| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*Result` | Implemented |
+| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | Implemented |
 | `ReplaceAllString(s, repl string) string` | - | Not implemented |
 | `Split(s string, n int) []string` | - | Not implemented |
 | `FindStringIndex(s string) []int` | - | Not implemented |

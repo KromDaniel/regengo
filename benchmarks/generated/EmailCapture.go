@@ -381,6 +381,13 @@ type EmailCaptureResult struct {
 	Tld    string
 }
 
+type EmailCaptureBytesResult struct {
+	Match  []byte // Full match
+	User   []byte
+	Domain []byte
+	Tld    []byte
+}
+
 func (_ EmailCapture) FindString(input string) (*EmailCaptureResult, bool) {
 	l := len(input)
 	offset := 0
@@ -850,7 +857,7 @@ func (_ EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 	}
 	return result
 }
-func (_ EmailCapture) FindBytes(input []byte) (*EmailCaptureResult, bool) {
+func (_ EmailCapture) FindBytes(input []byte) (*EmailCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -1059,34 +1066,34 @@ Ins14:
 Ins15:
 	{
 		captures[1] = offset
-		return &EmailCaptureResult{
-			Domain: func() string {
+		return &EmailCaptureBytesResult{
+			Domain: func() []byte {
 				if captures[4] <= captures[5] && captures[5] <= len(input) {
-					return string(input[captures[4]:captures[5]])
+					return input[captures[4]:captures[5]]
 				}
-				return ""
+				return nil
 			}(),
-			Match: string(input[captures[0]:captures[1]]),
-			Tld: func() string {
+			Match: input[captures[0]:captures[1]],
+			Tld: func() []byte {
 				if captures[6] <= captures[7] && captures[7] <= len(input) {
-					return string(input[captures[6]:captures[7]])
+					return input[captures[6]:captures[7]]
 				}
-				return ""
+				return nil
 			}(),
-			User: func() string {
+			User: func() []byte {
 				if captures[2] <= captures[3] && captures[3] <= len(input) {
-					return string(input[captures[2]:captures[3]])
+					return input[captures[2]:captures[3]]
 				}
-				return ""
+				return nil
 			}(),
 		}, true
 	}
 }
-func (_ EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureResult {
+func (_ EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}
-	var result []*EmailCaptureResult
+	var result []*EmailCaptureBytesResult
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -1288,25 +1295,25 @@ func (_ EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureResult {
 	Ins15:
 		{
 			captures[1] = offset
-			result = append(result, &EmailCaptureResult{
-				Domain: func() string {
+			result = append(result, &EmailCaptureBytesResult{
+				Domain: func() []byte {
 					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
+						return input[captures[4]:captures[5]]
 					}
-					return ""
+					return nil
 				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Tld: func() string {
+				Match: input[captures[0]:captures[1]],
+				Tld: func() []byte {
 					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
+						return input[captures[6]:captures[7]]
 					}
-					return ""
+					return nil
 				}(),
-				User: func() string {
+				User: func() []byte {
 					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
+						return input[captures[2]:captures[3]]
 					}
-					return ""
+					return nil
 				}(),
 			})
 			if captures[1] > searchStart {

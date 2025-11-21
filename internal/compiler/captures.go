@@ -10,9 +10,13 @@ import (
 
 // generateCaptureFunctions generates Find and FindAll methods with capture groups.
 func (c *Compiler) generateCaptureFunctions() error {
-	// Generate capture result struct
+	// Generate string result struct (for FindString)
 	structName := fmt.Sprintf("%sResult", c.config.Name)
 	c.generateCaptureStruct(structName)
+
+	// Generate bytes result struct (for FindBytes) - zero-copy slices
+	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+	c.generateCaptureStructBytes(bytesStructName)
 
 	// Generate FindString method
 	if err := c.generateFindStringFunction(structName); err != nil {
@@ -24,24 +28,14 @@ func (c *Compiler) generateCaptureFunctions() error {
 		return fmt.Errorf("failed to generate FindAllString: %w", err)
 	}
 
-	// Generate FindBytes method
-	if c.config.BytesView {
-		bytesStructName := fmt.Sprintf("%sResultBytes", c.config.Name)
-		c.generateCaptureStructBytes(bytesStructName)
-		if err := c.generateFindBytesFunction(bytesStructName); err != nil {
-			return fmt.Errorf("failed to generate FindBytes: %w", err)
-		}
-		if err := c.generateFindAllBytesFunction(bytesStructName); err != nil {
-			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
-		}
-	} else {
-		// Use same struct, convert []byte to string
-		if err := c.generateFindBytesFunction(structName); err != nil {
-			return fmt.Errorf("failed to generate FindBytes: %w", err)
-		}
-		if err := c.generateFindAllBytesFunction(structName); err != nil {
-			return fmt.Errorf("failed to generate FindAllBytes: %w", err)
-		}
+	// Generate FindBytes method with bytes struct (zero-copy)
+	if err := c.generateFindBytesFunction(bytesStructName); err != nil {
+		return fmt.Errorf("failed to generate FindBytes: %w", err)
+	}
+
+	// Generate FindAllBytes method with bytes struct (zero-copy)
+	if err := c.generateFindAllBytesFunction(bytesStructName); err != nil {
+		return fmt.Errorf("failed to generate FindAllBytes: %w", err)
 	}
 
 	return nil

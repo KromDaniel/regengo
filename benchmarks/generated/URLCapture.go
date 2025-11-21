@@ -715,6 +715,19 @@ type URLCaptureResult struct {
 	Path     string
 }
 
+// Note: This pattern contains capture groups in repeating/optional context.
+// Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).
+// For example: (\w)+ matching 'abc' captures 'c', not ['a','b','c'].
+// Optional groups (?) return empty slice when not matched.
+
+type URLCaptureBytesResult struct {
+	Match    []byte // Full match
+	Protocol []byte
+	Host     []byte
+	Port     []byte
+	Path     []byte
+}
+
 func (_ URLCapture) FindString(input string) (*URLCaptureResult, bool) {
 	l := len(input)
 	offset := 0
@@ -1516,7 +1529,7 @@ func (_ URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 	}
 	return result
 }
-func (_ URLCapture) FindBytes(input []byte) (*URLCaptureResult, bool) {
+func (_ URLCapture) FindBytes(input []byte) (*URLCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 10)
@@ -1885,40 +1898,40 @@ Ins27:
 Ins28:
 	{
 		captures[1] = offset
-		return &URLCaptureResult{
-			Host: func() string {
+		return &URLCaptureBytesResult{
+			Host: func() []byte {
 				if captures[4] <= captures[5] && captures[5] <= len(input) {
-					return string(input[captures[4]:captures[5]])
+					return input[captures[4]:captures[5]]
 				}
-				return ""
+				return nil
 			}(),
-			Match: string(input[captures[0]:captures[1]]),
-			Path: func() string {
+			Match: input[captures[0]:captures[1]],
+			Path: func() []byte {
 				if captures[8] <= captures[9] && captures[9] <= len(input) {
-					return string(input[captures[8]:captures[9]])
+					return input[captures[8]:captures[9]]
 				}
-				return ""
+				return nil
 			}(),
-			Port: func() string {
+			Port: func() []byte {
 				if captures[6] <= captures[7] && captures[7] <= len(input) {
-					return string(input[captures[6]:captures[7]])
+					return input[captures[6]:captures[7]]
 				}
-				return ""
+				return nil
 			}(),
-			Protocol: func() string {
+			Protocol: func() []byte {
 				if captures[2] <= captures[3] && captures[3] <= len(input) {
-					return string(input[captures[2]:captures[3]])
+					return input[captures[2]:captures[3]]
 				}
-				return ""
+				return nil
 			}(),
 		}, true
 	}
 }
-func (_ URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureResult {
+func (_ URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}
-	var result []*URLCaptureResult
+	var result []*URLCaptureBytesResult
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -2280,31 +2293,31 @@ func (_ URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureResult {
 	Ins28:
 		{
 			captures[1] = offset
-			result = append(result, &URLCaptureResult{
-				Host: func() string {
+			result = append(result, &URLCaptureBytesResult{
+				Host: func() []byte {
 					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
+						return input[captures[4]:captures[5]]
 					}
-					return ""
+					return nil
 				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Path: func() string {
+				Match: input[captures[0]:captures[1]],
+				Path: func() []byte {
 					if captures[8] <= captures[9] && captures[9] <= len(input) {
-						return string(input[captures[8]:captures[9]])
+						return input[captures[8]:captures[9]]
 					}
-					return ""
+					return nil
 				}(),
-				Port: func() string {
+				Port: func() []byte {
 					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
+						return input[captures[6]:captures[7]]
 					}
-					return ""
+					return nil
 				}(),
-				Protocol: func() string {
+				Protocol: func() []byte {
 					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
+						return input[captures[2]:captures[3]]
 					}
-					return ""
+					return nil
 				}(),
 			})
 			if captures[1] > searchStart {

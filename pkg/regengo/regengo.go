@@ -26,10 +26,6 @@ type Options struct {
 	// NoPool disables sync.Pool for stack reuse (pool is enabled by default for better performance)
 	NoPool bool
 
-	// BytesView generates a separate struct for FindBytes that uses []byte instead of string for zero-copy captures
-	// Only applies when pattern has capture groups. Generates both *Match (string fields) and *BytesMatch ([]byte fields) structs.
-	BytesView bool
-
 	// GenerateTestFile generates a test file with tests and benchmarks against standard regexp (default: true if TestFileInputs provided)
 	GenerateTestFile bool
 
@@ -106,7 +102,6 @@ func Compile(opts Options) error {
 		Package:          opts.Package,
 		UsePool:          !opts.NoPool, // Invert: NoPool flag disables pool
 		WithCaptures:     hasCaptures,
-		BytesView:        opts.BytesView && hasCaptures, // Only apply if captures exist
 		RegexAST:         regexAST,
 		GenerateTestFile: generateTestFile,
 		TestFileInputs:   testInputs,
