@@ -15,7 +15,7 @@ var (
 	output     = flag.String("output", "", "Output file path")
 	pkg        = flag.String("package", "main", "Package name for generated code")
 	noPool     = flag.Bool("no-pool", false, "Disable sync.Pool for stack reuse (pool is enabled by default)")
-	bytesView  = flag.Bool("bytes-view", false, "Generate separate []byte struct for FindBytes (zero-copy, auto-enabled if pattern has captures)")
+	bytesView  = flag.Bool("bytes-view", true, "Generate separate []byte struct for FindBytes (zero-copy, auto-enabled if pattern has captures)")
 	noTest     = flag.Bool("no-test", false, "Disable automatic test file generation")
 	testInputs = flag.String("test-inputs", "", "Comma-separated test inputs for generated tests (default: 'example')")
 	version    = flag.Bool("version", false, "Print version information")
