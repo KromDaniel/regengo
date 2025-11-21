@@ -3,7 +3,7 @@ package codegen
 
 import "fmt"
 
-// Common variable names used in generated code
+// Variable names used in generated code
 const (
 	InputName           = "input"
 	InputLenName        = "l"
@@ -33,11 +33,5 @@ func UpperFirst(s string) string {
 	if s == "" {
 		return s
 	}
-	// Clear the lowercase bit (0x20)
 	return string(s[0]&^0x20) + s[1:]
 }
-
-// Backtrack label name
-const (
-	BacktrackLabel = "TryFallback"
-)
