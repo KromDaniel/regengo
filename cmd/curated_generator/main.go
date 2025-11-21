@@ -82,7 +82,7 @@ func Test{{ .Name }}MatchString(t *testing.T) {
 	t.Run("test input {{ $index }}", func(t *testing.T) {
 		input := {{ quote $input }}
         isStdMatch := stdReg.MatchString(input)
-        isRegengoMatch := {{ $out.Name }}MatchString(input)
+        isRegengoMatch := {{ $out.Name }}{}.MatchString(input)
         if isStdMatch != isRegengoMatch {
 			t.Fatalf("pattern %s stdMatch - %v, regengoMatch - %v", input, isStdMatch, isRegengoMatch)
         }
@@ -109,7 +109,7 @@ func Benchmark{{ .Name }}MatchString(b *testing.B) {
         b.ReportAllocs()
 		input := {{ quote $input }}
         for i:=0 ; i < b.N; i++ {
-          {{ $out.Name }}MatchString(input)
+          {{ $out.Name }}{}.MatchString(input)
         }
 	})
 
@@ -134,7 +134,7 @@ func Test{{ .Name }}FindString(t *testing.T) {
 	t.Run("test input {{ $index }}", func(t *testing.T) {
 		input := {{ quote $input }}
 		stdMatch := stdReg.FindStringSubmatch(input)
-		regengoResult, found := {{ $out.Name }}FindString(input)
+		regengoResult, found := {{ $out.Name }}{}.FindString(input)
 		
 		if (len(stdMatch) > 0) != found {
 			t.Fatalf("pattern %s stdMatch found=%v, regengo found=%v", input, len(stdMatch) > 0, found)
@@ -169,7 +169,7 @@ func Benchmark{{ .Name }}FindString(b *testing.B) {
 		b.ReportAllocs()
 		input := {{ quote $input }}
 		for i:=0 ; i < b.N; i++ {
-			{{ $out.Name }}FindString(input)
+			{{ $out.Name }}{}.FindString(input)
 		}
 	})
 

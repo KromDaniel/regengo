@@ -40,7 +40,7 @@ func (c *Compiler) generateTestFile() error {
 	).Block(
 		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
 			jen.Id("expected").Op(":=").Id(regexpVarName).Dot("MatchString").Call(jen.Id("input")),
-			jen.Id("got").Op(":=").Id(fmt.Sprintf("%sMatchString", c.config.Name)).Call(jen.Id("input")),
+			jen.Id("got").Op(":=").Id(c.config.Name).Values().Dot("MatchString").Call(jen.Id("input")),
 			jen.If(jen.Id("got").Op("!=").Id("expected")).Block(
 				jen.Id("t").Dot("Errorf").Call(
 					jen.Lit("MatchString(%q) = %v, want %v"),
@@ -60,7 +60,7 @@ func (c *Compiler) generateTestFile() error {
 		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
 			jen.Id("inputBytes").Op(":=").Index().Byte().Call(jen.Id("input")),
 			jen.Id("expected").Op(":=").Id(regexpVarName).Dot("Match").Call(jen.Id("inputBytes")),
-			jen.Id("got").Op(":=").Id(fmt.Sprintf("%sMatchBytes", c.config.Name)).Call(jen.Id("inputBytes")),
+			jen.Id("got").Op(":=").Id(c.config.Name).Values().Dot("MatchBytes").Call(jen.Id("inputBytes")),
 			jen.If(jen.Id("got").Op("!=").Id("expected")).Block(
 				jen.Id("t").Dot("Errorf").Call(
 					jen.Lit("MatchBytes(%q) = %v, want %v"),
@@ -81,7 +81,7 @@ func (c *Compiler) generateTestFile() error {
 		).Block(
 			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
 				jen.Id("expectedMatches").Op(":=").Id(regexpVarName).Dot("FindStringSubmatch").Call(jen.Id("input")),
-				jen.Id("result").Op(",").Id("ok").Op(":=").Id(fmt.Sprintf("%sFindString", c.config.Name)).Call(jen.Id("input")),
+				jen.Id("result").Op(",").Id("ok").Op(":=").Id(c.config.Name).Values().Dot("FindString").Call(jen.Id("input")),
 				jen.Line(),
 				jen.If(jen.Len(jen.Id("expectedMatches")).Op(">").Lit(0)).Block(
 					jen.If(jen.Op("!").Id("ok")).Block(
@@ -119,7 +119,7 @@ func (c *Compiler) generateTestFile() error {
 		jen.Id("b").Dot("ReportAllocs").Call(),
 		jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
 			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
-				jen.Id("_").Op("=").Id(fmt.Sprintf("%sMatchString", c.config.Name)).Call(jen.Id("input")),
+				jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("MatchString").Call(jen.Id("input")),
 			),
 		),
 	)
@@ -147,7 +147,7 @@ func (c *Compiler) generateTestFile() error {
 			jen.Id("b").Dot("ReportAllocs").Call(),
 			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
 				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
-					jen.Id("_").Op(",").Id("_").Op("=").Id(fmt.Sprintf("%sFindString", c.config.Name)).Call(jen.Id("input")),
+					jen.Id("_").Op(",").Id("_").Op("=").Id(c.config.Name).Values().Dot("FindString").Call(jen.Id("input")),
 				),
 			),
 		)

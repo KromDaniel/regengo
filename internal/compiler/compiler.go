@@ -81,15 +81,24 @@ func (c *Compiler) Generate() error {
 		}
 	}
 
+	// Generate the main struct type
+	c.file.Type().Id(c.config.Name).Struct()
+	c.file.Line()
+
+	// Generate convenience variable for direct usage
+	c.file.Var().Id(fmt.Sprintf("Compiled%s", c.config.Name)).Op("=").Id(c.config.Name).Values()
+	c.file.Line()
+
 	// Always generate Match functions
 	matchStringCode, err := c.generateMatchFunction(false)
 	if err != nil {
 		return fmt.Errorf("failed to generate match string function: %w", err)
 	}
 
-	// Add MatchString function
+	// Add MatchString method
 	c.file.Func().
-		Id(fmt.Sprintf("%sMatchString", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("MatchString").
 		Params(jen.Id(codegen.InputName).String()).
 		Params(jen.Bool()).
 		Block(matchStringCode...)
@@ -99,9 +108,10 @@ func (c *Compiler) Generate() error {
 		return fmt.Errorf("failed to generate match bytes function: %w", err)
 	}
 
-	// Add MatchBytes function
+	// Add MatchBytes method
 	c.file.Func().
-		Id(fmt.Sprintf("%sMatchBytes", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("MatchBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Bool()).
 		Block(matchBytesCode...)
@@ -1028,25 +1038,25 @@ func walkCheckRepeating(re *syntax.Regexp, inRepeat bool) bool {
 	return false
 }
 
-// generateCaptureFunctions generates Find and FindAll functions with capture groups.
+// generateCaptureFunctions generates Find and FindAll methods with capture groups.
 func (c *Compiler) generateCaptureFunctions() error {
-	// Generate capture struct
-	structName := fmt.Sprintf("%sMatch", c.config.Name)
+	// Generate capture result struct
+	structName := fmt.Sprintf("%sResult", c.config.Name)
 	c.generateCaptureStruct(structName)
 
-	// Generate FindString function
+	// Generate FindString method
 	if err := c.generateFindStringFunction(structName); err != nil {
 		return fmt.Errorf("failed to generate FindString: %w", err)
 	}
 
-	// Generate FindAllString function
+	// Generate FindAllString method
 	if err := c.generateFindAllStringFunction(structName); err != nil {
 		return fmt.Errorf("failed to generate FindAllString: %w", err)
 	}
 
-	// Generate FindBytes function
+	// Generate FindBytes method
 	if c.config.BytesView {
-		bytesStructName := fmt.Sprintf("%sMatchBytes", c.config.Name)
+		bytesStructName := fmt.Sprintf("%sResultBytes", c.config.Name)
 		c.generateCaptureStructBytes(bytesStructName)
 		if err := c.generateFindBytesFunction(bytesStructName); err != nil {
 			return fmt.Errorf("failed to generate FindBytes: %w", err)
@@ -1127,7 +1137,7 @@ func (c *Compiler) generateCaptureStructBytes(structName string) {
 	c.file.Line()
 }
 
-// generateFindStringFunction generates the FindString function with captures.
+// generateFindStringFunction generates the FindString method with captures.
 func (c *Compiler) generateFindStringFunction(structName string) error {
 	code, err := c.generateFindFunction(structName, false)
 	if err != nil {
@@ -1135,7 +1145,8 @@ func (c *Compiler) generateFindStringFunction(structName string) error {
 	}
 
 	c.file.Func().
-		Id(fmt.Sprintf("%sFindString", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("FindString").
 		Params(jen.Id(codegen.InputName).String()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(code...)
@@ -1143,7 +1154,7 @@ func (c *Compiler) generateFindStringFunction(structName string) error {
 	return nil
 }
 
-// generateFindBytesFunction generates the FindBytes function with captures.
+// generateFindBytesFunction generates the FindBytes method with captures.
 func (c *Compiler) generateFindBytesFunction(structName string) error {
 	code, err := c.generateFindFunction(structName, c.config.BytesView)
 	if err != nil {
@@ -1151,7 +1162,8 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 	}
 
 	c.file.Func().
-		Id(fmt.Sprintf("%sFindBytes", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("FindBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(code...)
@@ -1159,7 +1171,7 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 	return nil
 }
 
-// generateFindAllStringFunction generates the FindAllString function with captures.
+// generateFindAllStringFunction generates the FindAllString method with captures.
 func (c *Compiler) generateFindAllStringFunction(structName string) error {
 	code, err := c.generateFindAllFunction(structName, false)
 	if err != nil {
@@ -1167,7 +1179,8 @@ func (c *Compiler) generateFindAllStringFunction(structName string) error {
 	}
 
 	c.file.Func().
-		Id(fmt.Sprintf("%sFindAllString", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("FindAllString").
 		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)
@@ -1175,7 +1188,7 @@ func (c *Compiler) generateFindAllStringFunction(structName string) error {
 	return nil
 }
 
-// generateFindAllBytesFunction generates the FindAllBytes function with captures.
+// generateFindAllBytesFunction generates the FindAllBytes method with captures.
 func (c *Compiler) generateFindAllBytesFunction(structName string) error {
 	code, err := c.generateFindAllFunction(structName, c.config.BytesView)
 	if err != nil {
@@ -1183,7 +1196,8 @@ func (c *Compiler) generateFindAllBytesFunction(structName string) error {
 	}
 
 	c.file.Func().
-		Id(fmt.Sprintf("%sFindAllBytes", c.config.Name)).
+		Params(jen.Id("_").Id(c.config.Name)).
+		Id("FindAllBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)
