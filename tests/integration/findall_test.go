@@ -48,7 +48,7 @@ func TestDateCaptureFindAllString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			matches := generated.DateCaptureFindAllString(tt.input, tt.n)
+			matches := generated.DateCapture{}.FindAllString(tt.input, tt.n)
 
 			got := len(matches)
 			if got != tt.want {
@@ -95,7 +95,7 @@ func TestDateCaptureFindAllBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			matches := generated.DateCaptureFindAllBytes([]byte(tt.input), tt.n)
+			matches := generated.DateCapture{}.FindAllBytes([]byte(tt.input), tt.n)
 
 			got := len(matches)
 			if got != tt.want {
@@ -134,7 +134,7 @@ func TestFindAllVsStdlib(t *testing.T) {
 			stdlibMatches := stdlibRe.FindAllStringSubmatch(tt.input, tt.n)
 
 			// Get our matches
-			ourMatches := generated.DateCaptureFindAllString(tt.input, tt.n)
+			ourMatches := generated.DateCapture{}.FindAllString(tt.input, tt.n)
 
 			// Compare counts
 			stdlibCount := len(stdlibMatches)
