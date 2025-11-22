@@ -1,4 +1,3 @@
-
 package generated
 
 import (
@@ -7,12 +6,10 @@ import (
 	"testing"
 )
 
-
 func TestMultiEmailFindAllString(t *testing.T) {
 	pattern := "(?P<user>[\\w\\.+-]+)@(?P<domain>[\\w\\.-]+)\\.(?P<tld>[\\w\\.-]+)"
 	stdReg := regexp.MustCompile(pattern)
-	
-	
+
 	t.Run("test input 0", func(t *testing.T) {
 		input := "Contact us at support@example.com or sales@company.org for help"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -49,7 +46,6 @@ func TestMultiEmailFindAllString(t *testing.T) {
 		}
 	})
 
-	
 	t.Run("test input 1", func(t *testing.T) {
 		input := "Multiple: a@b.com, c@d.org, e@f.net"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -86,7 +82,6 @@ func TestMultiEmailFindAllString(t *testing.T) {
 		}
 	})
 
-	
 	t.Run("test input 2", func(t *testing.T) {
 		input := "No emails in this text"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -123,14 +118,11 @@ func TestMultiEmailFindAllString(t *testing.T) {
 		}
 	})
 
-	
 }
 
 func BenchmarkMultiEmailFindAllString(b *testing.B) {
 	pattern := "(?P<user>[\\w\\.+-]+)@(?P<domain>[\\w\\.-]+)\\.(?P<tld>[\\w\\.-]+)"
 	stdReg := regexp.MustCompile(pattern)
-	
-	
 
 	b.Run("golang std 0", func(b *testing.B) {
 		b.ReportAllocs()
@@ -157,8 +149,6 @@ func BenchmarkMultiEmailFindAllString(b *testing.B) {
 		}
 	})
 
-	
-
 	b.Run("golang std 1", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "Multiple: a@b.com, c@d.org, e@f.net"
@@ -183,8 +173,6 @@ func BenchmarkMultiEmailFindAllString(b *testing.B) {
 			results = MultiEmail{}.FindAllStringAppend(input, -1, results[:0])
 		}
 	})
-
-	
 
 	b.Run("golang std 2", func(b *testing.B) {
 		b.ReportAllocs()
@@ -211,5 +199,4 @@ func BenchmarkMultiEmailFindAllString(b *testing.B) {
 		}
 	})
 
-	
 }

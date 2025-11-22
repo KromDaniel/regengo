@@ -36,6 +36,11 @@ bench: bench-gen
 	@echo "Running benchmarks..."
 	@go test -bench=. -benchmem ./benchmarks/generated/
 
+## bench-readme: Generate benchmark markdown for README
+bench-readme: bench-gen
+	@echo "Generating benchmark markdown..."
+	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./cmd/bench_to_readme
+
 ## bench-gen: Generate benchmark code
 bench-gen:
 	@echo "Generating benchmark code..."

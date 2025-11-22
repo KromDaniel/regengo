@@ -1,4 +1,3 @@
-
 package generated
 
 import (
@@ -7,12 +6,10 @@ import (
 	"testing"
 )
 
-
 func TestMultiDateFindAllString(t *testing.T) {
 	pattern := "(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})"
 	stdReg := regexp.MustCompile(pattern)
-	
-	
+
 	t.Run("test input 0", func(t *testing.T) {
 		input := "Events: 2024-01-15, 2024-06-20, and 2024-12-25 are holidays"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -49,7 +46,6 @@ func TestMultiDateFindAllString(t *testing.T) {
 		}
 	})
 
-	
 	t.Run("test input 1", func(t *testing.T) {
 		input := "No dates here"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -86,7 +82,6 @@ func TestMultiDateFindAllString(t *testing.T) {
 		}
 	})
 
-	
 	t.Run("test input 2", func(t *testing.T) {
 		input := "Single date 2025-10-05 in text"
 		stdMatches := stdReg.FindAllStringSubmatch(input, -1)
@@ -123,14 +118,11 @@ func TestMultiDateFindAllString(t *testing.T) {
 		}
 	})
 
-	
 }
 
 func BenchmarkMultiDateFindAllString(b *testing.B) {
 	pattern := "(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})"
 	stdReg := regexp.MustCompile(pattern)
-	
-	
 
 	b.Run("golang std 0", func(b *testing.B) {
 		b.ReportAllocs()
@@ -157,8 +149,6 @@ func BenchmarkMultiDateFindAllString(b *testing.B) {
 		}
 	})
 
-	
-
 	b.Run("golang std 1", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "No dates here"
@@ -183,8 +173,6 @@ func BenchmarkMultiDateFindAllString(b *testing.B) {
 			results = MultiDate{}.FindAllStringAppend(input, -1, results[:0])
 		}
 	})
-
-	
 
 	b.Run("golang std 2", func(b *testing.B) {
 		b.ReportAllocs()
@@ -211,5 +199,4 @@ func BenchmarkMultiDateFindAllString(b *testing.B) {
 		}
 	})
 
-	
 }

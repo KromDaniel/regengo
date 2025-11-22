@@ -262,6 +262,99 @@ regengo -pattern '[\w\.+-]+@[\w\.-]+\.[\w\.-]+' \
         -test-inputs 'user@example.com,invalid,test@test.org'
 ```
 
+## Detailed Benchmarks
+
+Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib vs regengo.
+
+### DateCaptureFindString
+
+**Pattern:** `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 102.8 | 128 | 2 | - |
+| regengo | 19.4 | 64 | 1 | **5.3x faster** |
+| regengo (reuse) | 7.4 | 0 | 0 | **13.8x faster** |
+
+### EmailCaptureFindString
+
+**Pattern:** `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 294.2 | 128 | 2 | - |
+| regengo | 115.5 | 64 | 1 | **2.5x faster** |
+| regengo (reuse) | 104.8 | 0 | 0 | **2.8x faster** |
+
+### EmailMatchString
+
+**Pattern:** `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`
+**Method:** `MatchString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 1574.0 | 0 | 0 | - |
+| regengo | 499.7 | 0 | 0 | **3.1x faster** |
+
+### GreedyMatchString
+
+**Pattern:** `(?:(?:a|b)|(?:k)+)*abcd`
+**Method:** `MatchString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 750.7 | 0 | 0 | - |
+| regengo | 622.4 | 0 | 0 | **1.2x faster** |
+
+### LazyMatchString
+
+**Pattern:** `(?:(?:a|b)|(?:k)+)+?abcd`
+**Method:** `MatchString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 1252.0 | 0 | 0 | - |
+| regengo | 905.8 | 0 | 0 | **1.4x faster** |
+
+### MultiDateFindAllString
+
+**Pattern:** `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+**Method:** `FindAllString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 425.0 | 331 | 3 | - |
+| regengo | 80.7 | 106 | 2 | **5.3x faster** |
+| regengo (reuse) | 48.3 | 0 | 0 | **8.8x faster** |
+
+### MultiEmailFindAllString
+
+**Pattern:** `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`
+**Method:** `FindAllString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 954.9 | 374 | 4 | - |
+| regengo | 398.2 | 133 | 3 | **2.4x faster** |
+| regengo (reuse) | 366.3 | 0 | 0 | **2.6x faster** |
+
+### URLCaptureFindString
+
+**Pattern:** `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 292.0 | 160 | 2 | - |
+| regengo | 165.0 | 80 | 1 | **1.8x faster** |
+| regengo (reuse) | 151.8 | 0 | 0 | **1.9x faster** |
+
+---
+
+To regenerate these benchmarks: `make bench-readme`
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
