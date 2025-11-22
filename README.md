@@ -92,12 +92,12 @@ type DateResult struct {
     Day   string
 }
 
-func (_ Date) MatchString(input string) bool { /* ... */ }
-func (_ Date) MatchBytes(input []byte) bool { /* ... */ }
-func (_ Date) FindString(input string) (*DateResult, bool) { /* ... */ }
-func (_ Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
-func (_ Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
-func (_ Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
+func (Date) MatchString(input string) bool { /* ... */ }
+func (Date) MatchBytes(input []byte) bool { /* ... */ }
+func (Date) FindString(input string) (*DateResult, bool) { /* ... */ }
+func (Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
+func (Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
+func (Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
 ```
 
 ### Usage of Generated Code

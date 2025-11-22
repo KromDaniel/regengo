@@ -7,7 +7,7 @@ type DateCapture struct{}
 
 var CompiledDateCapture = DateCapture{}
 
-func (_ DateCapture) MatchString(input string) bool {
+func (DateCapture) MatchString(input string) bool {
 	l := len(input)
 	offset := 0
 	nextInstruction := 1
@@ -221,7 +221,7 @@ Ins17:
 		return true
 	}
 }
-func (_ DateCapture) MatchBytes(input []byte) bool {
+func (DateCapture) MatchBytes(input []byte) bool {
 	l := len(input)
 	offset := 0
 	nextInstruction := 1
@@ -450,7 +450,7 @@ type DateCaptureBytesResult struct {
 	Day   []byte
 }
 
-func (_ DateCapture) FindString(input string) (*DateCaptureResult, bool) {
+func (DateCapture) FindString(input string) (*DateCaptureResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -703,7 +703,7 @@ Ins17:
 		}, true
 	}
 }
-func (_ DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
+func (DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 	if n == 0 {
 		return nil
 	}
@@ -968,7 +968,7 @@ func (_ DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 	}
 	return result
 }
-func (_ DateCapture) FindBytes(input []byte) (*DateCaptureBytesResult, bool) {
+func (DateCapture) FindBytes(input []byte) (*DateCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -1221,7 +1221,7 @@ Ins17:
 		}, true
 	}
 }
-func (_ DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
+func (DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}

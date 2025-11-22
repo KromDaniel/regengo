@@ -19,7 +19,7 @@ type EmailCapture struct{}
 
 var CompiledEmailCapture = EmailCapture{}
 
-func (_ EmailCapture) MatchString(input string) bool {
+func (EmailCapture) MatchString(input string) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := emailCaptureStackPool.Get().(*[][2]int)
@@ -196,7 +196,7 @@ Ins15:
 		return true
 	}
 }
-func (_ EmailCapture) MatchBytes(input []byte) bool {
+func (EmailCapture) MatchBytes(input []byte) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := emailCaptureStackPool.Get().(*[][2]int)
@@ -388,7 +388,7 @@ type EmailCaptureBytesResult struct {
 	Tld    []byte
 }
 
-func (_ EmailCapture) FindString(input string) (*EmailCaptureResult, bool) {
+func (EmailCapture) FindString(input string) (*EmailCaptureResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -620,7 +620,7 @@ Ins15:
 		}, true
 	}
 }
-func (_ EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
+func (EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 	if n == 0 {
 		return nil
 	}
@@ -857,7 +857,7 @@ func (_ EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 	}
 	return result
 }
-func (_ EmailCapture) FindBytes(input []byte) (*EmailCaptureBytesResult, bool) {
+func (EmailCapture) FindBytes(input []byte) (*EmailCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 8)
@@ -1089,7 +1089,7 @@ Ins15:
 		}, true
 	}
 }
-func (_ EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult {
+func (EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}

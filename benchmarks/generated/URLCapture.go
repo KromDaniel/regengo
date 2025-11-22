@@ -23,7 +23,7 @@ type URLCapture struct{}
 
 var CompiledURLCapture = URLCapture{}
 
-func (_ URLCapture) MatchString(input string) bool {
+func (URLCapture) MatchString(input string) bool {
 	l := len(input)
 	idx := strings.IndexByte(input, uint8(0x68))
 	if idx == -1 {
@@ -362,7 +362,7 @@ Ins28:
 		return true
 	}
 }
-func (_ URLCapture) MatchBytes(input []byte) bool {
+func (URLCapture) MatchBytes(input []byte) bool {
 	l := len(input)
 	idx := bytes.IndexByte(input, uint8(0x68))
 	if idx == -1 {
@@ -728,7 +728,7 @@ type URLCaptureBytesResult struct {
 	Path     []byte
 }
 
-func (_ URLCapture) FindString(input string) (*URLCaptureResult, bool) {
+func (URLCapture) FindString(input string) (*URLCaptureResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 10)
@@ -1126,7 +1126,7 @@ Ins28:
 		}, true
 	}
 }
-func (_ URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
+func (URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 	if n == 0 {
 		return nil
 	}
@@ -1529,7 +1529,7 @@ func (_ URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 	}
 	return result
 }
-func (_ URLCapture) FindBytes(input []byte) (*URLCaptureBytesResult, bool) {
+func (URLCapture) FindBytes(input []byte) (*URLCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
 	captures := make([]int, 10)
@@ -1927,7 +1927,7 @@ Ins28:
 		}, true
 	}
 }
-func (_ URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
+func (URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
 	if n == 0 {
 		return nil
 	}

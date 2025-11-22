@@ -14,7 +14,7 @@ type Greedy struct{}
 
 var CompiledGreedy = Greedy{}
 
-func (_ Greedy) MatchString(input string) bool {
+func (Greedy) MatchString(input string) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := greedyStackPool.Get().(*[][2]int)
@@ -170,7 +170,7 @@ Ins10:
 		return true
 	}
 }
-func (_ Greedy) MatchBytes(input []byte) bool {
+func (Greedy) MatchBytes(input []byte) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := greedyStackPool.Get().(*[][2]int)

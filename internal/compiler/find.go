@@ -15,9 +15,7 @@ func (c *Compiler) generateFindStringFunction(structName string) error {
 		return err
 	}
 
-	c.file.Func().
-		Params(jen.Id("_").Id(c.config.Name)).
-		Id("FindString").
+	c.method("FindString").
 		Params(jen.Id(codegen.InputName).String()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(code...)
@@ -32,9 +30,7 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 		return err
 	}
 
-	c.file.Func().
-		Params(jen.Id("_").Id(c.config.Name)).
-		Id("FindBytes").
+	c.method("FindBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(code...)
@@ -49,9 +45,7 @@ func (c *Compiler) generateFindAllStringFunction(structName string) error {
 		return err
 	}
 
-	c.file.Func().
-		Params(jen.Id("_").Id(c.config.Name)).
-		Id("FindAllString").
+	c.method("FindAllString").
 		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)
@@ -66,9 +60,7 @@ func (c *Compiler) generateFindAllBytesFunction(structName string) error {
 		return err
 	}
 
-	c.file.Func().
-		Params(jen.Id("_").Id(c.config.Name)).
-		Id("FindAllBytes").
+	c.method("FindAllBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)

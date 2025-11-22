@@ -14,7 +14,7 @@ type Email struct{}
 
 var CompiledEmail = Email{}
 
-func (_ Email) MatchString(input string) bool {
+func (Email) MatchString(input string) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := emailStackPool.Get().(*[][2]int)
@@ -155,7 +155,7 @@ Ins9:
 		return true
 	}
 }
-func (_ Email) MatchBytes(input []byte) bool {
+func (Email) MatchBytes(input []byte) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := emailStackPool.Get().(*[][2]int)

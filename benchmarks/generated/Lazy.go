@@ -14,7 +14,7 @@ type Lazy struct{}
 
 var CompiledLazy = Lazy{}
 
-func (_ Lazy) MatchString(input string) bool {
+func (Lazy) MatchString(input string) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := lazyStackPool.Get().(*[][2]int)
@@ -170,7 +170,7 @@ Ins10:
 		return true
 	}
 }
-func (_ Lazy) MatchBytes(input []byte) bool {
+func (Lazy) MatchBytes(input []byte) bool {
 	l := len(input)
 	offset := 0
 	stackPtr := lazyStackPool.Get().(*[][2]int)
