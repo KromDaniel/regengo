@@ -629,6 +629,21 @@ func (MultiEmail) FindAllStringAppend(input string, n int, s []*MultiEmailResult
 	result := s
 	l := len(input)
 	searchStart := 0
+	captureStackPtr := multiEmailCaptureStackPool.Get().(*[]int)
+	captureStack := (*captureStackPtr)[:0]
+	defer func() {
+		*captureStackPtr = captureStack[:0]
+		multiEmailCaptureStackPool.Put(captureStackPtr)
+	}()
+	stackPtr := multiEmailStackPool.Get().(*[][2]int)
+	stack := (*stackPtr)[:0]
+	defer func() {
+		for i := range stack {
+			stack[i] = [2]int{0, 0}
+		}
+		*stackPtr = stack[:0]
+		multiEmailStackPool.Put(stackPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -638,21 +653,8 @@ func (MultiEmail) FindAllStringAppend(input string, n int, s []*MultiEmailResult
 		}
 		offset := searchStart
 		var captures [8]int
-		captureStackPtr := multiEmailCaptureStackPool.Get().(*[]int)
-		captureStack := (*captureStackPtr)[:0]
-		defer func() {
-			*captureStackPtr = captureStack[:0]
-			multiEmailCaptureStackPool.Put(captureStackPtr)
-		}()
-		stackPtr := multiEmailStackPool.Get().(*[][2]int)
-		stack := (*stackPtr)[:0]
-		defer func() {
-			for i := range stack {
-				stack[i] = [2]int{0, 0}
-			}
-			*stackPtr = stack[:0]
-			multiEmailStackPool.Put(stackPtr)
-		}()
+		captureStack = captureStack[:0]
+		stack = stack[:0]
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
@@ -1110,6 +1112,21 @@ func (MultiEmail) FindAllBytesAppend(input []byte, n int, s []*MultiEmailBytesRe
 	result := s
 	l := len(input)
 	searchStart := 0
+	captureStackPtr := multiEmailCaptureStackPool.Get().(*[]int)
+	captureStack := (*captureStackPtr)[:0]
+	defer func() {
+		*captureStackPtr = captureStack[:0]
+		multiEmailCaptureStackPool.Put(captureStackPtr)
+	}()
+	stackPtr := multiEmailStackPool.Get().(*[][2]int)
+	stack := (*stackPtr)[:0]
+	defer func() {
+		for i := range stack {
+			stack[i] = [2]int{0, 0}
+		}
+		*stackPtr = stack[:0]
+		multiEmailStackPool.Put(stackPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -1119,21 +1136,8 @@ func (MultiEmail) FindAllBytesAppend(input []byte, n int, s []*MultiEmailBytesRe
 		}
 		offset := searchStart
 		var captures [8]int
-		captureStackPtr := multiEmailCaptureStackPool.Get().(*[]int)
-		captureStack := (*captureStackPtr)[:0]
-		defer func() {
-			*captureStackPtr = captureStack[:0]
-			multiEmailCaptureStackPool.Put(captureStackPtr)
-		}()
-		stackPtr := multiEmailStackPool.Get().(*[][2]int)
-		stack := (*stackPtr)[:0]
-		defer func() {
-			for i := range stack {
-				stack[i] = [2]int{0, 0}
-			}
-			*stackPtr = stack[:0]
-			multiEmailStackPool.Put(stackPtr)
-		}()
+		captureStack = captureStack[:0]
+		stack = stack[:0]
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
