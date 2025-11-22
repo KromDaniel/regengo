@@ -620,11 +620,11 @@ Ins15:
 		}, true
 	}
 }
-func (EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
+func (EmailCapture) FindAllStringAppend(input string, n int, s []*EmailCaptureResult) []*EmailCaptureResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*EmailCaptureResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -826,27 +826,34 @@ func (EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 	Ins15:
 		{
 			captures[1] = offset
-			result = append(result, &EmailCaptureResult{
-				Domain: func() string {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
-					}
-					return ""
-				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Tld: func() string {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
-					}
-					return ""
-				}(),
-				User: func() string {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
-					}
-					return ""
-				}(),
-			})
+			var item *EmailCaptureResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &EmailCaptureResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &EmailCaptureResult{}
+				result = append(result, item)
+			}
+			item.Match = string(input[captures[0]:captures[1]])
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.User = string(input[captures[2]:captures[3]])
+			} else {
+				item.User = ""
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Domain = string(input[captures[4]:captures[5]])
+			} else {
+				item.Domain = ""
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Tld = string(input[captures[6]:captures[7]])
+			} else {
+				item.Tld = ""
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -856,6 +863,9 @@ func (EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 		}
 	}
 	return result
+}
+func (r EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
+	return r.FindAllStringAppend(input, n, nil)
 }
 func (EmailCapture) FindBytes(input []byte) (*EmailCaptureBytesResult, bool) {
 	l := len(input)
@@ -1089,11 +1099,11 @@ Ins15:
 		}, true
 	}
 }
-func (EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult {
+func (EmailCapture) FindAllBytesAppend(input []byte, n int, s []*EmailCaptureBytesResult) []*EmailCaptureBytesResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*EmailCaptureBytesResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -1295,27 +1305,34 @@ func (EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult
 	Ins15:
 		{
 			captures[1] = offset
-			result = append(result, &EmailCaptureBytesResult{
-				Domain: func() []byte {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return input[captures[4]:captures[5]]
-					}
-					return nil
-				}(),
-				Match: input[captures[0]:captures[1]],
-				Tld: func() []byte {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return input[captures[6]:captures[7]]
-					}
-					return nil
-				}(),
-				User: func() []byte {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return input[captures[2]:captures[3]]
-					}
-					return nil
-				}(),
-			})
+			var item *EmailCaptureBytesResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &EmailCaptureBytesResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &EmailCaptureBytesResult{}
+				result = append(result, item)
+			}
+			item.Match = input[captures[0]:captures[1]]
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.User = input[captures[2]:captures[3]]
+			} else {
+				item.User = nil
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Domain = input[captures[4]:captures[5]]
+			} else {
+				item.Domain = nil
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Tld = input[captures[6]:captures[7]]
+			} else {
+				item.Tld = nil
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -1325,4 +1342,7 @@ func (EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult
 		}
 	}
 	return result
+}
+func (r EmailCapture) FindAllBytes(input []byte, n int) []*EmailCaptureBytesResult {
+	return r.FindAllBytesAppend(input, n, nil)
 }

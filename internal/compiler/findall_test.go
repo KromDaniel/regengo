@@ -88,12 +88,12 @@ func TestGeneratedFindAll(t *testing.T) {
 	contentStr := string(content)
 
 	// Verify FindAllString exists
-	if !contains(contentStr, "func (DateCapture) FindAllString(input string, n int)") {
+	if !contains(contentStr, "func (r DateCapture) FindAllString(input string, n int)") {
 		t.Error("DateCapture.FindAllString not found in generated code")
 	}
 
 	// Verify FindAllBytes exists
-	if !contains(contentStr, "func (DateCapture) FindAllBytes(input []byte, n int)") {
+	if !contains(contentStr, "func (r DateCapture) FindAllBytes(input []byte, n int)") {
 		t.Error("DateCapture.FindAllBytes not found in generated code")
 	}
 

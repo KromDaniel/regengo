@@ -1126,11 +1126,11 @@ Ins28:
 		}, true
 	}
 }
-func (URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
+func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult) []*URLCaptureResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*URLCaptureResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -1492,33 +1492,39 @@ func (URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 	Ins28:
 		{
 			captures[1] = offset
-			result = append(result, &URLCaptureResult{
-				Host: func() string {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
-					}
-					return ""
-				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Path: func() string {
-					if captures[8] <= captures[9] && captures[9] <= len(input) {
-						return string(input[captures[8]:captures[9]])
-					}
-					return ""
-				}(),
-				Port: func() string {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
-					}
-					return ""
-				}(),
-				Protocol: func() string {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
-					}
-					return ""
-				}(),
-			})
+			var item *URLCaptureResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &URLCaptureResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &URLCaptureResult{}
+				result = append(result, item)
+			}
+			item.Match = string(input[captures[0]:captures[1]])
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.Protocol = string(input[captures[2]:captures[3]])
+			} else {
+				item.Protocol = ""
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Host = string(input[captures[4]:captures[5]])
+			} else {
+				item.Host = ""
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Port = string(input[captures[6]:captures[7]])
+			} else {
+				item.Port = ""
+			}
+			if captures[8] <= captures[9] && captures[9] <= len(input) {
+				item.Path = string(input[captures[8]:captures[9]])
+			} else {
+				item.Path = ""
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -1528,6 +1534,9 @@ func (URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 		}
 	}
 	return result
+}
+func (r URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
+	return r.FindAllStringAppend(input, n, nil)
 }
 func (URLCapture) FindBytes(input []byte) (*URLCaptureBytesResult, bool) {
 	l := len(input)
@@ -1927,11 +1936,11 @@ Ins28:
 		}, true
 	}
 }
-func (URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
+func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesResult) []*URLCaptureBytesResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*URLCaptureBytesResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -2293,33 +2302,39 @@ func (URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
 	Ins28:
 		{
 			captures[1] = offset
-			result = append(result, &URLCaptureBytesResult{
-				Host: func() []byte {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return input[captures[4]:captures[5]]
-					}
-					return nil
-				}(),
-				Match: input[captures[0]:captures[1]],
-				Path: func() []byte {
-					if captures[8] <= captures[9] && captures[9] <= len(input) {
-						return input[captures[8]:captures[9]]
-					}
-					return nil
-				}(),
-				Port: func() []byte {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return input[captures[6]:captures[7]]
-					}
-					return nil
-				}(),
-				Protocol: func() []byte {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return input[captures[2]:captures[3]]
-					}
-					return nil
-				}(),
-			})
+			var item *URLCaptureBytesResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &URLCaptureBytesResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &URLCaptureBytesResult{}
+				result = append(result, item)
+			}
+			item.Match = input[captures[0]:captures[1]]
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.Protocol = input[captures[2]:captures[3]]
+			} else {
+				item.Protocol = nil
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Host = input[captures[4]:captures[5]]
+			} else {
+				item.Host = nil
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Port = input[captures[6]:captures[7]]
+			} else {
+				item.Port = nil
+			}
+			if captures[8] <= captures[9] && captures[9] <= len(input) {
+				item.Path = input[captures[8]:captures[9]]
+			} else {
+				item.Path = nil
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -2329,4 +2344,7 @@ func (URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
 		}
 	}
 	return result
+}
+func (r URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
+	return r.FindAllBytesAppend(input, n, nil)
 }
