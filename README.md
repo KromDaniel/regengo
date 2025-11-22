@@ -198,25 +198,7 @@ if ok {
 }
 ```
 
-## API Comparison
-
-| stdlib `regexp` | regengo | Status |
-|-----------------|---------|--------|
-| `MatchString(s string) bool` | `MatchString(s string) bool` | Implemented |
-| `Match(b []byte) bool` | `MatchBytes(b []byte) bool` | Implemented |
-| `FindString(s string) string` | - | Not implemented |
-| `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | Implemented (typed struct) |
-| `Find(b []byte) []byte` | - | Not implemented |
-| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | Implemented (typed struct) |
-| `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | Implemented |
-| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | Implemented |
-| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Regengo extension |
-| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Regengo extension |
-| `ReplaceAllString(s, repl string) string` | - | Not implemented |
-| `Split(s string, n int) []string` | - | Not implemented |
-| `FindStringIndex(s string) []int` | - | Not implemented |
-
-## Slice Reuse
+### Slice Reuse
 
 For high-performance scenarios, use the `Append` variants to reuse slices and reduce allocations:
 
@@ -241,6 +223,24 @@ The `Append` methods:
 - Only allocate new elements when capacity is exceeded
 
 This is particularly useful when processing many inputs in a loop, as it avoids repeated slice and struct allocations.
+
+## API Comparison
+
+| stdlib `regexp` | regengo | Status |
+|-----------------|---------|--------|
+| `MatchString(s string) bool` | `MatchString(s string) bool` | Implemented |
+| `Match(b []byte) bool` | `MatchBytes(b []byte) bool` | Implemented |
+| `FindString(s string) string` | - | Not implemented |
+| `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | Implemented (typed struct) |
+| `Find(b []byte) []byte` | - | Not implemented |
+| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | Implemented (typed struct) |
+| `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | Implemented |
+| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | Implemented |
+| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Regengo extension |
+| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Regengo extension |
+| `ReplaceAllString(s, repl string) string` | - | Not implemented |
+| `Split(s string, n int) []string` | - | Not implemented |
+| `FindStringIndex(s string) []int` | - | Not implemented |
 
 ## CLI Options
 
