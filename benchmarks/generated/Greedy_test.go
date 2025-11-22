@@ -31,19 +31,19 @@ func BenchmarkGreedyMatchString(b *testing.B) {
 	
 
 	b.Run("golang std 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
-        for i:=0 ; i < b.N; i++ {
-          stdReg.MatchString(input)
-        }
+		for b.Loop() {
+			stdReg.MatchString(input)
+		}
 	})
-	
+
 	b.Run("regengo 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
-        for i:=0 ; i < b.N; i++ {
-          Greedy{}.MatchString(input)
-        }
+		for b.Loop() {
+			Greedy{}.MatchString(input)
+		}
 	})
 
 	

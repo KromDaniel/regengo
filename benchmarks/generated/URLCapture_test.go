@@ -77,16 +77,25 @@ func BenchmarkURLCaptureFindString(b *testing.B) {
 	b.Run("golang std 0", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "http://example.com"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			stdReg.FindStringSubmatch(input)
 		}
 	})
-	
+
 	b.Run("regengo 0", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "http://example.com"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			URLCapture{}.FindString(input)
+		}
+	})
+
+	b.Run("regengo reuse 0", func(b *testing.B) {
+		b.ReportAllocs()
+		input := "http://example.com"
+		var result *URLCaptureResult
+		for b.Loop() {
+			result, _ = URLCapture{}.FindStringReuse(input, result)
 		}
 	})
 
@@ -95,16 +104,25 @@ func BenchmarkURLCaptureFindString(b *testing.B) {
 	b.Run("golang std 1", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "https://api.github.com:443/repos/owner/repo"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			stdReg.FindStringSubmatch(input)
 		}
 	})
-	
+
 	b.Run("regengo 1", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "https://api.github.com:443/repos/owner/repo"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			URLCapture{}.FindString(input)
+		}
+	})
+
+	b.Run("regengo reuse 1", func(b *testing.B) {
+		b.ReportAllocs()
+		input := "https://api.github.com:443/repos/owner/repo"
+		var result *URLCaptureResult
+		for b.Loop() {
+			result, _ = URLCapture{}.FindStringReuse(input, result)
 		}
 	})
 
@@ -113,16 +131,25 @@ func BenchmarkURLCaptureFindString(b *testing.B) {
 	b.Run("golang std 2", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "http://localhost:8080/api/v1/users"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			stdReg.FindStringSubmatch(input)
 		}
 	})
-	
+
 	b.Run("regengo 2", func(b *testing.B) {
 		b.ReportAllocs()
 		input := "http://localhost:8080/api/v1/users"
-		for i:=0 ; i < b.N; i++ {
+		for b.Loop() {
 			URLCapture{}.FindString(input)
+		}
+	})
+
+	b.Run("regengo reuse 2", func(b *testing.B) {
+		b.ReportAllocs()
+		input := "http://localhost:8080/api/v1/users"
+		var result *URLCaptureResult
+		for b.Loop() {
+			result, _ = URLCapture{}.FindStringReuse(input, result)
 		}
 	})
 

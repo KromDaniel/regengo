@@ -31,19 +31,19 @@ func BenchmarkLazyMatchString(b *testing.B) {
 	
 
 	b.Run("golang std 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
-        for i:=0 ; i < b.N; i++ {
-          stdReg.MatchString(input)
-        }
+		for b.Loop() {
+			stdReg.MatchString(input)
+		}
 	})
-	
+
 	b.Run("regengo 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
-        for i:=0 ; i < b.N; i++ {
-          Lazy{}.MatchString(input)
-        }
+		for b.Loop() {
+			Lazy{}.MatchString(input)
+		}
 	})
 
 	

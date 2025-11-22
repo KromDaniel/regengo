@@ -31,19 +31,19 @@ func BenchmarkEmailMatchString(b *testing.B) {
 	
 
 	b.Run("golang std 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa| me@myself.com"
-        for i:=0 ; i < b.N; i++ {
-          stdReg.MatchString(input)
-        }
+		for b.Loop() {
+			stdReg.MatchString(input)
+		}
 	})
-	
+
 	b.Run("regengo 0", func(b *testing.B) {
-        b.ReportAllocs()
+		b.ReportAllocs()
 		input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa| me@myself.com"
-        for i:=0 ; i < b.N; i++ {
-          Email{}.MatchString(input)
-        }
+		for b.Loop() {
+			Email{}.MatchString(input)
+		}
 	})
 
 	
