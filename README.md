@@ -270,7 +270,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### DateCaptureFindString
 
-**Pattern:** `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+**Pattern:**
+```regex
+(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
+```
+
 **Method:** `FindString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -281,7 +285,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### EmailCaptureFindString
 
-**Pattern:** `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`
+**Pattern:**
+```regex
+(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)
+```
+
 **Method:** `FindString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -292,7 +300,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### EmailMatchString
 
-**Pattern:** `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`
+**Pattern:**
+```regex
+[\w\.+-]+@[\w\.-]+\.[\w\.-]+
+```
+
 **Method:** `MatchString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -302,7 +314,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### GreedyMatchString
 
-**Pattern:** `(?:(?:a|b)|(?:k)+)*abcd`
+**Pattern:**
+```regex
+(?:(?:a|b)|(?:k)+)*abcd
+```
+
 **Method:** `MatchString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -312,7 +328,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### LazyMatchString
 
-**Pattern:** `(?:(?:a|b)|(?:k)+)+?abcd`
+**Pattern:**
+```regex
+(?:(?:a|b)|(?:k)+)+?abcd
+```
+
 **Method:** `MatchString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -322,7 +342,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### MultiDateFindAllString
 
-**Pattern:** `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+**Pattern:**
+```regex
+(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
+```
+
 **Method:** `FindAllString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -333,7 +357,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### MultiEmailFindAllString
 
-**Pattern:** `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`
+**Pattern:**
+```regex
+(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)
+```
+
 **Method:** `FindAllString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
@@ -344,7 +372,11 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 ### URLCaptureFindString
 
-**Pattern:** `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`
+**Pattern:**
+```regex
+(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?
+```
+
 **Method:** `FindString`
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
