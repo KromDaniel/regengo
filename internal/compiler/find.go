@@ -147,6 +147,19 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 		jen.Id("searchStart").Op(":=").Lit(0),
 	}
 
+	// Initialize stacks outside the loop (Optimization: Hoist allocations)
+	if c.needsBacktracking {
+		if c.config.UsePool {
+			code = append(code, c.generatePooledCaptureStackInit()...)
+			code = append(code, c.generatePooledStackInit()...)
+		} else {
+			code = append(code,
+				jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)),
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			)
+		}
+	}
+
 	// Build the loop body statements
 	loopBody := []jen.Code{
 		// Check if we've found enough matches
@@ -175,36 +188,12 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	)
 
-	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
+	// Reset stacks inside the loop
 	if c.needsBacktracking {
-		if c.config.UsePool {
-			loopBody = append(loopBody, c.generatePooledCaptureStackInit()...)
-		} else {
-			loopBody = append(loopBody, jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)))
-		}
-	}
-
-	// Only add stack initialization if backtracking is needed
-	if c.needsBacktracking {
-		// Add stack initialization
-		if c.config.UsePool {
-			poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
-			loopBody = append(loopBody,
-				jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
-				jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
-				jen.Defer().Func().Params().Block(
-					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
-						jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
-					),
-					jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
-					jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
-				).Call(),
-			)
-		} else {
-			loopBody = append(loopBody,
-				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
-			)
-		}
+		loopBody = append(loopBody,
+			jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+		)
 	}
 
 	// Continue with matching logic
