@@ -98,6 +98,8 @@ func (Date) FindString(input string) (*DateResult, bool) { /* ... */ }
 func (Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
 func (Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
 func (Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
+func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult { /* ... */ }
+func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*DateBytesResult { /* ... */ }
 ```
 
 ### Usage of Generated Code
@@ -206,9 +208,37 @@ if ok {
 | `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | Implemented (typed struct) |
 | `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | Implemented |
 | `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | Implemented |
+| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Regengo extension |
+| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Regengo extension |
 | `ReplaceAllString(s, repl string) string` | - | Not implemented |
 | `Split(s string, n int) []string` | - | Not implemented |
 | `FindStringIndex(s string) []int` | - | Not implemented |
+
+## Slice Reuse
+
+For high-performance scenarios, use the `Append` variants to reuse slices and reduce allocations:
+
+```go
+// Pre-allocate a slice with capacity
+results := make([]*EmailCaptureResult, 0, 100)
+
+for _, input := range inputs {
+    // Reuse the same backing array by resetting length to 0
+    results = CompiledEmail.FindAllStringAppend(input, -1, results[:0])
+
+    for _, match := range results {
+        // Process matches...
+        fmt.Println(match.User, match.Domain)
+    }
+}
+```
+
+The `Append` methods:
+- Reuse existing slice capacity when possible
+- Reset and reuse existing struct pointers within capacity
+- Only allocate new elements when capacity is exceeded
+
+This is particularly useful when processing many inputs in a loop, as it avoids repeated slice and struct allocations.
 
 ## CLI Options
 

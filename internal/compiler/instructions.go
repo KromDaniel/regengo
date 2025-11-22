@@ -174,7 +174,7 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 			label,
 			jen.Block(
 				// Save current capture state as checkpoint (flattened)
-				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Op("...")),
+				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()).Op("...")),
 				// Push to backtracking stack
 				jen.Id(codegen.StackName).Op("=").Append(
 					jen.Id(codegen.StackName),

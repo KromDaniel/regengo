@@ -93,7 +93,7 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.If(jen.Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
 				jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
 				jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
-				jen.Copy(jen.Id(codegen.CapturesName), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
+				jen.Copy(jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
 				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
 			),
 			jen.Goto().Id(codegen.StepSelectName),

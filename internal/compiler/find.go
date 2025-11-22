@@ -40,37 +40,66 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 
 // generateFindAllStringFunction generates the FindAllString method with captures.
 func (c *Compiler) generateFindAllStringFunction(structName string) error {
-	code, err := c.generateFindAllFunction(structName, false)
+	// Generate FindAllStringAppend first
+	code, err := c.generateFindAllAppendFunction(structName, false)
 	if err != nil {
 		return err
 	}
 
-	c.method("FindAllString").
-		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
+	c.method("FindAllStringAppend").
+		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int(), jen.Id("s").Index().Op("*").Id(structName)).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)
+
+	// Generate FindAllString that calls FindAllStringAppend
+	c.file.Func().
+		Params(jen.Id("r").Id(c.config.Name)).
+		Id("FindAllString").
+		Params(jen.Id(codegen.InputName).String(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(
+			jen.Return(jen.Id("r").Dot("FindAllStringAppend").Call(
+				jen.Id(codegen.InputName),
+				jen.Id("n"),
+				jen.Nil(),
+			)),
+		)
 
 	return nil
 }
 
 // generateFindAllBytesFunction generates the FindAllBytes method with captures.
 func (c *Compiler) generateFindAllBytesFunction(structName string) error {
-	code, err := c.generateFindAllFunction(structName, true)
+	// Generate FindAllBytesAppend first
+	code, err := c.generateFindAllAppendFunction(structName, true)
 	if err != nil {
 		return err
 	}
 
-	c.method("FindAllBytes").
-		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
+	c.method("FindAllBytesAppend").
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int(), jen.Id("s").Index().Op("*").Id(structName)).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(code...)
+
+	// Generate FindAllBytes that calls FindAllBytesAppend
+	c.file.Func().
+		Params(jen.Id("r").Id(c.config.Name)).
+		Id("FindAllBytes").
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("n").Int()).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(
+			jen.Return(jen.Id("r").Dot("FindAllBytesAppend").Call(
+				jen.Id(codegen.InputName),
+				jen.Id("n"),
+				jen.Nil(),
+			)),
+		)
 
 	return nil
 }
 
-// generateFindAllFunction generates the main FindAll logic with captures.
-// Parameter n specifies the maximum number of matches to return (-1 for all matches).
-func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]jen.Code, error) {
+// generateFindAllAppendFunction generates the FindAllAppend logic with slice reuse.
+func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool) ([]jen.Code, error) {
 	numCaptures := c.config.Program.NumCap
 
 	// Enable capture checkpoint optimization
@@ -80,10 +109,10 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 	code := []jen.Code{
 		// Handle n parameter
 		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-			jen.Return(jen.Nil()),
+			jen.Return(jen.Id("s")),
 		),
-		// Initialize result slice
-		jen.Var().Id("result").Index().Op("*").Id(structName),
+		// Use provided slice
+		jen.Id("result").Op(":=").Id("s"),
 		// Initialize length
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
 		// Initialize search start position
@@ -114,8 +143,8 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 		),
 		// Initialize offset
 		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
-		// Initialize captures array
-		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+		// Initialize captures array (stack-allocated)
+		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	)
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
@@ -188,8 +217,8 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 	// Add step selector
 	loopBody = append(loopBody, c.generateStepSelector()...)
 
-	// Generate instructions with captures - but modified to continue loop instead of returning
-	instructions, err := c.generateInstructionsForFindAll(structName, isBytes)
+	// Generate instructions with captures - with slice reuse
+	instructions, err := c.generateInstructionsForFindAllAppend(structName, isBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -204,8 +233,8 @@ func (c *Compiler) generateFindAllFunction(structName string, isBytes bool) ([]j
 	return code, nil
 }
 
-// generateInstructionsForFindAll generates instructions where Match adds to result and continues.
-func (c *Compiler) generateInstructionsForFindAll(structName string, isBytes bool) ([]jen.Code, error) {
+// generateInstructionsForFindAllAppend generates instructions with slice reuse for FindAllAppend.
+func (c *Compiler) generateInstructionsForFindAllAppend(structName string, isBytes bool) ([]jen.Code, error) {
 	var code []jen.Code
 
 	for i, inst := range c.config.Program.Inst {
@@ -213,10 +242,10 @@ func (c *Compiler) generateInstructionsForFindAll(structName string, isBytes boo
 		var err error
 
 		if inst.Op == syntax.InstMatch {
-			// Special handling for Match instruction in FindAll
-			instCode, err = c.generateMatchInstForFindAll(uint32(i), structName, isBytes)
+			// Special handling for Match instruction with slice reuse
+			instCode, err = c.generateMatchInstForFindAllAppend(uint32(i), structName, isBytes)
 		} else if inst.Op == syntax.InstFail {
-			// Special handling for Fail instruction in FindAll - goto fallback instead of return
+			// Special handling for Fail instruction - goto fallback instead of return
 			label := jen.Id(codegen.InstructionName(uint32(i))).Op(":")
 			instCode = []jen.Code{
 				label,
@@ -236,21 +265,26 @@ func (c *Compiler) generateInstructionsForFindAll(structName string, isBytes boo
 	return code, nil
 }
 
-// generateMatchInstForFindAll generates Match instruction that adds to result and continues loop.
-func (c *Compiler) generateMatchInstForFindAll(id uint32, structName string, isBytes bool) ([]jen.Code, error) {
+// generateMatchInstForFindAllAppend generates Match instruction with slice reuse.
+func (c *Compiler) generateMatchInstForFindAllAppend(id uint32, structName string, isBytes bool) ([]jen.Code, error) {
 	label := jen.Id(codegen.InstructionName(id)).Op(":")
 
-	// Build struct fields from captures array
-	structFields := jen.Dict{}
+	// Build field assignments for reusing existing element
+	var fieldAssignments []jen.Code
 
+	// Match field
 	if isBytes {
-		structFields[jen.Id("Match")] = jen.Id(codegen.InputName).Index(
-			jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		fieldAssignments = append(fieldAssignments,
+			jen.Id("item").Dot("Match").Op("=").Id(codegen.InputName).Index(
+				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+			),
 		)
 	} else {
-		structFields[jen.Id("Match")] = jen.String().Call(
-			jen.Id(codegen.InputName).Index(
-				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		fieldAssignments = append(fieldAssignments,
+			jen.Id("item").Dot("Match").Op("=").String().Call(
+				jen.Id(codegen.InputName).Index(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(1)),
+				),
 			),
 		)
 	}
@@ -268,52 +302,76 @@ func (c *Compiler) generateMatchInstForFindAll(id uint32, structName string, isB
 		captureEnd := i*2 + 1
 
 		if isBytes {
-			structFields[jen.Id(fieldName)] = jen.Func().Params().Index().Byte().Block(
+			fieldAssignments = append(fieldAssignments,
 				jen.If(
 					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
 						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
 				).Block(
-					jen.Return(jen.Id(codegen.InputName).Index(
+					jen.Id("item").Dot(fieldName).Op("=").Id(codegen.InputName).Index(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
+					),
+				).Else().Block(
+					jen.Id("item").Dot(fieldName).Op("=").Nil(),
+				),
+			)
+		} else {
+			fieldAssignments = append(fieldAssignments,
+				jen.If(
+					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
+						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
+				).Block(
+					jen.Id("item").Dot(fieldName).Op("=").String().Call(jen.Id(codegen.InputName).Index(
 						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
 					)),
+				).Else().Block(
+					jen.Id("item").Dot(fieldName).Op("=").Lit(""),
 				),
-				jen.Return(jen.Nil()),
-			).Call()
-		} else {
-			structFields[jen.Id(fieldName)] = jen.Func().Params().String().Block(
-				jen.If(
-					jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op("<=").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).
-						Op("&&").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)).Op("<=").Len(jen.Id(codegen.InputName)),
-				).Block(
-					jen.Return(jen.String().Call(jen.Id(codegen.InputName).Index(
-						jen.Id(codegen.CapturesName).Index(jen.Lit(captureStart)).Op(":").Id(codegen.CapturesName).Index(jen.Lit(captureEnd)),
-					))),
-				),
-				jen.Return(jen.Lit("")),
-			).Call()
+			)
 		}
 	}
 
+	// Build the block with slice reuse logic
+	blockCode := []jen.Code{
+		// Set captures[1] to mark end of match
+		jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
+		// Declare item variable
+		jen.Var().Id("item").Op("*").Id(structName),
+		// Check if we can reuse from capacity
+		jen.If(jen.Len(jen.Id("result")).Op("<").Cap(jen.Id("result"))).Block(
+			// Extend slice and get existing pointer
+			jen.Id("result").Op("=").Id("result").Index(jen.Empty(), jen.Len(jen.Id("result")).Op("+").Lit(1)),
+			jen.Id("item").Op("=").Id("result").Index(jen.Len(jen.Id("result")).Op("-").Lit(1)),
+			// If nil, allocate new
+			jen.If(jen.Id("item").Op("==").Nil()).Block(
+				jen.Id("item").Op("=").Op("&").Id(structName).Values(),
+				jen.Id("result").Index(jen.Len(jen.Id("result")).Op("-").Lit(1)).Op("=").Id("item"),
+			),
+		).Else().Block(
+			// Allocate new and append
+			jen.Id("item").Op("=").Op("&").Id(structName).Values(),
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("item")),
+		),
+	}
+
+	// Add field assignments
+	blockCode = append(blockCode, fieldAssignments...)
+
+	// Add search position update and continue
+	blockCode = append(blockCode,
+		// Move search position past this match
+		jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op(">").Id("searchStart")).Block(
+			jen.Id("searchStart").Op("=").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		).Else().Block(
+			// Prevent infinite loop on zero-width matches
+			jen.Id("searchStart").Op("++"),
+		),
+		// Continue searching
+		jen.Continue(),
+	)
+
 	return []jen.Code{
 		label,
-		jen.Block(
-			// Set captures[1] to mark end of match
-			jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
-			// Add match to results
-			jen.Id("result").Op("=").Append(
-				jen.Id("result"),
-				jen.Op("&").Id(structName).Values(structFields),
-			),
-			// Move search position past this match
-			jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op(">").Id("searchStart")).Block(
-				jen.Id("searchStart").Op("=").Id(codegen.CapturesName).Index(jen.Lit(1)),
-			).Else().Block(
-				// Prevent infinite loop on zero-width matches
-				jen.Id("searchStart").Op("++"),
-			),
-			// Continue searching
-			jen.Continue(),
-		),
+		jen.Block(blockCode...),
 	}, nil
 }
 
@@ -330,8 +388,8 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
 		// Initialize offset
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
-		// Initialize captures array
-		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+		// Initialize captures array (stack-allocated)
+		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	}
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)

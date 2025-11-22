@@ -453,7 +453,7 @@ type DateCaptureBytesResult struct {
 func (DateCapture) FindString(input string) (*DateCaptureResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -703,11 +703,11 @@ Ins17:
 		}, true
 	}
 }
-func (DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
+func (DateCapture) FindAllStringAppend(input string, n int, s []*DateCaptureResult) []*DateCaptureResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*DateCaptureResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -718,7 +718,7 @@ func (DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
@@ -937,27 +937,34 @@ func (DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 	Ins17:
 		{
 			captures[1] = offset
-			result = append(result, &DateCaptureResult{
-				Day: func() string {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return string(input[captures[6]:captures[7]])
-					}
-					return ""
-				}(),
-				Match: string(input[captures[0]:captures[1]]),
-				Month: func() string {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return string(input[captures[4]:captures[5]])
-					}
-					return ""
-				}(),
-				Year: func() string {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return string(input[captures[2]:captures[3]])
-					}
-					return ""
-				}(),
-			})
+			var item *DateCaptureResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &DateCaptureResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &DateCaptureResult{}
+				result = append(result, item)
+			}
+			item.Match = string(input[captures[0]:captures[1]])
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.Year = string(input[captures[2]:captures[3]])
+			} else {
+				item.Year = ""
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Month = string(input[captures[4]:captures[5]])
+			} else {
+				item.Month = ""
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Day = string(input[captures[6]:captures[7]])
+			} else {
+				item.Day = ""
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -968,10 +975,13 @@ func (DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 	}
 	return result
 }
+func (r DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
+	return r.FindAllStringAppend(input, n, nil)
+}
 func (DateCapture) FindBytes(input []byte) (*DateCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -1221,11 +1231,11 @@ Ins17:
 		}, true
 	}
 }
-func (DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
+func (DateCapture) FindAllBytesAppend(input []byte, n int, s []*DateCaptureBytesResult) []*DateCaptureBytesResult {
 	if n == 0 {
-		return nil
+		return s
 	}
-	var result []*DateCaptureBytesResult
+	result := s
 	l := len(input)
 	searchStart := 0
 	for true {
@@ -1236,7 +1246,7 @@ func (DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
@@ -1455,27 +1465,34 @@ func (DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
 	Ins17:
 		{
 			captures[1] = offset
-			result = append(result, &DateCaptureBytesResult{
-				Day: func() []byte {
-					if captures[6] <= captures[7] && captures[7] <= len(input) {
-						return input[captures[6]:captures[7]]
-					}
-					return nil
-				}(),
-				Match: input[captures[0]:captures[1]],
-				Month: func() []byte {
-					if captures[4] <= captures[5] && captures[5] <= len(input) {
-						return input[captures[4]:captures[5]]
-					}
-					return nil
-				}(),
-				Year: func() []byte {
-					if captures[2] <= captures[3] && captures[3] <= len(input) {
-						return input[captures[2]:captures[3]]
-					}
-					return nil
-				}(),
-			})
+			var item *DateCaptureBytesResult
+			if len(result) < cap(result) {
+				result = result[:len(result)+1]
+				item = result[len(result)-1]
+				if item == nil {
+					item = &DateCaptureBytesResult{}
+					result[len(result)-1] = item
+				}
+			} else {
+				item = &DateCaptureBytesResult{}
+				result = append(result, item)
+			}
+			item.Match = input[captures[0]:captures[1]]
+			if captures[2] <= captures[3] && captures[3] <= len(input) {
+				item.Year = input[captures[2]:captures[3]]
+			} else {
+				item.Year = nil
+			}
+			if captures[4] <= captures[5] && captures[5] <= len(input) {
+				item.Month = input[captures[4]:captures[5]]
+			} else {
+				item.Month = nil
+			}
+			if captures[6] <= captures[7] && captures[7] <= len(input) {
+				item.Day = input[captures[6]:captures[7]]
+			} else {
+				item.Day = nil
+			}
 			if captures[1] > searchStart {
 				searchStart = captures[1]
 			} else {
@@ -1485,4 +1502,7 @@ func (DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
 		}
 	}
 	return result
+}
+func (r DateCapture) FindAllBytes(input []byte, n int) []*DateCaptureBytesResult {
+	return r.FindAllBytesAppend(input, n, nil)
 }
