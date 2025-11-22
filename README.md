@@ -10,6 +10,18 @@
 
 Regengo is a **compile-time finite state machine generator** for regular expressions. It converts regex patterns into optimized Go code, leveraging the Go compiler's optimizations to eliminate runtime interpretation overhead.
 
+## Table of Contents
+
+- [Performance](#performance)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Generated Output](#generated-output)
+- [Capture Groups](#capture-groups)
+- [API Comparison](#api-comparison)
+- [CLI Options](#cli-options)
+- [Detailed Benchmarks](#detailed-benchmarks)
+- [License](#license)
+
 ## Performance
 
 Regengo outperforms Go's standard `regexp` package across all benchmarks:
