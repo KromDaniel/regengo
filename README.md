@@ -23,6 +23,8 @@ Regengo outperforms Go's standard `regexp` package across all benchmarks:
 
 Memory usage is also reduced: **50% fewer allocations** and **50% less bytes per operation** for capture groups.
 
+See [Detailed Benchmarks](#detailed-benchmarks) for complete results.
+
 ## Installation
 
 ```bash
