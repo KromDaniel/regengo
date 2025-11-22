@@ -731,7 +731,7 @@ type URLCaptureBytesResult struct {
 func (URLCapture) FindString(input string) (*URLCaptureResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 10)
+	var captures [10]int
 	captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
 	captureStack := (*captureStackPtr)[:0]
 	defer func() {
@@ -759,7 +759,7 @@ TryFallback:
 		if len(captureStack) > 0 {
 			n := len(captures)
 			top := len(captureStack) - n
-			copy(captures, captureStack[top:])
+			copy(captures[:], captureStack[top:])
 			captureStack = captureStack[:top]
 		}
 		goto StepSelect
@@ -914,7 +914,7 @@ Ins6:
 	}
 Ins7:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
@@ -984,7 +984,7 @@ Ins13:
 	}
 Ins14:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
@@ -1028,7 +1028,7 @@ Ins18:
 	}
 Ins19:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
@@ -1040,7 +1040,7 @@ Ins20:
 	}
 Ins21:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
@@ -1078,7 +1078,7 @@ Ins24:
 	}
 Ins25:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
@@ -1090,7 +1090,7 @@ Ins26:
 	}
 Ins27:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
@@ -1141,7 +1141,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 10)
+		var captures [10]int
 		captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
 		captureStack := (*captureStackPtr)[:0]
 		defer func() {
@@ -1309,7 +1309,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins7:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
@@ -1379,7 +1379,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins14:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
@@ -1423,7 +1423,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins19:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
@@ -1435,7 +1435,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins21:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
@@ -1473,7 +1473,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins25:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
@@ -1485,7 +1485,7 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 	Ins27:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}
@@ -1541,7 +1541,7 @@ func (r URLCapture) FindAllString(input string, n int) []*URLCaptureResult {
 func (URLCapture) FindBytes(input []byte) (*URLCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 10)
+	var captures [10]int
 	captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
 	captureStack := (*captureStackPtr)[:0]
 	defer func() {
@@ -1569,7 +1569,7 @@ TryFallback:
 		if len(captureStack) > 0 {
 			n := len(captures)
 			top := len(captureStack) - n
-			copy(captures, captureStack[top:])
+			copy(captures[:], captureStack[top:])
 			captureStack = captureStack[:top]
 		}
 		goto StepSelect
@@ -1724,7 +1724,7 @@ Ins6:
 	}
 Ins7:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 8})
 		goto Ins6
 	}
@@ -1794,7 +1794,7 @@ Ins13:
 	}
 Ins14:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 15})
 		goto Ins13
 	}
@@ -1838,7 +1838,7 @@ Ins18:
 	}
 Ins19:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 20})
 		goto Ins18
 	}
@@ -1850,7 +1850,7 @@ Ins20:
 	}
 Ins21:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 27})
 		goto Ins16
 	}
@@ -1888,7 +1888,7 @@ Ins24:
 	}
 Ins25:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 26})
 		goto Ins24
 	}
@@ -1900,7 +1900,7 @@ Ins26:
 	}
 Ins27:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 28})
 		goto Ins22
 	}
@@ -1951,7 +1951,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 10)
+		var captures [10]int
 		captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
 		captureStack := (*captureStackPtr)[:0]
 		defer func() {
@@ -2119,7 +2119,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins7:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 8})
 			goto Ins6
 		}
@@ -2189,7 +2189,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins14:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 15})
 			goto Ins13
 		}
@@ -2233,7 +2233,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins19:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 20})
 			goto Ins18
 		}
@@ -2245,7 +2245,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins21:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 27})
 			goto Ins16
 		}
@@ -2283,7 +2283,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins25:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 26})
 			goto Ins24
 		}
@@ -2295,7 +2295,7 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 	Ins27:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 28})
 			goto Ins22
 		}

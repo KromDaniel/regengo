@@ -143,8 +143,8 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 		),
 		// Initialize offset
 		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
-		// Initialize captures array
-		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+		// Initialize captures array (stack-allocated)
+		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	)
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
@@ -388,8 +388,8 @@ func (c *Compiler) generateFindFunction(structName string, isBytes bool) ([]jen.
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
 		// Initialize offset
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
-		// Initialize captures array
-		jen.Id(codegen.CapturesName).Op(":=").Make(jen.Index().Int(), jen.Lit(numCaptures)),
+		// Initialize captures array (stack-allocated)
+		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	}
 
 	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)

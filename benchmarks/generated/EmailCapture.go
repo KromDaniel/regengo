@@ -391,7 +391,7 @@ type EmailCaptureBytesResult struct {
 func (EmailCapture) FindString(input string) (*EmailCaptureResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captureStackPtr := emailCaptureCaptureStackPool.Get().(*[]int)
 	captureStack := (*captureStackPtr)[:0]
 	defer func() {
@@ -419,7 +419,7 @@ TryFallback:
 		if len(captureStack) > 0 {
 			n := len(captures)
 			top := len(captureStack) - n
-			copy(captures, captureStack[top:])
+			copy(captures[:], captureStack[top:])
 			captureStack = captureStack[:top]
 		}
 		goto StepSelect
@@ -496,7 +496,7 @@ Ins2:
 	}
 Ins3:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
@@ -540,7 +540,7 @@ Ins7:
 	}
 Ins8:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
@@ -584,7 +584,7 @@ Ins12:
 	}
 Ins13:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
@@ -635,7 +635,7 @@ func (EmailCapture) FindAllStringAppend(input string, n int, s []*EmailCaptureRe
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captureStackPtr := emailCaptureCaptureStackPool.Get().(*[]int)
 		captureStack := (*captureStackPtr)[:0]
 		defer func() {
@@ -725,7 +725,7 @@ func (EmailCapture) FindAllStringAppend(input string, n int, s []*EmailCaptureRe
 		}
 	Ins3:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
@@ -769,7 +769,7 @@ func (EmailCapture) FindAllStringAppend(input string, n int, s []*EmailCaptureRe
 		}
 	Ins8:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
@@ -813,7 +813,7 @@ func (EmailCapture) FindAllStringAppend(input string, n int, s []*EmailCaptureRe
 		}
 	Ins13:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}
@@ -870,7 +870,7 @@ func (r EmailCapture) FindAllString(input string, n int) []*EmailCaptureResult {
 func (EmailCapture) FindBytes(input []byte) (*EmailCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captureStackPtr := emailCaptureCaptureStackPool.Get().(*[]int)
 	captureStack := (*captureStackPtr)[:0]
 	defer func() {
@@ -898,7 +898,7 @@ TryFallback:
 		if len(captureStack) > 0 {
 			n := len(captures)
 			top := len(captureStack) - n
-			copy(captures, captureStack[top:])
+			copy(captures[:], captureStack[top:])
 			captureStack = captureStack[:top]
 		}
 		goto StepSelect
@@ -975,7 +975,7 @@ Ins2:
 	}
 Ins3:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 4})
 		goto Ins2
 	}
@@ -1019,7 +1019,7 @@ Ins7:
 	}
 Ins8:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 9})
 		goto Ins7
 	}
@@ -1063,7 +1063,7 @@ Ins12:
 	}
 Ins13:
 	{
-		captureStack = append(captureStack, captures...)
+		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [2]int{offset, 14})
 		goto Ins12
 	}
@@ -1114,7 +1114,7 @@ func (EmailCapture) FindAllBytesAppend(input []byte, n int, s []*EmailCaptureByt
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captureStackPtr := emailCaptureCaptureStackPool.Get().(*[]int)
 		captureStack := (*captureStackPtr)[:0]
 		defer func() {
@@ -1204,7 +1204,7 @@ func (EmailCapture) FindAllBytesAppend(input []byte, n int, s []*EmailCaptureByt
 		}
 	Ins3:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 4})
 			goto Ins2
 		}
@@ -1248,7 +1248,7 @@ func (EmailCapture) FindAllBytesAppend(input []byte, n int, s []*EmailCaptureByt
 		}
 	Ins8:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 9})
 			goto Ins7
 		}
@@ -1292,7 +1292,7 @@ func (EmailCapture) FindAllBytesAppend(input []byte, n int, s []*EmailCaptureByt
 		}
 	Ins13:
 		{
-			captureStack = append(captureStack, captures...)
+			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [2]int{offset, 14})
 			goto Ins12
 		}

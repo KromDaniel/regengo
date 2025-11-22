@@ -453,7 +453,7 @@ type DateCaptureBytesResult struct {
 func (DateCapture) FindString(input string) (*DateCaptureResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -718,7 +718,7 @@ func (DateCapture) FindAllStringAppend(input string, n int, s []*DateCaptureResu
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
@@ -981,7 +981,7 @@ func (r DateCapture) FindAllString(input string, n int) []*DateCaptureResult {
 func (DateCapture) FindBytes(input []byte) (*DateCaptureBytesResult, bool) {
 	l := len(input)
 	offset := 0
-	captures := make([]int, 8)
+	var captures [8]int
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -1246,7 +1246,7 @@ func (DateCapture) FindAllBytesAppend(input []byte, n int, s []*DateCaptureBytes
 			break
 		}
 		offset := searchStart
-		captures := make([]int, 8)
+		var captures [8]int
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
