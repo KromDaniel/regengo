@@ -1,4 +1,4 @@
-.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build mass-workflow
+.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build mass-workflow setup-hooks
 
 # Variables
 BINARY_NAME=regengo
@@ -100,6 +100,13 @@ update-deps:
 ## ci: Run CI pipeline (fmt, lint, test)
 ci: fmt lint test
 	@echo "CI pipeline completed successfully!"
+
+## setup-hooks: Install git hooks
+setup-hooks:
+	@echo "Installing git hooks..."
+	@chmod +x .githooks/pre-push
+	@git config core.hooksPath .githooks
+	@echo "Git hooks installed successfully!"
 
 ## version: Display Go version
 version:

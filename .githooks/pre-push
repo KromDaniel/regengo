@@ -1,0 +1,33 @@
+#!/bin/sh
+
+echo "Running pre-push checks..."
+
+# Format check
+echo "Checking formatting..."
+if [ -n "$(gofmt -s -l .)" ]; then
+    echo "ERROR: Code is not formatted. Run 'go fmt ./...' or 'gofmt -s -w .'"
+    gofmt -s -l .
+    exit 1
+fi
+
+# Vet
+echo "Running go vet..."
+if ! go vet ./...; then
+    echo "ERROR: go vet failed"
+    exit 1
+fi
+
+# Lint
+echo "Running golangci-lint..."
+if command -v golangci-lint > /dev/null; then
+    if ! golangci-lint run ./...; then
+        echo "ERROR: golangci-lint failed"
+        exit 1
+    fi
+else
+    echo "WARNING: golangci-lint not installed, skipping lint check"
+    echo "Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+fi
+
+echo "Pre-push checks passed!"
+exit 0
