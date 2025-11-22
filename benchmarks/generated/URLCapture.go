@@ -1134,6 +1134,21 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 	result := s
 	l := len(input)
 	searchStart := 0
+	captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
+	captureStack := (*captureStackPtr)[:0]
+	defer func() {
+		*captureStackPtr = captureStack[:0]
+		uRLCaptureCaptureStackPool.Put(captureStackPtr)
+	}()
+	stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
+	stack := (*stackPtr)[:0]
+	defer func() {
+		for i := range stack {
+			stack[i] = [2]int{0, 0}
+		}
+		*stackPtr = stack[:0]
+		uRLCaptureStackPool.Put(stackPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -1143,21 +1158,8 @@ func (URLCapture) FindAllStringAppend(input string, n int, s []*URLCaptureResult
 		}
 		offset := searchStart
 		var captures [10]int
-		captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
-		captureStack := (*captureStackPtr)[:0]
-		defer func() {
-			*captureStackPtr = captureStack[:0]
-			uRLCaptureCaptureStackPool.Put(captureStackPtr)
-		}()
-		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
-		stack := (*stackPtr)[:0]
-		defer func() {
-			for i := range stack {
-				stack[i] = [2]int{0, 0}
-			}
-			*stackPtr = stack[:0]
-			uRLCaptureStackPool.Put(stackPtr)
-		}()
+		captureStack = captureStack[:0]
+		stack = stack[:0]
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
@@ -1945,6 +1947,21 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 	result := s
 	l := len(input)
 	searchStart := 0
+	captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
+	captureStack := (*captureStackPtr)[:0]
+	defer func() {
+		*captureStackPtr = captureStack[:0]
+		uRLCaptureCaptureStackPool.Put(captureStackPtr)
+	}()
+	stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
+	stack := (*stackPtr)[:0]
+	defer func() {
+		for i := range stack {
+			stack[i] = [2]int{0, 0}
+		}
+		*stackPtr = stack[:0]
+		uRLCaptureStackPool.Put(stackPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -1954,21 +1971,8 @@ func (URLCapture) FindAllBytesAppend(input []byte, n int, s []*URLCaptureBytesRe
 		}
 		offset := searchStart
 		var captures [10]int
-		captureStackPtr := uRLCaptureCaptureStackPool.Get().(*[]int)
-		captureStack := (*captureStackPtr)[:0]
-		defer func() {
-			*captureStackPtr = captureStack[:0]
-			uRLCaptureCaptureStackPool.Put(captureStackPtr)
-		}()
-		stackPtr := uRLCaptureStackPool.Get().(*[][2]int)
-		stack := (*stackPtr)[:0]
-		defer func() {
-			for i := range stack {
-				stack[i] = [2]int{0, 0}
-			}
-			*stackPtr = stack[:0]
-			uRLCaptureStackPool.Put(stackPtr)
-		}()
+		captureStack = captureStack[:0]
+		stack = stack[:0]
 		captures[0] = searchStart
 		nextInstruction := 1
 		goto StepSelect
