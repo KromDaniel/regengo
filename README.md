@@ -98,6 +98,8 @@ func (Date) FindString(input string) (*DateResult, bool) { /* ... */ }
 func (Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
 func (Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
 func (Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
+func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult { /* ... */ }
+func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*DateBytesResult { /* ... */ }
 ```
 
 ### Usage of Generated Code
