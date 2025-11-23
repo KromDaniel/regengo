@@ -238,6 +238,9 @@ This is particularly useful when processing many inputs in a loop, as it avoids 
 
 ## API Comparison
 
+### API Stability
+❕ Regengo is still beta, API might change on minor versions ❕
+
 | stdlib `regexp` | regengo | Status |
 |-----------------|---------|--------|
 | `MatchString(s string) bool` | `MatchString(s string) bool` | Implemented |
