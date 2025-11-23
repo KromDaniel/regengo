@@ -63,12 +63,7 @@ fmt:
 ## lint: Run linter
 lint:
 	@echo "Running linter..."
-	@if command -v golangci-lint > /dev/null; then \
-		golangci-lint run ./...; \
-	else \
-		echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
-		go vet ./...; \
-	fi
+	@PATH="$$PATH:$$(go env GOPATH)/bin" golangci-lint run ./...
 
 ## clean: Clean build artifacts and generated files
 clean:
@@ -101,12 +96,14 @@ update-deps:
 ci: fmt lint test
 	@echo "CI pipeline completed successfully!"
 
-## setup-hooks: Install git hooks
+## setup-hooks: Install git hooks and dependencies
 setup-hooks:
+	@echo "Installing dependencies..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@echo "Installing git hooks..."
-	@chmod +x .githooks/pre-push
+	@chmod +x .githooks/pre-commit
 	@git config core.hooksPath .githooks
-	@echo "Git hooks installed successfully!"
+	@echo "Setup completed successfully!"
 
 ## version: Display Go version
 version:
