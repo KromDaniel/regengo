@@ -241,18 +241,20 @@ This is particularly useful when processing many inputs in a loop, as it avoids 
 ### API Stability
 ❕ Regengo is still beta, API might change on minor versions ❕
 
-| stdlib `regexp` | regengo | Status |
-|-----------------|---------|--------|
-| `MatchString(s string) bool` | `MatchString(s string) bool` | Implemented |
-| `Match(b []byte) bool` | `MatchBytes(b []byte) bool` | Implemented |
-| `FindString(s string) string` | - | Not implemented |
-| `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | Implemented (typed struct) |
-| `Find(b []byte) []byte` | - | Not implemented |
-| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | Implemented (typed struct) |
-| `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | Implemented |
-| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | Implemented |
-| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Regengo extension |
-| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Regengo extension |
+| stdlib `regexp` | regengo | Notes |
+|-----------------|---------|-------|
+| `MatchString(s string) bool` | `MatchString(s string) bool` | ✅ Identical |
+| `Match(b []byte) bool` | `MatchBytes(b []byte) bool` | ✅ Identical |
+| `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | ✅ Returns typed struct instead of []string |
+| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | ✅ Returns typed struct instead of [][]byte |
+| `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | ✅ Returns []*Result instead of [][]string |
+| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | ✅ Returns []*BytesResult instead of [][][]byte |
+| - | `FindStringReuse(s string, r *Result) (*Result, bool)` | Zero-alloc reuse variant |
+| - | `FindBytesReuse(b []byte, r *BytesResult) (*BytesResult, bool)` | Zero-alloc reuse variant |
+| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Append to existing slice |
+| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Append to existing slice |
+| `FindString(s string) string` | - | Use FindString().Match |
+| `Find(b []byte) []byte` | - | Use FindBytes().Match |
 | `ReplaceAllString(s, repl string) string` | - | Not implemented |
 | `Split(s string, n int) []string` | - | Not implemented |
 | `FindStringIndex(s string) []int` | - | Not implemented |
