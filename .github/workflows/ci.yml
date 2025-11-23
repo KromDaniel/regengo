@@ -42,7 +42,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          args: --timeout=5m
+          args: --timeout=5m --go=1.24
 
       - name: Build CLI
         run: go build -v -o bin/regengo ./cmd/regengo
