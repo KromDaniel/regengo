@@ -16,6 +16,8 @@
 coverage.*
 *.coverprofile
 profile.cov
+*_coverage.txt
+e2e_*.txt
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
