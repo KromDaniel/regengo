@@ -1568,5 +1568,93 @@
       "/api/v1/logs/audits/events/alerts?size=24\u0026tag=30",
       "/api/v1/logs/audits/events/alerts/1133?size=24\u0026tag=30\u0026extra=99"
     ]
+  },
+  {
+    "pattern": "hello.*world",
+    "inputs": [
+      "hello world",
+      "hello beautiful world",
+      "hello123world",
+      "world hello",
+      "hello",
+      "helloworld!"
+    ]
+  },
+  {
+    "pattern": "test\\d+end",
+    "inputs": [
+      "test123end",
+      "test999end",
+      "test1end",
+      "testend",
+      "test123end!",
+      "start test123end"
+    ]
+  },
+  {
+    "pattern": "a.*b.*c",
+    "inputs": [
+      "abc",
+      "a123b456c",
+      "aXbYc",
+      "abcd",
+      "ab",
+      "a bc extra"
+    ]
+  },
+  {
+    "pattern": "foo|bar",
+    "inputs": [
+      "foo",
+      "bar",
+      "foobar",
+      "baz",
+      "food",
+      "bart"
+    ]
+  },
+  {
+    "pattern": "x+y",
+    "inputs": [
+      "xy",
+      "xxy",
+      "xxxy",
+      "y",
+      "x",
+      "prefix xxy suffix"
+    ]
+  },
+  {
+    "pattern": "(cat|dog)fish",
+    "inputs": [
+      "catfish",
+      "dogfish",
+      "fish",
+      "catfisherman",
+      "cat fish",
+      "dogfishery"
+    ]
+  },
+  {
+    "pattern": "start.*middle.*end",
+    "inputs": [
+      "start middle end",
+      "start123middle456end",
+      "startmiddleend",
+      "start middle",
+      "middle end",
+      "start middle end extra"
+    ]
+  },
+  {
+    "pattern": "\\d{3}-\\d{3}-\\d{4}",
+    "inputs": [
+      "123-456-7890",
+      "555-123-9876",
+      "000-000-0000",
+      "12-345-6789",
+      "123-456-789",
+      "phone: 123-456-7890 end"
+    ]
   }
 ]
