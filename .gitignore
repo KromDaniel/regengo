@@ -52,6 +52,9 @@ examples/*.go
 
 benchmarks/mass_generated
 
+# E2E test generated files
+e2e/generated/
+
 # Built binaries
 bin/
 regengo

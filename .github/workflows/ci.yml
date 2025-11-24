@@ -59,6 +59,8 @@ jobs:
         uses: codecov/codecov-action@v4
         if: matrix.go-version == '1.24'
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false

@@ -91,6 +91,7 @@ func (c *Compiler) generateTestFile() error {
 						),
 						jen.Continue(),
 					),
+					// Check full match
 					jen.If(jen.Id("result").Dot("Match").Op("!=").Id("expectedMatches").Index(jen.Lit(0))).Block(
 						jen.Id("t").Dot("Errorf").Call(
 							jen.Lit("FindString(%q).Match = %q, want %q"),
@@ -99,6 +100,26 @@ func (c *Compiler) generateTestFile() error {
 							jen.Id("expectedMatches").Index(jen.Lit(0)),
 						),
 					),
+					// Check each capture group
+					jen.BlockFunc(func(g *jen.Group) {
+						for i := 1; i < len(c.captureNames); i++ {
+							captureName := c.captureNames[i]
+							if captureName == "" {
+								captureName = fmt.Sprintf("Group%d", i)
+							} else {
+								captureName = codegen.UpperFirst(captureName)
+							}
+							// Compare capture group with stdlib result
+							g.If(jen.Id("result").Dot(captureName).Op("!=").Id("expectedMatches").Index(jen.Lit(i))).Block(
+								jen.Id("t").Dot("Errorf").Call(
+									jen.Lit(fmt.Sprintf("FindString(%%q).%s = %%q, want %%q", captureName)),
+									jen.Id("input"),
+									jen.Id("result").Dot(captureName),
+									jen.Id("expectedMatches").Index(jen.Lit(i)),
+								),
+							)
+						}
+					}),
 				).Else().Block(
 					jen.If(jen.Id("ok")).Block(
 						jen.Id("t").Dot("Errorf").Call(
@@ -106,6 +127,60 @@ func (c *Compiler) generateTestFile() error {
 							jen.Id("input"),
 						),
 					),
+				),
+			),
+		)
+		testFile.Line()
+
+		// TestFindAllString
+		testFile.Func().Id(fmt.Sprintf("Test%sFindAllString", c.config.Name)).Params(
+			jen.Id("t").Op("*").Qual("testing", "T"),
+		).Block(
+			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+				jen.Id("expectedAll").Op(":=").Id(regexpVarName).Dot("FindAllStringSubmatch").Call(jen.Id("input"), jen.Lit(-1)),
+				jen.Id("results").Op(":=").Id(c.config.Name).Values().Dot("FindAllString").Call(jen.Id("input"), jen.Lit(-1)),
+				jen.Line(),
+				// Check length matches
+				jen.If(jen.Len(jen.Id("results")).Op("!=").Len(jen.Id("expectedAll"))).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("FindAllString(%q, -1) returned %d results, want %d"),
+						jen.Id("input"),
+						jen.Len(jen.Id("results")),
+						jen.Len(jen.Id("expectedAll")),
+					),
+					jen.Continue(),
+				),
+				// Check each match
+				jen.For(jen.Id("i").Op(":=").Range().Id("results")).Block(
+					jen.If(jen.Id("results").Index(jen.Id("i")).Dot("Match").Op("!=").Id("expectedAll").Index(jen.Id("i")).Index(jen.Lit(0))).Block(
+						jen.Id("t").Dot("Errorf").Call(
+							jen.Lit("FindAllString(%q, -1)[%d].Match = %q, want %q"),
+							jen.Id("input"),
+							jen.Id("i"),
+							jen.Id("results").Index(jen.Id("i")).Dot("Match"),
+							jen.Id("expectedAll").Index(jen.Id("i")).Index(jen.Lit(0)),
+						),
+					),
+					// Check each capture group for this match
+					jen.BlockFunc(func(g *jen.Group) {
+						for j := 1; j < len(c.captureNames); j++ {
+							captureName := c.captureNames[j]
+							if captureName == "" {
+								captureName = fmt.Sprintf("Group%d", j)
+							} else {
+								captureName = codegen.UpperFirst(captureName)
+							}
+							g.If(jen.Id("results").Index(jen.Id("i")).Dot(captureName).Op("!=").Id("expectedAll").Index(jen.Id("i")).Index(jen.Lit(j))).Block(
+								jen.Id("t").Dot("Errorf").Call(
+									jen.Lit(fmt.Sprintf("FindAllString(%%q, -1)[%%d].%s = %%q, want %%q", captureName)),
+									jen.Id("input"),
+									jen.Id("i"),
+									jen.Id("results").Index(jen.Id("i")).Dot(captureName),
+									jen.Id("expectedAll").Index(jen.Id("i")).Index(jen.Lit(j)),
+								),
+							)
+						}
+					}),
 				),
 			),
 		)
