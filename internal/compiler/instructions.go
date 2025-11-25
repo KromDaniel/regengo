@@ -170,20 +170,34 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 	// This indicates patterns like +, *, {n,} quantifiers
 	isGreedyLoop := inst.Out < id
 
+	// Prepare memoization code
+	var memoCheck []jen.Code
+	if c.useMemoization {
+		memoCheck = []jen.Code{
+			jen.Id("key").Op(":=").Parens(jen.Lit(uint64(id)).Op("<<").Lit(32)).Op("|").Call(jen.Uint64().Call(jen.Id(codegen.OffsetName))),
+			jen.If(jen.List(jen.Id("_"), jen.Id("seen")).Op(":=").Id("visited").Index(jen.Id("key")), jen.Id("seen")).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+			jen.Id("visited").Index(jen.Id("key")).Op("=").Struct().Values(),
+		}
+	}
+
 	// Optimization #1: When generating Find* functions with captures, save capture checkpoint
 	if c.generatingCaptures {
+		block := append([]jen.Code{}, memoCheck...)
+		block = append(block,
+			// Save current capture state as checkpoint (flattened)
+			jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()).Op("...")),
+			// Push to backtracking stack
+			jen.Id(codegen.StackName).Op("=").Append(
+				jen.Id(codegen.StackName),
+				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+			),
+			jen.Goto().Id(codegen.InstructionName(inst.Out)),
+		)
 		return []jen.Code{
 			label,
-			jen.Block(
-				// Save current capture state as checkpoint (flattened)
-				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()).Op("...")),
-				// Push to backtracking stack
-				jen.Id(codegen.StackName).Op("=").Append(
-					jen.Id(codegen.StackName),
-					jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
-				),
-				jen.Goto().Id(codegen.InstructionName(inst.Out)),
-			),
+			jen.Block(block...),
 		}, nil
 	}
 
@@ -191,31 +205,35 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 	// Only optimize simple greedy loops where the target is a character-matching instruction
 	// Avoid optimizing nested alternations (like in complex patterns) to prevent regressions
 	if isGreedyLoop && c.isSimpleGreedyLoop(inst) {
+		block := append([]jen.Code{}, memoCheck...)
+		block = append(block,
+			// For greedy loops, push to stack with the loop start (for backtracking)
+			// Then try the continuation instruction first
+			jen.Id(codegen.StackName).Op("=").Append(
+				jen.Id(codegen.StackName),
+				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out))),
+			),
+			// Try continuation first (greedy behavior: we've matched, now try what comes next)
+			jen.Goto().Id(codegen.InstructionName(inst.Arg)),
+		)
 		return []jen.Code{
 			label,
-			jen.Block(
-				// For greedy loops, push to stack with the loop start (for backtracking)
-				// Then try the continuation instruction first
-				jen.Id(codegen.StackName).Op("=").Append(
-					jen.Id(codegen.StackName),
-					jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out))),
-				),
-				// Try continuation first (greedy behavior: we've matched, now try what comes next)
-				jen.Goto().Id(codegen.InstructionName(inst.Arg)),
-			),
+			jen.Block(block...),
 		}, nil
 	}
 
 	// Standard alternation: Just use append - Go's runtime handles capacity efficiently
+	block := append([]jen.Code{}, memoCheck...)
+	block = append(block,
+		jen.Id(codegen.StackName).Op("=").Append(
+			jen.Id(codegen.StackName),
+			jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+		),
+		jen.Goto().Id(codegen.InstructionName(inst.Out)),
+	)
 	return []jen.Code{
 		label,
-		jen.Block(
-			jen.Id(codegen.StackName).Op("=").Append(
-				jen.Id(codegen.StackName),
-				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
-			),
-			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
+		jen.Block(block...),
 	}, nil
 }
 
