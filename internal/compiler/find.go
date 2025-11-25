@@ -134,6 +134,9 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	c.generatingCaptures = true
 	defer func() { c.generatingCaptures = false }()
 
+	// Set generatingBytes flag for instruction generation
+	c.generatingBytes = isBytes
+
 	code := []jen.Code{
 		// Handle n parameter
 		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
@@ -399,6 +402,9 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 	// Enable capture checkpoint optimization
 	c.generatingCaptures = true
 	defer func() { c.generatingCaptures = false }()
+
+	// Set generatingBytes flag for instruction generation
+	c.generatingBytes = isBytes
 
 	code := []jen.Code{
 		// Initialize length

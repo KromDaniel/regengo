@@ -34,6 +34,7 @@ type Compiler struct {
 	needsBacktracking    bool     // True if the program contains alternation instructions
 	generatingCaptures   bool     // True when generating Find* functions (needs capture checkpoints)
 	isAnchored           bool     // True if the pattern is anchored to the start of text
+	generatingBytes      bool     // True when generating Bytes functions (affects type generation)
 }
 
 // New creates a new compiler instance.
@@ -186,6 +187,9 @@ func (c *Compiler) findRequiredPrefix() (byte, bool) {
 
 // generateMatchFunction generates the main matching logic.
 func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
+	// Set the generatingBytes flag for instruction generation
+	c.generatingBytes = isBytes
+
 	prefix, hasPrefix := c.findRequiredPrefix()
 
 	code := []jen.Code{

@@ -147,12 +147,14 @@ func (c *Compiler) generateRuneAnyInst(label *jen.Statement, inst *syntax.Inst) 
 
 // generateRuneAnyNotNLInst generates code for InstRuneAnyNotNL (match any character except newline).
 func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	// Both string[i] and []byte[i] return byte in Go, so always use byte('\n')
+	newlineCheck := jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("==").Lit(byte('\n'))
+
 	return []jen.Code{
 		label,
 		jen.Block(
 			jen.If(
-				jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName).Op("||").
-					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("==").Lit('\n'),
+				jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName).Op("||").Add(newlineCheck),
 			).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
@@ -278,12 +280,13 @@ func (c *Compiler) generateEmptyWidthInst(label *jen.Statement, inst *syntax.Ins
 	// Check for beginning of line
 	if emptyOp&syntax.EmptyBeginLine != 0 {
 		// offset must be 0 OR previous character must be newline
+		// Both string[i] and []byte[i] return byte in Go
+		prevNewlineCheck := jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1)).Op("!=").Lit(byte('\n'))
 		checks = append(checks,
 			jen.If(
 				jen.Id(codegen.OffsetName).Op("!=").Lit(0).Op("&&").
 					Parens(
-						jen.Id(codegen.OffsetName).Op("==").Lit(0).Op("||").
-							Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1)).Op("!=").LitRune('\n'),
+						jen.Id(codegen.OffsetName).Op("==").Lit(0).Op("||").Add(prevNewlineCheck),
 					),
 			).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
@@ -294,10 +297,11 @@ func (c *Compiler) generateEmptyWidthInst(label *jen.Statement, inst *syntax.Ins
 	// Check for end of line
 	if emptyOp&syntax.EmptyEndLine != 0 {
 		// offset must equal length OR current character must be newline
+		// Both string[i] and []byte[i] return byte in Go
+		currNewlineCheck := jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(byte('\n'))
 		checks = append(checks,
 			jen.If(
-				jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName).Op("&&").
-					Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").LitRune('\n'),
+				jen.Id(codegen.OffsetName).Op("!=").Id(codegen.InputLenName).Op("&&").Add(currNewlineCheck),
 			).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
