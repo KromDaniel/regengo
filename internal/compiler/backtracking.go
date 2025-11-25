@@ -30,6 +30,15 @@ func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes boo
 					jen.Id("idx").Op(":=").Add(indexCall),
 					jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
 					jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
+					// Clear visited map if memoization is used
+					func() jen.Code {
+						if c.useMemoization {
+							return jen.For(jen.Id("k").Op(":=").Range().Id("visited")).Block(
+								jen.Delete(jen.Id("visited"), jen.Id("k")),
+							)
+						}
+						return jen.Null()
+					}(),
 					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
 					jen.Goto().Id(codegen.StepSelectName),
 				),
@@ -39,6 +48,15 @@ func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes boo
 				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
 					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
 					jen.Id(codegen.OffsetName).Op("++"),
+					// Clear visited map if memoization is used
+					func() jen.Code {
+						if c.useMemoization {
+							return jen.For(jen.Id("k").Op(":=").Range().Id("visited")).Block(
+								jen.Delete(jen.Id("visited"), jen.Id("k")),
+							)
+						}
+						return jen.Null()
+					}(),
 					jen.Goto().Id(codegen.StepSelectName),
 				),
 			)
@@ -73,6 +91,15 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 				),
 				// Clear capture checkpoint stack
 				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+				// Clear visited map if memoization is used
+				func() jen.Code {
+					if c.useMemoization {
+						return jen.For(jen.Id("k").Op(":=").Range().Id("visited")).Block(
+							jen.Delete(jen.Id("visited"), jen.Id("k")),
+						)
+					}
+					return jen.Null()
+				}(),
 				// Set capture[0] to mark start of match attempt (after incrementing offset)
 				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
 				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),

@@ -35,6 +35,7 @@ type Compiler struct {
 	generatingCaptures   bool     // True when generating Find* functions (needs capture checkpoints)
 	isAnchored           bool     // True if the pattern is anchored to the start of text
 	generatingBytes      bool     // True when generating Bytes functions (affects type generation)
+	useMemoization       bool     // True if complexity analysis suggests using memoization
 }
 
 // New creates a new compiler instance.
@@ -54,6 +55,7 @@ func New(config Config) *Compiler {
 	if config.Program != nil {
 		compiler.needsBacktracking = needsBacktracking(config.Program)
 		compiler.isAnchored = isAnchored(config.Program)
+		compiler.useMemoization = detectComplexity(config.Program)
 	}
 
 	return compiler
@@ -228,6 +230,13 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
 			)
 		}
+	}
+
+	// Initialize memoization map if needed (Optimization: Avoid exponential backtracking)
+	if c.useMemoization {
+		code = append(code,
+			jen.Id("visited").Op(":=").Make(jen.Map(jen.Uint64()).Struct()),
+		)
 	}
 
 	code = append(code,

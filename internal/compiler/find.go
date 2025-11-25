@@ -163,6 +163,13 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 		}
 	}
 
+	// Initialize memoization map if needed (Optimization: Avoid exponential backtracking)
+	if c.useMemoization {
+		code = append(code,
+			jen.Id("visited").Op(":=").Make(jen.Map(jen.Uint64()).Struct()),
+		)
+	}
+
 	// Build the loop body statements
 	loopBody := []jen.Code{
 		// Check if we've found enough matches
@@ -437,6 +444,13 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 		}
 	}
 
+	// Initialize memoization map if needed (Optimization: Avoid exponential backtracking)
+	if c.useMemoization {
+		code = append(code,
+			jen.Id("visited").Op(":=").Make(jen.Map(jen.Uint64()).Struct()),
+		)
+	}
+
 	code = append(code,
 		// Set captures[0] to mark start of first match attempt
 		jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Lit(0),
@@ -456,18 +470,32 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 
 		// If not anchored, we must retry at next offset
 		if !c.isAnchored {
-			fallback = append(fallback,
-				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-					jen.Id(codegen.OffsetName).Op("++"),
-					// Reset captures array for new match attempt
-					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
-						jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
-					),
-					// Set capture[0] to mark start of match attempt
-					jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
-					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-					jen.Goto().Id(codegen.StepSelectName),
+			retryBlock := []jen.Code{
+				jen.Id(codegen.OffsetName).Op("++"),
+				// Reset captures array for new match attempt
+				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
+					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
 				),
+			}
+
+			// Clear visited map if memoization is used
+			if c.useMemoization {
+				retryBlock = append(retryBlock,
+					jen.For(jen.Id("k").Op(":=").Range().Id("visited")).Block(
+						jen.Delete(jen.Id("visited"), jen.Id("k")),
+					),
+				)
+			}
+
+			retryBlock = append(retryBlock,
+				// Set capture[0] to mark start of match attempt
+				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
+				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
+				jen.Goto().Id(codegen.StepSelectName),
+			)
+
+			fallback = append(fallback,
+				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(retryBlock...),
 			)
 		}
 

@@ -78,3 +78,118 @@ func isAnchored(prog *syntax.Prog) bool {
 	startInst := prog.Inst[prog.Start]
 	return startInst.Op == syntax.InstEmptyWidth && syntax.EmptyOp(startInst.Arg)&syntax.EmptyBeginText != 0
 }
+
+// detectComplexity analyzes the program for patterns that could cause catastrophic backtracking.
+// It returns true if the program contains nested loops or ambiguous alternations that warrant
+// using memoization to guarantee O(N) complexity.
+func detectComplexity(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	// Step 1: Identify all Alt instructions
+	var alts []int
+	for i, inst := range prog.Inst {
+		if inst.Op == syntax.InstAlt {
+			alts = append(alts, i)
+		}
+	}
+
+	if len(alts) < 2 {
+		return false
+	}
+
+	// Step 2: Find "Simple Loops" (cycles containing exactly one Alt)
+	simpleLoops := make(map[int]bool)
+	for _, altIdx := range alts {
+		if isSimpleLoop(prog, altIdx) {
+			simpleLoops[altIdx] = true
+		}
+	}
+
+	// Step 3: Check for nested loops
+	// A simple loop is "nested" if it is mutually reachable with another Alt (which implies another loop)
+	for loopHead := range simpleLoops {
+		for _, otherAlt := range alts {
+			if loopHead == otherAlt {
+				continue
+			}
+
+			// Check if loopHead and otherAlt are mutually reachable
+			if reaches(prog, loopHead, otherAlt) && reaches(prog, otherAlt, loopHead) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// isSimpleLoop checks if the given Alt instruction forms a cycle that involves no other Alt instructions.
+func isSimpleLoop(prog *syntax.Prog, startIdx int) bool {
+	// BFS to find cycle back to startIdx
+	// Start from successors
+	inst := prog.Inst[startIdx]
+	queue := []int{int(inst.Out), int(inst.Arg)}
+	visited := make(map[int]bool)
+	visited[startIdx] = true
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		if curr == startIdx {
+			return true // Found cycle back to start
+		}
+
+		if visited[curr] {
+			continue
+		}
+		visited[curr] = true
+
+		currInst := prog.Inst[curr]
+		if currInst.Op == syntax.InstAlt {
+			// Found another Alt in the path - not a simple loop
+			return false
+		}
+
+		// Follow transitions
+		if currInst.Op != syntax.InstMatch && currInst.Op != syntax.InstFail {
+			queue = append(queue, int(currInst.Out))
+		}
+	}
+
+	return false
+}
+
+// reaches checks if startIdx can reach targetIdx in the instruction graph.
+func reaches(prog *syntax.Prog, start, target int) bool {
+	queue := []int{start}
+	visited := make(map[int]bool)
+	visited[start] = true
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		if curr == target {
+			return true
+		}
+
+		inst := prog.Inst[curr]
+		var next []int
+		if inst.Op == syntax.InstAlt {
+			next = []int{int(inst.Out), int(inst.Arg)}
+		} else if inst.Op != syntax.InstMatch && inst.Op != syntax.InstFail {
+			next = []int{int(inst.Out)}
+		}
+
+		for _, n := range next {
+			if !visited[n] {
+				visited[n] = true
+				queue = append(queue, n)
+			}
+		}
+	}
+	return false
+}
