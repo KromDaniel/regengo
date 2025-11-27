@@ -13,18 +13,70 @@ Regengo is a **compile-time finite state machine generator** for regular express
 
 ## Table of Contents
 
+- [Installation](#installation)
+- [Usage](#usage)
 - [Performance](#performance)
 - [Smart Analysis](#smart-analysis)
 - [Complexity Guarantees](#complexity-guarantees)
-- [Installation](#installation)
-- [Usage](#usage)
 - [Advanced Options](#advanced-options)
 - [Generated Output](#generated-output)
+- [Generated Tests & Benchmarks](#generated-tests--benchmarks)
 - [Capture Groups](#capture-groups)
 - [API Comparison](#api-comparison)
 - [CLI Reference](#cli-reference)
 - [Detailed Benchmarks](#detailed-benchmarks)
 - [License](#license)
+
+## Installation
+
+```bash
+go install github.com/KromDaniel/regengo/cmd/regengo@latest
+```
+
+## Usage
+
+### CLI
+
+```bash
+regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
+        -name Date \
+        -output date.go \
+        -package main
+```
+
+### Library
+
+```go
+package main
+
+import "github.com/KromDaniel/regengo/pkg/regengo"
+
+func main() {
+    err := regengo.Compile(regengo.Options{
+        Pattern:    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+        Name:       "Date",
+        OutputFile: "date.go",
+        Package:    "main",
+    })
+    if err != nil {
+        panic(err)
+    }
+}
+```
+
+### Options
+
+```go
+type Options struct {
+    Pattern          string   // Regex pattern to compile (required)
+    Name             string   // Name for generated struct (required)
+    OutputFile       string   // Output file path (required)
+    Package          string   // Package name (required)
+    NoPool           bool     // Disable sync.Pool optimization
+    GenerateTestFile bool     // Generate test file with benchmarks
+    TestFileInputs   []string // Test inputs for generated tests
+}
+```
 
 ## Performance
 
@@ -130,57 +182,6 @@ Has catastrophic risk: true
 | First cold call | No JIT, but consistent performance | Warm up in init() if needed |
 
 > **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
-
-## Installation
-
-```bash
-go install github.com/KromDaniel/regengo/cmd/regengo@latest
-```
-
-## Usage
-
-### CLI
-
-```bash
-regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
-        -name Date \
-        -output date.go \
-        -package main
-```
-
-### Library
-
-```go
-package main
-
-import "github.com/KromDaniel/regengo/pkg/regengo"
-
-func main() {
-    err := regengo.Compile(regengo.Options{
-        Pattern:    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
-        Name:       "Date",
-        OutputFile: "date.go",
-        Package:    "main",
-    })
-    if err != nil {
-        panic(err)
-    }
-}
-```
-
-### Options
-
-```go
-type Options struct {
-    Pattern          string   // Regex pattern to compile (required)
-    Name             string   // Name for generated struct (required)
-    OutputFile       string   // Output file path (required)
-    Package          string   // Package name (required)
-    NoPool           bool     // Disable sync.Pool optimization
-    GenerateTestFile bool     // Generate test file with benchmarks
-    TestFileInputs   []string // Test inputs for generated tests
-}
-```
 
 ## Advanced Options
 
@@ -292,6 +293,40 @@ matches := CompiledDate.FindAllString("Dates: 2024-01-15 and 2024-12-25", -1)
 for _, m := range matches {
     fmt.Println(m.Match)
 }
+```
+
+## Generated Tests & Benchmarks
+
+Regengo automatically generates a `_test.go` file alongside your output file (unless disabled). This file contains:
+
+1. **Correctness Tests**: Verifies that Regengo's output matches `regexp` stdlib exactly for provided inputs.
+2. **Benchmarks**: Comparison benchmarks to measure speedup vs stdlib.
+
+### Customizing Tests
+
+You can provide specific test inputs to verify your pattern against real-world data:
+
+**CLI:**
+```bash
+# Generates date.go and date_test.go
+regengo -pattern '...' -name Date -output date.go -test-inputs "2024-01-01,2025-12-31"
+```
+
+**Library:**
+```go
+regengo.Options{
+    // ...
+    GenerateTestFile: true, // Required: Library defaults to false
+    TestFileInputs:   []string{"2024-01-01", "2025-12-31"},
+}
+```
+
+### Running Benchmarks
+
+Run the generated benchmarks using standard Go tooling:
+
+```bash
+go test -bench=. -benchmem
 ```
 
 ## Capture Groups
