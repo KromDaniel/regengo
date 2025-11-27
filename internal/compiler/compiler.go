@@ -345,6 +345,9 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
 	c.generateCaptureStructBytes(bytesStructName)
 
+	// Generate static tables (package scope)
+	tdfaGen.GenerateTables()
+
 	// Generate FindStringReuse function using TDFA (zero-alloc when r is provided)
 	findStringCode, err := tdfaGen.GenerateFindFunction(false)
 	if err != nil {
