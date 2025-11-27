@@ -47,6 +47,7 @@ bench-gen:
 	@rm -rf ./benchmarks/generated
 	@mkdir -p ./benchmarks/generated
 	@go run ./cmd/curated_generator
+	@gofmt -s -w ./benchmarks/generated
 
 ## coverage: Generate and open coverage report
 coverage: test
