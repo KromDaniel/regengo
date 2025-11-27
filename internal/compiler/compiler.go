@@ -587,10 +587,14 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 		}
 	}
 
-	// Initialize memoization map if needed (Optimization: Avoid exponential backtracking)
+	// Initialize memoization bit-vector if needed (Optimization: Avoid exponential backtracking)
+	// Uses bit-vector instead of map for O(1) check/set with zero allocations per operation
 	if c.useMemoization {
+		numInst := len(c.config.Program.Inst)
 		code = append(code,
-			jen.Id("visited").Op(":=").Make(jen.Map(jen.Uint64()).Struct()),
+			// visitedSize = numInst * (l + 1) bits, rounded up to uint32 words
+			jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
+			jen.Id(codegen.VisitedName).Op(":=").Make(jen.Index().Uint32(), jen.Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32)),
 		)
 	}
 

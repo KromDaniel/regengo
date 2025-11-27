@@ -262,79 +262,10 @@ func (URLCapture) findStringInternal(input string) (URLCaptureResult, bool) {
 	}}}, 6: {58: {{
 		Offset: 1,
 		Tag:    3,
-	}}}, 8: {79: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 46: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 71: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 76: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 78: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 110: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 119: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 121: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 81: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 95: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 105: {{
+	}}}, 8: {45: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 48: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 49: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 55: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 80: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 97: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 109: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 88: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 52: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 53: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 66: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 102: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 111: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 50: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 77: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 86: {{
@@ -343,118 +274,187 @@ func (URLCapture) findStringInternal(input string) (URLCaptureResult, bool) {
 	}}, 112: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 54: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 89: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 98: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 101: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 117: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 69: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 75: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 67: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 70: {{
+	}}, 57: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 82: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 73: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 84: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 90: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 103: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 108: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 115: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 116: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 45: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 65: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 83: {{
-		Offset: 1,
-		Tag:    4,
 	}}, 99: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 114: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 72: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 74: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 87: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 104: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 106: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 51: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 56: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 85: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 107: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 113: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 120: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 122: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 68: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 100: {{
 		Offset: 1,
 		Tag:    4,
+	}}, 102: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 117: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 65: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 76: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 115: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 52: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 87: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 89: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 114: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 116: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 121: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 122: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 71: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 81: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 85: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 90: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 97: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 50: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 106: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 111: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 120: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 46: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 55: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 84: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 103: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 49: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 53: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 105: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 107: {{
+		Offset: 1,
+		Tag:    4,
 	}}, 118: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 57: {{
+	}}, 110: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 74: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 68: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 104: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 109: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 113: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 56: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 70: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 78: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 83: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 108: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 119: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 72: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 79: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 95: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 80: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 66: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 51: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 54: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 67: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 69: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 98: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 73: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 101: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 75: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 77: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 88: {{
 		Offset: 1,
 		Tag:    4,
 	}}}, 9: {47: {{
@@ -466,19 +466,7 @@ func (URLCapture) findStringInternal(input string) (URLCaptureResult, bool) {
 	}}, 58: {{
 		Offset: 1,
 		Tag:    5,
-	}}}, 11: {53: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 56: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 51: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 54: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 55: {{
+	}}}, 11: {56: {{
 		Offset: 1,
 		Tag:    6,
 	}}, 57: {{
@@ -493,7 +481,19 @@ func (URLCapture) findStringInternal(input string) (URLCaptureResult, bool) {
 	}}, 50: {{
 		Offset: 1,
 		Tag:    6,
+	}}, 51: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 53: {{
+		Offset: 1,
+		Tag:    6,
 	}}, 52: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 54: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 55: {{
 		Offset: 1,
 		Tag:    6,
 	}}}, 12: {47: {{
@@ -511,15 +511,15 @@ func (URLCapture) findStringInternal(input string) (URLCaptureResult, bool) {
 	acceptActionsMap := map[int][]struct {
 		Tag    int
 		Offset int
-	}{9: {{
-		Offset: 0,
-		Tag:    5,
-	}}, 10: {{
+	}{10: {{
 		Offset: 0,
 		Tag:    9,
 	}}, 12: {{
 		Offset: 0,
 		Tag:    7,
+	}}, 9: {{
+		Offset: 0,
+		Tag:    5,
 	}}}
 	state := 0
 	matchEnd := -1
@@ -664,112 +664,82 @@ func (URLCapture) findBytesInternal(input []byte) (URLCaptureBytesResult, bool) 
 	}}}, 6: {58: {{
 		Offset: 1,
 		Tag:    3,
-	}}}, 8: {51: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 56: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 85: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 107: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 113: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 120: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 122: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 68: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 100: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 118: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 57: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 79: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 46: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 71: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 76: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 78: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 110: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 119: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 121: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 81: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 95: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 105: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 48: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 49: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 55: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 80: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 97: {{
+	}}}, 8: {104: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 109: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 88: {{
+	}}, 113: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 52: {{
+	}}, 56: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 53: {{
+	}}, 70: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 78: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 83: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 108: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 119: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 72: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 79: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 95: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 80: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 66: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 102: {{
+	}}, 51: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 111: {{
+	}}, 54: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 50: {{
+	}}, 67: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 69: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 98: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 73: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 101: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 75: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 77: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 88: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 45: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 48: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 86: {{
@@ -778,85 +748,115 @@ func (URLCapture) findBytesInternal(input []byte) (URLCaptureBytesResult, bool) 
 	}}, 112: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 54: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 89: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 98: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 101: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 117: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 69: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 75: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 67: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 70: {{
+	}}, 57: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 82: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 73: {{
+	}}, 99: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 84: {{
+	}}, 100: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 90: {{
+	}}, 102: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 103: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 108: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 115: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 116: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 45: {{
+	}}, 117: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 65: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 83: {{
+	}}, 76: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 99: {{
+	}}, 115: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 114: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 72: {{
-		Offset: 1,
-		Tag:    4,
-	}}, 74: {{
+	}}, 52: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 87: {{
 		Offset: 1,
 		Tag:    4,
-	}}, 104: {{
+	}}, 89: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 114: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 116: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 121: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 122: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 71: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 81: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 85: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 90: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 97: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 50: {{
 		Offset: 1,
 		Tag:    4,
 	}}, 106: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 111: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 120: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 46: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 55: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 84: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 103: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 49: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 53: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 105: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 107: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 118: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 110: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 74: {{
+		Offset: 1,
+		Tag:    4,
+	}}, 68: {{
 		Offset: 1,
 		Tag:    4,
 	}}}, 9: {47: {{
@@ -868,16 +868,22 @@ func (URLCapture) findBytesInternal(input []byte) (URLCaptureBytesResult, bool) 
 	}}, 58: {{
 		Offset: 1,
 		Tag:    5,
-	}}}, 11: {52: {{
+	}}}, 11: {48: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 49: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 50: {{
+		Offset: 1,
+		Tag:    6,
+	}}, 51: {{
 		Offset: 1,
 		Tag:    6,
 	}}, 53: {{
 		Offset: 1,
 		Tag:    6,
-	}}, 56: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 51: {{
+	}}, 52: {{
 		Offset: 1,
 		Tag:    6,
 	}}, 54: {{
@@ -886,16 +892,10 @@ func (URLCapture) findBytesInternal(input []byte) (URLCaptureBytesResult, bool) 
 	}}, 55: {{
 		Offset: 1,
 		Tag:    6,
+	}}, 56: {{
+		Offset: 1,
+		Tag:    6,
 	}}, 57: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 48: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 49: {{
-		Offset: 1,
-		Tag:    6,
-	}}, 50: {{
 		Offset: 1,
 		Tag:    6,
 	}}}, 12: {47: {{
@@ -913,15 +913,15 @@ func (URLCapture) findBytesInternal(input []byte) (URLCaptureBytesResult, bool) 
 	acceptActionsMap := map[int][]struct {
 		Tag    int
 		Offset int
-	}{12: {{
-		Offset: 0,
-		Tag:    7,
-	}}, 9: {{
+	}{9: {{
 		Offset: 0,
 		Tag:    5,
 	}}, 10: {{
 		Offset: 0,
 		Tag:    9,
+	}}, 12: {{
+		Offset: 0,
+		Tag:    7,
 	}}}
 	state := 0
 	matchEnd := -1

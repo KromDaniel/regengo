@@ -178,16 +178,26 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 	// This indicates patterns like +, *, {n,} quantifiers
 	isGreedyLoop := inst.Out < id
 
-	// Prepare memoization code
+	// Prepare memoization code using bit-vector
+	// idx = stateId * (l + 1) + offset; word = idx/32; bit = 1 << (idx%32)
 	var memoCheck []jen.Code
 	if c.useMemoization {
+		numInst := len(c.config.Program.Inst)
 		memoCheck = []jen.Code{
-			jen.Id("key").Op(":=").Parens(jen.Lit(uint64(id)).Op("<<").Lit(32)).Op("|").Call(jen.Uint64().Call(jen.Id(codegen.OffsetName))),
-			jen.If(jen.List(jen.Id("_"), jen.Id("seen")).Op(":=").Id("visited").Index(jen.Id("key")), jen.Id("seen")).Block(
+			// idx := stateId * (l + 1) + offset
+			jen.Id("idx").Op(":=").Lit(int(id)).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)).Op("+").Id(codegen.OffsetName),
+			// word, bit := idx/32, uint32(1)<<(idx%32)
+			jen.List(jen.Id("word"), jen.Id("bit")).Op(":=").
+				Id("idx").Op("/").Lit(32).Op(",").
+				Uint32().Call(jen.Lit(1)).Op("<<").Parens(jen.Id("idx").Op("%").Lit(32)),
+			// if visited[word] & bit != 0 { goto TryFallback }
+			jen.If(jen.Id(codegen.VisitedName).Index(jen.Id("word")).Op("&").Id("bit").Op("!=").Lit(0)).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
-			jen.Id("visited").Index(jen.Id("key")).Op("=").Struct().Values(),
+			// visited[word] |= bit
+			jen.Id(codegen.VisitedName).Index(jen.Id("word")).Op("|=").Id("bit"),
 		}
+		_ = numInst // numInst available for potential future optimizations
 	}
 
 	// Optimization #1: When generating Find* functions with captures

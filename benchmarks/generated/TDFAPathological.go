@@ -165,7 +165,8 @@ func (TDFAPathological) FindStringReuse(input string, r *TDFAPathologicalResult)
 		*stackPtr = stack[:0]
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 10 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -189,8 +190,8 @@ TryFallback:
 				captures[i] = 0
 			}
 			captureStack = captureStack[:0]
-			for k := range visited {
-				delete(visited, k)
+			for i := range visited {
+				visited[i] = 0
 			}
 			captures[0] = offset
 			nextInstruction = 1
@@ -252,11 +253,12 @@ Ins3:
 	}
 Ins4:
 	{
-		key := (uint64(0x4) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 4*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [3]int{offset, 5, 1})
 		goto Ins3
@@ -269,11 +271,12 @@ Ins5:
 	}
 Ins6:
 	{
-		key := (uint64(0x6) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 6*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [3]int{offset, 7, 1})
 		goto Ins2
@@ -342,7 +345,8 @@ func (TDFAPathological) FindAllStringAppend(input string, n int, s []*TDFAPathol
 		*stackPtr = stack[:0]
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 10 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -428,11 +432,12 @@ func (TDFAPathological) FindAllStringAppend(input string, n int, s []*TDFAPathol
 		}
 	Ins4:
 		{
-			key := (uint64(0x4) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 4*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [3]int{offset, 5, 1})
 			goto Ins3
@@ -445,11 +450,12 @@ func (TDFAPathological) FindAllStringAppend(input string, n int, s []*TDFAPathol
 		}
 	Ins6:
 		{
-			key := (uint64(0x6) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 6*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [3]int{offset, 7, 1})
 			goto Ins2
@@ -531,7 +537,8 @@ func (TDFAPathological) FindBytesReuse(input []byte, r *TDFAPathologicalBytesRes
 		*stackPtr = stack[:0]
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 10 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -555,8 +562,8 @@ TryFallback:
 				captures[i] = 0
 			}
 			captureStack = captureStack[:0]
-			for k := range visited {
-				delete(visited, k)
+			for i := range visited {
+				visited[i] = 0
 			}
 			captures[0] = offset
 			nextInstruction = 1
@@ -618,11 +625,12 @@ Ins3:
 	}
 Ins4:
 	{
-		key := (uint64(0x4) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 4*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [3]int{offset, 5, 1})
 		goto Ins3
@@ -635,11 +643,12 @@ Ins5:
 	}
 Ins6:
 	{
-		key := (uint64(0x6) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 6*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		captureStack = append(captureStack, captures[:]...)
 		stack = append(stack, [3]int{offset, 7, 1})
 		goto Ins2
@@ -708,7 +717,8 @@ func (TDFAPathological) FindAllBytesAppend(input []byte, n int, s []*TDFAPatholo
 		*stackPtr = stack[:0]
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 10 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -794,11 +804,12 @@ func (TDFAPathological) FindAllBytesAppend(input []byte, n int, s []*TDFAPatholo
 		}
 	Ins4:
 		{
-			key := (uint64(0x4) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 4*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [3]int{offset, 5, 1})
 			goto Ins3
@@ -811,11 +822,12 @@ func (TDFAPathological) FindAllBytesAppend(input []byte, n int, s []*TDFAPatholo
 		}
 	Ins6:
 		{
-			key := (uint64(0x6) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 6*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			captureStack = append(captureStack, captures[:]...)
 			stack = append(stack, [3]int{offset, 7, 1})
 			goto Ins2

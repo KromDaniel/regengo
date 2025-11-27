@@ -307,7 +307,8 @@ func (TDFAComplexURL) FindStringReuse(input string, r *TDFAComplexURLResult) (*T
 		*stackPtr = stack[:0]
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 49 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -329,8 +330,8 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
-			for k := range visited {
-				delete(visited, k)
+			for i := range visited {
+				visited[i] = 0
 			}
 			captures[0] = offset
 			nextInstruction = 1
@@ -517,11 +518,12 @@ Ins6:
 	}
 Ins7:
 	{
-		key := (uint64(0x7) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 7*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 8, 0})
 		goto Ins6
 	}
@@ -600,11 +602,12 @@ Ins14:
 	}
 Ins15:
 	{
-		key := (uint64(0xf) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 15*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 16, 0})
 		goto Ins14
 	}
@@ -650,11 +653,12 @@ Ins19:
 	}
 Ins20:
 	{
-		key := (uint64(0x14) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 20*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 21, 0})
 		goto Ins19
 	}
@@ -667,11 +671,12 @@ Ins21:
 	}
 Ins22:
 	{
-		key := (uint64(0x16) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 22*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 23, 0})
 		goto Ins17
 	}
@@ -697,11 +702,12 @@ Ins24:
 	}
 Ins25:
 	{
-		key := (uint64(0x19) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 25*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 26, 0})
 		goto Ins12
 	}
@@ -727,11 +733,12 @@ Ins27:
 	}
 Ins28:
 	{
-		key := (uint64(0x1c) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 28*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 29, 0})
 		goto Ins27
 	}
@@ -777,11 +784,12 @@ Ins32:
 	}
 Ins33:
 	{
-		key := (uint64(0x21) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 33*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 34, 0})
 		goto Ins32
 	}
@@ -794,11 +802,12 @@ Ins34:
 	}
 Ins35:
 	{
-		key := (uint64(0x23) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 35*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 41, 0})
 		goto Ins30
 	}
@@ -837,11 +846,12 @@ Ins38:
 	}
 Ins39:
 	{
-		key := (uint64(0x27) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 39*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 40, 0})
 		goto Ins38
 	}
@@ -854,11 +864,12 @@ Ins40:
 	}
 Ins41:
 	{
-		key := (uint64(0x29) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 41*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 47, 0})
 		goto Ins36
 	}
@@ -897,11 +908,12 @@ Ins44:
 	}
 Ins45:
 	{
-		key := (uint64(0x2d) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 45*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 46, 0})
 		goto Ins44
 	}
@@ -914,11 +926,12 @@ Ins46:
 	}
 Ins47:
 	{
-		key := (uint64(0x2f) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 47*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 48, 0})
 		goto Ins42
 	}
@@ -991,7 +1004,8 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		*stackPtr = stack[:0]
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 49 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -1198,11 +1212,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins7:
 		{
-			key := (uint64(0x7) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 7*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 8, 0})
 			goto Ins6
 		}
@@ -1281,11 +1296,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins15:
 		{
-			key := (uint64(0xf) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 15*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 16, 0})
 			goto Ins14
 		}
@@ -1331,11 +1347,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins20:
 		{
-			key := (uint64(0x14) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 20*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 21, 0})
 			goto Ins19
 		}
@@ -1348,11 +1365,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins22:
 		{
-			key := (uint64(0x16) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 22*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 23, 0})
 			goto Ins17
 		}
@@ -1378,11 +1396,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins25:
 		{
-			key := (uint64(0x19) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 25*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 26, 0})
 			goto Ins12
 		}
@@ -1408,11 +1427,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins28:
 		{
-			key := (uint64(0x1c) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 28*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 29, 0})
 			goto Ins27
 		}
@@ -1458,11 +1478,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins33:
 		{
-			key := (uint64(0x21) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 33*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 34, 0})
 			goto Ins32
 		}
@@ -1475,11 +1496,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins35:
 		{
-			key := (uint64(0x23) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 35*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 41, 0})
 			goto Ins30
 		}
@@ -1518,11 +1540,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins39:
 		{
-			key := (uint64(0x27) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 39*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 40, 0})
 			goto Ins38
 		}
@@ -1535,11 +1558,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins41:
 		{
-			key := (uint64(0x29) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 41*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 47, 0})
 			goto Ins36
 		}
@@ -1578,11 +1602,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins45:
 		{
-			key := (uint64(0x2d) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 45*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 46, 0})
 			goto Ins44
 		}
@@ -1595,11 +1620,12 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		}
 	Ins47:
 		{
-			key := (uint64(0x2f) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 47*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 48, 0})
 			goto Ins42
 		}
@@ -1685,7 +1711,8 @@ func (TDFAComplexURL) FindBytesReuse(input []byte, r *TDFAComplexURLBytesResult)
 		*stackPtr = stack[:0]
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 49 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -1707,8 +1734,8 @@ TryFallback:
 			for i := range captures {
 				captures[i] = 0
 			}
-			for k := range visited {
-				delete(visited, k)
+			for i := range visited {
+				visited[i] = 0
 			}
 			captures[0] = offset
 			nextInstruction = 1
@@ -1895,11 +1922,12 @@ Ins6:
 	}
 Ins7:
 	{
-		key := (uint64(0x7) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 7*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 8, 0})
 		goto Ins6
 	}
@@ -1978,11 +2006,12 @@ Ins14:
 	}
 Ins15:
 	{
-		key := (uint64(0xf) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 15*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 16, 0})
 		goto Ins14
 	}
@@ -2028,11 +2057,12 @@ Ins19:
 	}
 Ins20:
 	{
-		key := (uint64(0x14) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 20*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 21, 0})
 		goto Ins19
 	}
@@ -2045,11 +2075,12 @@ Ins21:
 	}
 Ins22:
 	{
-		key := (uint64(0x16) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 22*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 23, 0})
 		goto Ins17
 	}
@@ -2075,11 +2106,12 @@ Ins24:
 	}
 Ins25:
 	{
-		key := (uint64(0x19) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 25*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 26, 0})
 		goto Ins12
 	}
@@ -2105,11 +2137,12 @@ Ins27:
 	}
 Ins28:
 	{
-		key := (uint64(0x1c) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 28*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 29, 0})
 		goto Ins27
 	}
@@ -2155,11 +2188,12 @@ Ins32:
 	}
 Ins33:
 	{
-		key := (uint64(0x21) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 33*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 34, 0})
 		goto Ins32
 	}
@@ -2172,11 +2206,12 @@ Ins34:
 	}
 Ins35:
 	{
-		key := (uint64(0x23) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 35*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 41, 0})
 		goto Ins30
 	}
@@ -2215,11 +2250,12 @@ Ins38:
 	}
 Ins39:
 	{
-		key := (uint64(0x27) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 39*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 40, 0})
 		goto Ins38
 	}
@@ -2232,11 +2268,12 @@ Ins40:
 	}
 Ins41:
 	{
-		key := (uint64(0x29) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 41*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 47, 0})
 		goto Ins36
 	}
@@ -2275,11 +2312,12 @@ Ins44:
 	}
 Ins45:
 	{
-		key := (uint64(0x2d) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 45*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 46, 0})
 		goto Ins44
 	}
@@ -2292,11 +2330,12 @@ Ins46:
 	}
 Ins47:
 	{
-		key := (uint64(0x2f) << 32) | (uint64(offset))
-		if _, seen := visited[key]; seen {
+		idx := 47*(l+1) + offset
+		word, bit := idx/32, uint32(1)<<(idx%32)
+		if visited[word]&bit != 0 {
 			goto TryFallback
 		}
-		visited[key] = struct{}{}
+		visited[word] |= bit
 		stack = append(stack, [3]int{offset, 48, 0})
 		goto Ins42
 	}
@@ -2369,7 +2408,8 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		*stackPtr = stack[:0]
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
-	visited := make(map[uint64]struct{})
+	visitedSize := 49 * (l + 1)
+	visited := make([]uint32, (visitedSize+31)/32)
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -2576,11 +2616,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins7:
 		{
-			key := (uint64(0x7) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 7*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 8, 0})
 			goto Ins6
 		}
@@ -2659,11 +2700,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins15:
 		{
-			key := (uint64(0xf) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 15*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 16, 0})
 			goto Ins14
 		}
@@ -2709,11 +2751,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins20:
 		{
-			key := (uint64(0x14) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 20*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 21, 0})
 			goto Ins19
 		}
@@ -2726,11 +2769,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins22:
 		{
-			key := (uint64(0x16) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 22*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 23, 0})
 			goto Ins17
 		}
@@ -2756,11 +2800,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins25:
 		{
-			key := (uint64(0x19) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 25*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 26, 0})
 			goto Ins12
 		}
@@ -2786,11 +2831,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins28:
 		{
-			key := (uint64(0x1c) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 28*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 29, 0})
 			goto Ins27
 		}
@@ -2836,11 +2882,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins33:
 		{
-			key := (uint64(0x21) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 33*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 34, 0})
 			goto Ins32
 		}
@@ -2853,11 +2900,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins35:
 		{
-			key := (uint64(0x23) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 35*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 41, 0})
 			goto Ins30
 		}
@@ -2896,11 +2944,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins39:
 		{
-			key := (uint64(0x27) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 39*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 40, 0})
 			goto Ins38
 		}
@@ -2913,11 +2962,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins41:
 		{
-			key := (uint64(0x29) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 41*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 47, 0})
 			goto Ins36
 		}
@@ -2956,11 +3006,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins45:
 		{
-			key := (uint64(0x2d) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 45*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 46, 0})
 			goto Ins44
 		}
@@ -2973,11 +3024,12 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		}
 	Ins47:
 		{
-			key := (uint64(0x2f) << 32) | (uint64(offset))
-			if _, seen := visited[key]; seen {
+			idx := 47*(l+1) + offset
+			word, bit := idx/32, uint32(1)<<(idx%32)
+			if visited[word]&bit != 0 {
 				goto TryFallback
 			}
-			visited[key] = struct{}{}
+			visited[word] |= bit
 			stack = append(stack, [3]int{offset, 48, 0})
 			goto Ins42
 		}
