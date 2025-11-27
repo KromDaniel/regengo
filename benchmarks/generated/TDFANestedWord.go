@@ -30,7 +30,7 @@ func (TDFANestedWord) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x2000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
+	epsilonClosures := [14]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -94,7 +94,7 @@ func (TDFANestedWord) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x2000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
+	epsilonClosures := [14]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {

@@ -18,7 +18,7 @@ func (Lazy) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x400))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
+	epsilonClosures := [11]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -86,7 +86,7 @@ func (Lazy) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x400))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
+	epsilonClosures := [11]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
