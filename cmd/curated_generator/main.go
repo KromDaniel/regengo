@@ -145,6 +145,17 @@ var tdfaCases = []CaptureCase{
 	},
 }
 
+var tnfaCases = []CaptureCase{
+	{
+		Name:    "TNFAPathological",
+		Pattern: `(?P<outer>(?P<inner>a+)+)b`,
+		Input: []string{
+			"aaaaaaaaaaaaaaaaaaaab",           // 20 a's + b (matches)
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", // 30 a's + b (matches)
+		},
+	},
+}
+
 var testTemplate = `
 package generated
 
@@ -495,8 +506,33 @@ func main() {
 		}
 	}
 
+	// Generate TNFA benchmark cases (forced TNFA/memoization)
+	for _, tnfaCase := range tnfaCases {
+		if err := regengo.Compile(regengo.Options{
+			Pattern:    tnfaCase.Pattern,
+			Name:       tnfaCase.Name,
+			OutputFile: filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s.go", tnfaCase.Name)),
+			Package:    "generated",
+			ForceTNFA:  true,
+		}); err != nil {
+			panic(err)
+		}
+
+		testFile, err := os.Create(filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s_test.go", tnfaCase.Name)))
+		if err != nil {
+			panic(err)
+		}
+		if err := captureTemplate.Execute(testFile, tnfaCase); err != nil {
+			panic(err)
+		}
+		if err := testFile.Close(); err != nil {
+			panic(err)
+		}
+	}
+
 	fmt.Printf("✓ Generated %d regular matchers\n", len(testCases))
 	fmt.Printf("✓ Generated %d capture group matchers\n", len(captureCases))
 	fmt.Printf("✓ Generated %d FindAll matchers\n", len(findAllCases))
 	fmt.Printf("✓ Generated %d TDFA benchmark matchers\n", len(tdfaCases))
+	fmt.Printf("✓ Generated %d TNFA benchmark matchers\n", len(tnfaCases))
 }
