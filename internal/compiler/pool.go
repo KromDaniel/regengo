@@ -121,3 +121,49 @@ func (c *Compiler) generatePooledCaptureStackInit() []jen.Code {
 		).Call(),
 	}
 }
+
+// generateVisitedPool generates a sync.Pool for visited bit-vectors (for memoization).
+func (c *Compiler) generateVisitedPool() {
+	poolName := fmt.Sprintf("%sVisitedPool", codegen.LowerFirst(c.config.Name))
+
+	c.file.Var().Id(poolName).Op("=").Qual("sync", "Pool").Values(jen.Dict{
+		jen.Id("New"): jen.Func().Params().Interface().Block(
+			// Return *[]uint32
+			jen.Return(jen.New(jen.Index().Uint32())),
+		),
+	})
+	c.file.Line()
+}
+
+// generatePooledVisitedInit generates code to get a visited bit-vector from the pool.
+func (c *Compiler) generatePooledVisitedInit() []jen.Code {
+	poolName := fmt.Sprintf("%sVisitedPool", codegen.LowerFirst(c.config.Name))
+	numInst := len(c.config.Program.Inst)
+
+	return []jen.Code{
+		// Calculate required size: numInst * (l + 1) bits
+		jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
+		jen.Id("visitedWords").Op(":=").Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32),
+
+		// Get from pool
+		jen.Id("visitedPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Uint32()),
+		jen.Id(codegen.VisitedName).Op(":=").Op("*").Id("visitedPtr"),
+
+		// Resize if necessary
+		jen.If(jen.Cap(jen.Id(codegen.VisitedName)).Op("<").Id("visitedWords")).Block(
+			jen.Id(codegen.VisitedName).Op("=").Make(jen.Index().Uint32(), jen.Id("visitedWords")),
+		).Else().Block(
+			jen.Id(codegen.VisitedName).Op("=").Id(codegen.VisitedName).Index(jen.Empty(), jen.Id("visitedWords")),
+			// Zero out the slice
+			jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
+				jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
+			),
+		),
+
+		// Defer return to pool
+		jen.Defer().Func().Params().Block(
+			jen.Op("*").Id("visitedPtr").Op("=").Id(codegen.VisitedName),
+			jen.Id(poolName).Dot("Put").Call(jen.Id("visitedPtr")),
+		).Call(),
+	}
+}

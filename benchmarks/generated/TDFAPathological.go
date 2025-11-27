@@ -15,6 +15,10 @@ var tDFAPathologicalCaptureStackPool = sync.Pool{New: func() interface{} {
 	return &stack
 }}
 
+var tDFAPathologicalVisitedPool = sync.Pool{New: func() interface{} {
+	return new([]uint32)
+}}
+
 type TDFAPathological struct{}
 
 var CompiledTDFAPathological = TDFAPathological{}
@@ -166,7 +170,21 @@ func (TDFAPathological) FindStringReuse(input string, r *TDFAPathologicalResult)
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
 	visitedSize := 10 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAPathologicalVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAPathologicalVisitedPool.Put(visitedPtr)
+	}()
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -346,7 +364,21 @@ func (TDFAPathological) FindAllStringAppend(input string, n int, s []*TDFAPathol
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
 	visitedSize := 10 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAPathologicalVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAPathologicalVisitedPool.Put(visitedPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -538,7 +570,21 @@ func (TDFAPathological) FindBytesReuse(input []byte, r *TDFAPathologicalBytesRes
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
 	visitedSize := 10 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAPathologicalVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAPathologicalVisitedPool.Put(visitedPtr)
+	}()
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -718,7 +764,21 @@ func (TDFAPathological) FindAllBytesAppend(input []byte, n int, s []*TDFAPatholo
 		tDFAPathologicalStackPool.Put(stackPtr)
 	}()
 	visitedSize := 10 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAPathologicalVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAPathologicalVisitedPool.Put(visitedPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break

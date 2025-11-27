@@ -112,6 +112,7 @@ func (c *Compiler) analyzeAndLog() {
 	if c.complexity.HasCatastrophicRisk && !c.useThompsonForMatch {
 		c.useMemoization = true
 	}
+	fmt.Printf("DEBUG: Analyze %s: Catastrophic=%v, Thompson=%v, Memoization=%v\n", c.config.Name, c.complexity.HasCatastrophicRisk, c.useThompsonForMatch, c.useMemoization)
 
 	// Determine capture engine selection
 	// Priority: TDFA > TNFA/memoization > simple backtracking
@@ -207,6 +208,12 @@ func (c *Compiler) Generate() error {
 		if c.config.WithCaptures && !c.useTDFAForCaptures {
 			c.generateCaptureStackPool()
 		}
+	}
+
+	// Generate visited pool if memoization is used and pool is enabled
+	// Note: TNFA for captures also uses memoization
+	if c.config.UsePool && (c.useMemoization || c.useTNFAForCaptures) {
+		c.generateVisitedPool()
 	}
 
 	// Generate the main struct type
@@ -599,12 +606,16 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 	// Initialize memoization bit-vector if needed (Optimization: Avoid exponential backtracking)
 	// Uses bit-vector instead of map for O(1) check/set with zero allocations per operation
 	if c.useMemoization {
-		numInst := len(c.config.Program.Inst)
-		code = append(code,
-			// visitedSize = numInst * (l + 1) bits, rounded up to uint32 words
-			jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
-			jen.Id(codegen.VisitedName).Op(":=").Make(jen.Index().Uint32(), jen.Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32)),
-		)
+		if c.config.UsePool {
+			code = append(code, c.generatePooledVisitedInit()...)
+		} else {
+			numInst := len(c.config.Program.Inst)
+			code = append(code,
+				// visitedSize = numInst * (l + 1) bits, rounded up to uint32 words
+				jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
+				jen.Id(codegen.VisitedName).Op(":=").Make(jen.Index().Uint32(), jen.Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32)),
+			)
+		}
 	}
 
 	code = append(code,

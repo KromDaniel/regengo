@@ -15,6 +15,10 @@ var tDFAComplexURLCaptureStackPool = sync.Pool{New: func() interface{} {
 	return &stack
 }}
 
+var tDFAComplexURLVisitedPool = sync.Pool{New: func() interface{} {
+	return new([]uint32)
+}}
+
 type TDFAComplexURL struct{}
 
 var CompiledTDFAComplexURL = TDFAComplexURL{}
@@ -308,7 +312,21 @@ func (TDFAComplexURL) FindStringReuse(input string, r *TDFAComplexURLResult) (*T
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
 	visitedSize := 49 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAComplexURLVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAComplexURLVisitedPool.Put(visitedPtr)
+	}()
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -1005,7 +1023,21 @@ func (TDFAComplexURL) FindAllStringAppend(input string, n int, s []*TDFAComplexU
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
 	visitedSize := 49 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAComplexURLVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAComplexURLVisitedPool.Put(visitedPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
@@ -1712,7 +1744,21 @@ func (TDFAComplexURL) FindBytesReuse(input []byte, r *TDFAComplexURLBytesResult)
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
 	visitedSize := 49 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAComplexURLVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAComplexURLVisitedPool.Put(visitedPtr)
+	}()
 	captures[0] = 0
 	nextInstruction := 1
 	goto StepSelect
@@ -2409,7 +2455,21 @@ func (TDFAComplexURL) FindAllBytesAppend(input []byte, n int, s []*TDFAComplexUR
 		tDFAComplexURLStackPool.Put(stackPtr)
 	}()
 	visitedSize := 49 * (l + 1)
-	visited := make([]uint32, (visitedSize+31)/32)
+	visitedWords := (visitedSize + 31) / 32
+	visitedPtr := tDFAComplexURLVisitedPool.Get().(*[]uint32)
+	visited := *visitedPtr
+	if cap(visited) < visitedWords {
+		visited = make([]uint32, visitedWords)
+	} else {
+		visited = visited[:visitedWords]
+		for i := range visited {
+			visited[i] = 0
+		}
+	}
+	defer func() {
+		*visitedPtr = visited
+		tDFAComplexURLVisitedPool.Put(visitedPtr)
+	}()
 	for true {
 		if n > 0 && len(result) >= n {
 			break
