@@ -345,31 +345,34 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
 	c.generateCaptureStructBytes(bytesStructName)
 
-	// Generate FindStringReuse function using TDFA (returns pointer for API compatibility)
+	// Generate FindStringReuse function using TDFA (zero-alloc when r is provided)
 	findStringCode, err := tdfaGen.GenerateFindFunction(false)
 	if err != nil {
 		return fmt.Errorf("failed to generate TDFA find string function: %w", err)
 	}
 
-	// The TDFA code ends with return statements inside the loop, we need to wrap for pointer return
+	// FindStringReuse passes r to internal function (allocates if r is nil)
 	c.method("FindStringReuse").
 		Params(jen.Id(codegen.InputName).String(), jen.Id("r").Op("*").Id(structName)).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(
-			jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName)),
+			jen.If(jen.Id("r").Op("==").Nil()).Block(
+				jen.Id("r").Op("=").New(jen.Id(structName)),
+			),
+			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
-			jen.Return(jen.Op("&").Id("result"), jen.True()),
+			jen.Return(jen.Id("r"), jen.True()),
 		)
 
-	// Generate internal FindString function (returns value)
+	// Generate internal FindString function (takes pointer, returns bool)
 	c.method("findStringInternal").
-		Params(jen.Id(codegen.InputName).String()).
-		Params(jen.Id(c.config.Name+"Result"), jen.Bool()).
+		Params(jen.Id(codegen.InputName).String(), jen.Id("r").Op("*").Id(structName)).
+		Params(jen.Bool()).
 		Block(findStringCode...)
 
-	// Generate FindString that calls FindStringReuse
+	// Generate FindString that calls FindStringReuse with nil (allocates once)
 	c.method("FindString").
 		Params(jen.Id(codegen.InputName).String()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
@@ -380,7 +383,7 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			)),
 		)
 
-	// Generate FindBytesReuse function using TDFA
+	// Generate FindBytesReuse function using TDFA (zero-alloc when r is provided)
 	findBytesCode, err := tdfaGen.GenerateFindFunction(true)
 	if err != nil {
 		return fmt.Errorf("failed to generate TDFA find bytes function: %w", err)
@@ -390,20 +393,23 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("r").Op("*").Id(bytesStructName)).
 		Params(jen.Op("*").Id(bytesStructName), jen.Bool()).
 		Block(
-			jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName)),
+			jen.If(jen.Id("r").Op("==").Nil()).Block(
+				jen.Id("r").Op("=").New(jen.Id(bytesStructName)),
+			),
+			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
-			jen.Return(jen.Op("&").Id("result"), jen.True()),
+			jen.Return(jen.Id("r"), jen.True()),
 		)
 
-	// Generate internal FindBytes function (returns value)
+	// Generate internal FindBytes function (takes pointer, returns bool)
 	c.method("findBytesInternal").
-		Params(jen.Id(codegen.InputName).Index().Byte()).
-		Params(jen.Id(c.config.Name+"BytesResult"), jen.Bool()).
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("r").Op("*").Id(bytesStructName)).
+		Params(jen.Bool()).
 		Block(findBytesCode...)
 
-	// Generate FindBytes that calls FindBytesReuse
+	// Generate FindBytes that calls FindBytesReuse with nil (allocates once)
 	c.method("FindBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Op("*").Id(bytesStructName), jen.Bool()).

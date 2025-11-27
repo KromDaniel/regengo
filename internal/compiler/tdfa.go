@@ -29,7 +29,6 @@ type TDFAGenerator struct {
 	maxStates        int         // Maximum allowed states before giving up
 	initialTagsBegin []TagAction // Tags to set at start of match (at index 0)
 	initialTagsAny   []TagAction // Tags to set at start of match (at index > 0)
-	useDirectCode    bool        // Use direct-coded generation for small DFAs
 }
 
 // NFAStateWithActions represents an NFA state with pending tag actions.
@@ -75,7 +74,6 @@ func NewTDFAGenerator(c *Compiler) *TDFAGenerator {
 		acceptStatesEOT: make(map[int]bool),
 		acceptActions:   make(map[int][]TagAction),
 		maxStates:       maxStates,
-		useDirectCode:   true, // Use direct-coded for small DFAs (< 64 states)
 	}
 
 	return gen
@@ -603,68 +601,91 @@ func (g *TDFAGenerator) generateTransitionTable() []jen.Code {
 	}
 }
 
-// generateTagActionTable generates the tag action table.
+// generateTagActionTable generates the tag action table using arrays instead of maps.
+// This eliminates all map allocations in the hot matching loop.
 func (g *TDFAGenerator) generateTagActionTable() []jen.Code {
 	tagCount := g.getTagCount()
-
-	// Define the action struct type
-	actionType := jen.Struct(jen.Id("Tag").Int(), jen.Id("Offset").Int())
-
-	// Build tag action table as map[int]map[byte][]Action
-	actionTableEntries := make([]jen.Code, 0)
-
-	for stateIdx, actions := range g.tagActions {
-		if len(actions) == 0 {
-			continue
-		}
-
-		charEntries := make([]jen.Code, 0)
-		for c, tagActions := range actions {
-			if len(tagActions) == 0 {
-				continue
-			}
-
-			actionStructs := make([]jen.Code, len(tagActions))
-			for i, action := range tagActions {
-				actionStructs[i] = jen.Values(jen.Dict{
-					jen.Id("Tag"):    jen.Lit(action.Tag),
-					jen.Id("Offset"): jen.Lit(action.Offset),
-				})
-			}
-
-			charEntries = append(charEntries,
-				jen.Lit(int(c)).Op(":").Index().Add(actionType).Values(actionStructs...),
-			)
-		}
-
-		if len(charEntries) > 0 {
-			actionTableEntries = append(actionTableEntries,
-				jen.Lit(stateIdx).Op(":").Map(jen.Byte()).Index().Add(actionType).Values(charEntries...),
-			)
-		}
-	}
+	numStates := len(g.states)
+	maxActions := g.getMaxActionsPerTransition()
 
 	code := []jen.Code{
-		jen.Comment("Tag registers for capture positions"),
-		jen.Id("tags").Op(":=").Index(jen.Lit(tagCount)).Int().Values(),
-		jen.For(jen.Id("i").Op(":=").Range().Id("tags")).Block(
-			jen.Id("tags").Index(jen.Id("i")).Op("=").Lit(-1),
-		),
+		jen.Comment("Tag registers for capture positions (pre-allocated)"),
+		jen.Var().Id("tags").Index(jen.Lit(tagCount)).Int(),
+		jen.Comment("Match tags (pre-allocated outside loop to avoid allocations)"),
+		jen.Var().Id("matchTags").Index(jen.Lit(tagCount)).Int(),
 	}
 
-	// Add tag action table if there are any actions
-	if len(actionTableEntries) > 0 {
-		code = append(code,
-			jen.Comment("Tag actions per transition"),
-			jen.Id("tagActions").Op(":=").Map(jen.Int()).Map(jen.Byte()).Index().Add(actionType).Values(actionTableEntries...),
-		)
-	} else {
-		// Empty map if no tag actions
-		code = append(code,
-			jen.Comment("Tag actions per transition (none for this pattern)"),
-			jen.Id("tagActions").Op(":=").Map(jen.Int()).Map(jen.Byte()).Index().Add(actionType).Values(),
-		)
+	// If no tag actions, skip the tables
+	if maxActions == 0 {
+		return code
 	}
+
+	// Generate action count table: tagActionCount[state][char] = number of actions
+	countRows := make([]jen.Code, numStates)
+	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
+		entries := make([]jen.Code, 128)
+		for i := 0; i < 128; i++ {
+			entries[i] = jen.Lit(0)
+		}
+		if stateIdx < len(g.tagActions) {
+			for c, actions := range g.tagActions[stateIdx] {
+				if int(c) < 128 {
+					entries[int(c)] = jen.Lit(len(actions))
+				}
+			}
+		}
+		countRows[stateIdx] = jen.Index(jen.Lit(128)).Int().Values(entries...)
+	}
+
+	code = append(code,
+		jen.Comment("Tag action counts [state][char] -> number of actions"),
+		jen.Id("tagActionCount").Op(":=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Int().Values(countRows...),
+	)
+
+	// Generate tag action table: tagActionTags[state][char][actionIdx] = tag index
+	// Generate tag action offsets: tagActionOffsets[state][char][actionIdx] = offset
+	tagRows := make([]jen.Code, numStates)
+	offsetRows := make([]jen.Code, numStates)
+
+	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
+		charTagEntries := make([]jen.Code, 128)
+		charOffsetEntries := make([]jen.Code, 128)
+
+		for i := 0; i < 128; i++ {
+			// Initialize with zeros
+			tagActionEntries := make([]jen.Code, maxActions)
+			offsetActionEntries := make([]jen.Code, maxActions)
+			for j := 0; j < maxActions; j++ {
+				tagActionEntries[j] = jen.Lit(0)
+				offsetActionEntries[j] = jen.Lit(0)
+			}
+
+			// Fill in actual actions
+			if stateIdx < len(g.tagActions) {
+				if actions, ok := g.tagActions[stateIdx][byte(i)]; ok {
+					for j, action := range actions {
+						if j < maxActions {
+							tagActionEntries[j] = jen.Lit(action.Tag)
+							offsetActionEntries[j] = jen.Lit(action.Offset)
+						}
+					}
+				}
+			}
+
+			charTagEntries[i] = jen.Index(jen.Lit(maxActions)).Int().Values(tagActionEntries...)
+			charOffsetEntries[i] = jen.Index(jen.Lit(maxActions)).Int().Values(offsetActionEntries...)
+		}
+
+		tagRows[stateIdx] = jen.Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(charTagEntries...)
+		offsetRows[stateIdx] = jen.Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(charOffsetEntries...)
+	}
+
+	code = append(code,
+		jen.Comment("Tag action tags [state][char][actionIdx] -> tag index"),
+		jen.Id("tagActionTags").Op(":=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(tagRows...),
+		jen.Comment("Tag action offsets [state][char][actionIdx] -> offset"),
+		jen.Id("tagActionOffsets").Op(":=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(offsetRows...),
+	)
 
 	return code
 }
@@ -707,33 +728,63 @@ func (g *TDFAGenerator) generateAcceptStatesEOT() []jen.Code {
 	}
 }
 
-// generateAcceptActionsMap generates the accept actions map for finalizing captures at accept states.
+// generateAcceptActionsMap generates the accept actions using arrays instead of maps.
+// This eliminates map allocations when checking accept states.
 func (g *TDFAGenerator) generateAcceptActionsMap() []jen.Code {
-	actionType := jen.Struct(
-		jen.Id("Tag").Int(),
-		jen.Id("Offset").Int(),
-	)
+	numStates := len(g.states)
+	maxActions := g.getMaxAcceptActions()
 
-	entries := make([]jen.Code, 0)
-	for stateIdx, actions := range g.acceptActions {
-		if len(actions) == 0 {
-			continue
+	// If no accept actions, return empty
+	if maxActions == 0 {
+		return []jen.Code{
+			jen.Comment("No accept actions needed"),
 		}
-		actionStructs := make([]jen.Code, len(actions))
-		for i, action := range actions {
-			actionStructs[i] = jen.Values(jen.Dict{
-				jen.Id("Tag"):    jen.Lit(action.Tag),
-				jen.Id("Offset"): jen.Lit(action.Offset),
-			})
+	}
+
+	// Generate accept action count array: acceptActionCount[state] = number of actions
+	countEntries := make([]jen.Code, numStates)
+	for i := 0; i < numStates; i++ {
+		if actions, ok := g.acceptActions[i]; ok {
+			countEntries[i] = jen.Lit(len(actions))
+		} else {
+			countEntries[i] = jen.Lit(0)
 		}
-		entries = append(entries,
-			jen.Lit(stateIdx).Op(":").Index().Add(actionType).Values(actionStructs...),
-		)
+	}
+
+	// Generate accept action tags array: acceptActionTags[state][actionIdx] = tag
+	// Generate accept action offsets array: acceptActionOffsets[state][actionIdx] = offset
+	tagRows := make([]jen.Code, numStates)
+	offsetRows := make([]jen.Code, numStates)
+
+	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
+		tagEntries := make([]jen.Code, maxActions)
+		offsetEntries := make([]jen.Code, maxActions)
+
+		for j := 0; j < maxActions; j++ {
+			tagEntries[j] = jen.Lit(0)
+			offsetEntries[j] = jen.Lit(0)
+		}
+
+		if actions, ok := g.acceptActions[stateIdx]; ok {
+			for j, action := range actions {
+				if j < maxActions {
+					tagEntries[j] = jen.Lit(action.Tag)
+					offsetEntries[j] = jen.Lit(action.Offset)
+				}
+			}
+		}
+
+		tagRows[stateIdx] = jen.Index(jen.Lit(maxActions)).Int().Values(tagEntries...)
+		offsetRows[stateIdx] = jen.Index(jen.Lit(maxActions)).Int().Values(offsetEntries...)
 	}
 
 	return []jen.Code{
-		jen.Comment("Accept actions - tag actions to apply when accepting at each state"),
-		jen.Id("acceptActionsMap").Op(":=").Map(jen.Int()).Index().Add(actionType).Values(entries...),
+		jen.Comment("Accept action counts [state] -> number of actions"),
+		jen.Id("acceptActionCount").Op(":=").Index(jen.Lit(numStates)).Int().Values(countEntries...),
+		jen.Comment("Accept action tags [state][actionIdx] -> tag index"),
+		jen.Id("acceptActionTags").Op(":=").Index(jen.Lit(numStates)).Index(jen.Lit(maxActions)).Int().Values(tagRows...),
+		jen.Comment("Accept action offsets [state][actionIdx] -> offset"),
+		jen.Id("acceptActionOffsets").Op(":=").Index(jen.Lit(numStates)).Index(jen.Lit(maxActions)).Int().Values(offsetRows...),
 	}
 }
 
@@ -746,7 +797,32 @@ func (g *TDFAGenerator) getTagCount() int {
 	return numGroups * 2
 }
 
+// getMaxActionsPerTransition computes the maximum number of tag actions for any single transition.
+func (g *TDFAGenerator) getMaxActionsPerTransition() int {
+	maxActions := 0
+	for _, stateActions := range g.tagActions {
+		for _, actions := range stateActions {
+			if len(actions) > maxActions {
+				maxActions = len(actions)
+			}
+		}
+	}
+	return maxActions
+}
+
+// getMaxAcceptActions computes the maximum number of accept actions for any state.
+func (g *TDFAGenerator) getMaxAcceptActions() int {
+	maxActions := 0
+	for _, actions := range g.acceptActions {
+		if len(actions) > maxActions {
+			maxActions = len(actions)
+		}
+	}
+	return maxActions
+}
+
 // generateMatchingLoop generates the main TDFA matching loop.
+// Optimized: uses array-based lookups instead of maps for zero allocations.
 func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 	var inputAccess jen.Code
 	if g.isBytes {
@@ -756,6 +832,8 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 	}
 
 	tagCount := g.getTagCount()
+	maxTagActions := g.getMaxActionsPerTransition()
+	maxAcceptActions := g.getMaxAcceptActions()
 
 	// Generate initial tag setup code
 	setupBegin := []jen.Code{
@@ -772,20 +850,49 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 		setupAny = append(setupAny, jen.Id("tags").Index(jen.Lit(action.Tag)).Op("=").Id("start"))
 	}
 
+	// Generate tag action application code (array-based, no allocations)
+	var applyTagActions jen.Code
+	if maxTagActions > 0 {
+		applyTagActions = jen.Comment("Apply tag actions (array-based, zero allocations)").Line().
+			For(jen.Id("a").Op(":=").Lit(0), jen.Id("a").Op("<").Id("tagActionCount").Index(jen.Id("state")).Index(jen.Id("c")), jen.Id("a").Op("++")).Block(
+			jen.Id("tags").Index(jen.Id("tagActionTags").Index(jen.Id("state")).Index(jen.Id("c")).Index(jen.Id("a"))).Op("=").
+				Id("i").Op("+").Lit(1).Op("-").Id("tagActionOffsets").Index(jen.Id("state")).Index(jen.Id("c")).Index(jen.Id("a")),
+		)
+	} else {
+		applyTagActions = jen.Comment("No tag actions")
+	}
+
+	// Generate accept action application code (array-based, no allocations)
+	var applyAcceptActions jen.Code
+	if maxAcceptActions > 0 {
+		applyAcceptActions = jen.For(jen.Id("a").Op(":=").Lit(0), jen.Id("a").Op("<").Id("acceptActionCount").Index(jen.Id("state")), jen.Id("a").Op("++")).Block(
+			jen.Id("tags").Index(jen.Id("acceptActionTags").Index(jen.Id("state")).Index(jen.Id("a"))).Op("=").
+				Id("i").Op("+").Lit(1).Op("-").Id("acceptActionOffsets").Index(jen.Id("state")).Index(jen.Id("a")),
+		)
+	} else {
+		applyAcceptActions = jen.Null()
+	}
+
+	// Generate code to copy tags to matchTags (element by element, no allocation)
+	copyTagsCode := make([]jen.Code, tagCount)
+	for i := 0; i < tagCount; i++ {
+		copyTagsCode[i] = jen.Id("matchTags").Index(jen.Lit(i)).Op("=").Id("tags").Index(jen.Lit(i))
+	}
+
 	// Build the outer loop body
 	outerLoopBody := []jen.Code{
 		jen.Id("state").Op(":=").Lit(0),
 		jen.Id("matchEnd").Op(":=").Lit(-1),
-		jen.Id("matchTags").Op(":=").Index(jen.Lit(tagCount)).Int().Values(),
-		jen.For(jen.Id("i").Op(":=").Range().Id("matchTags")).Block(
-			jen.Id("matchTags").Index(jen.Id("i")).Op("=").Lit(-1),
+		jen.Comment("Initialize matchTags to -1 (pre-allocated in outer scope)"),
+		jen.For(jen.Id("j").Op(":=").Range().Id("matchTags")).Block(
+			jen.Id("matchTags").Index(jen.Id("j")).Op("=").Lit(-1),
 		),
 		jen.Line(),
 		jen.Comment("Iterate over all possible start positions"),
 		jen.For(jen.Id("start").Op(":=").Lit(0), jen.Id("start").Op("<=").Id(codegen.InputLenName), jen.Id("start").Op("++")).Block(
 			jen.Comment("Reset tags for this attempt"),
-			jen.For(jen.Id("i").Op(":=").Range().Id("tags")).Block(
-				jen.Id("tags").Index(jen.Id("i")).Op("=").Lit(-1),
+			jen.For(jen.Id("j").Op(":=").Range().Id("tags")).Block(
+				jen.Id("tags").Index(jen.Id("j")).Op("=").Lit(-1),
 			),
 			jen.Id("tags").Index(jen.Lit(0)).Op("=").Id("start"), // Group 0 start
 			jen.Line(),
@@ -794,13 +901,11 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 			jen.Line(),
 			jen.Comment("Check if start state is accepting (empty match)"),
 			jen.If(jen.Id("acceptStates").Index(jen.Id("state"))).Block(
-				jen.Id("matchEnd").Op("=").Id("start"),
-				jen.Id("matchTags").Op("=").Id("tags"),
+				append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
 			),
 			jen.Comment("Check if start state is accepting at EOT"),
 			jen.If(jen.Id("start").Op("==").Id(codegen.InputLenName).Op("&&").Id("acceptStatesEOT").Index(jen.Id("state"))).Block(
-				jen.Id("matchEnd").Op("=").Id("start"),
-				jen.Id("matchTags").Op("=").Id("tags"),
+				append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
 			),
 			jen.Line(),
 			jen.For(jen.Id("i").Op(":=").Id("start"), jen.Id("i").Op("<").Id(codegen.InputLenName), jen.Id("i").Op("++")).Block(
@@ -815,35 +920,20 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 					jen.Break(),
 				),
 				jen.Line(),
-				jen.Comment("Apply tag actions for this transition"),
-				jen.If(jen.List(jen.Id("stateActions"), jen.Id("ok")).Op(":=").Id("tagActions").Index(jen.Id("state")), jen.Id("ok")).Block(
-					jen.If(jen.List(jen.Id("charActions"), jen.Id("ok")).Op(":=").Id("stateActions").Index(jen.Id("c")), jen.Id("ok")).Block(
-						jen.For(jen.List(jen.Id("_"), jen.Id("action")).Op(":=").Range().Id("charActions")).Block(
-							jen.Id("tags").Index(jen.Id("action").Dot("Tag")).Op("=").Id("i").Op("+").Lit(1).Op("-").Id("action").Dot("Offset"),
-						),
-					),
-				),
+				applyTagActions,
 				jen.Line(),
 				jen.Id("state").Op("=").Id("nextState"),
 				jen.If(jen.Id("acceptStates").Index(jen.Id("state"))).Block(
-					// Apply accept actions to finalize captures
-					jen.If(jen.List(jen.Id("actions"), jen.Id("ok")).Op(":=").Id("acceptActionsMap").Index(jen.Id("state")), jen.Id("ok")).Block(
-						jen.For(jen.List(jen.Id("_"), jen.Id("action")).Op(":=").Range().Id("actions")).Block(
-							jen.Id("tags").Index(jen.Id("action").Dot("Tag")).Op("=").Id("i").Op("+").Lit(1).Op("-").Id("action").Dot("Offset"),
-						),
-					),
-					jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
-					jen.Id("matchTags").Op("=").Id("tags"),
+					append([]jen.Code{
+						applyAcceptActions,
+						jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
+					}, copyTagsCode...)...,
 				),
 				jen.If(jen.Id("i").Op("==").Id(codegen.InputLenName).Op("-").Lit(1).Op("&&").Id("acceptStatesEOT").Index(jen.Id("state"))).Block(
-					// Apply accept actions to finalize captures at EOT
-					jen.If(jen.List(jen.Id("actions"), jen.Id("ok")).Op(":=").Id("acceptActionsMap").Index(jen.Id("state")), jen.Id("ok")).Block(
-						jen.For(jen.List(jen.Id("_"), jen.Id("action")).Op(":=").Range().Id("actions")).Block(
-							jen.Id("tags").Index(jen.Id("action").Dot("Tag")).Op("=").Id("i").Op("+").Lit(1).Op("-").Id("action").Dot("Offset"),
-						),
-					),
-					jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
-					jen.Id("matchTags").Op("=").Id("tags"),
+					append([]jen.Code{
+						applyAcceptActions,
+						jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
+					}, copyTagsCode...)...,
 				),
 			),
 			jen.Line(),
@@ -855,42 +945,28 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 				)...,
 			),
 		),
-		jen.Return(jen.Id(g.compiler.config.Name+"Result").Values(), jen.False()),
+		jen.Return(jen.False()),
 	}
 
-	if g.isBytes {
-		outerLoopBody[len(outerLoopBody)-1] = jen.Return(jen.Id(g.compiler.config.Name+"BytesResult").Values(), jen.False())
-	}
+	// No need to differentiate bytes vs string for the false return since it's just bool now
 
 	return outerLoopBody
 }
 
 // generateResultConstruction generates code to construct the result struct from tags.
+// It populates the pointer 'r' directly to avoid allocations in the reuse path.
 func (g *TDFAGenerator) generateResultConstruction(tagsVar string) []jen.Code {
-	structName := g.compiler.config.Name + "Result"
-	if g.isBytes {
-		structName = g.compiler.config.Name + "BytesResult"
-	}
-
-	// Create result variable
-	code := []jen.Code{
-		jen.Var().Id("result").Id(structName),
-	}
-
 	// Helper to get slice expression
 	getSlice := func(start, end *jen.Statement) jen.Code {
-		// We need to clone the statements to avoid modifying them if they are reused (though here they are fresh)
-		// But jen.Statement is mutable.
-		// Actually, start.Op(":") modifies start.
-		// We should construct the index expression carefully.
-		// input[start:end]
 		return jen.Id(codegen.InputName).Index(start.Clone().Op(":").Add(end))
 	}
+
+	code := []jen.Code{}
 
 	// Set Match field (Group 0)
 	code = append(code,
 		jen.If(jen.Id(tagsVar).Index(jen.Lit(0)).Op(">=").Lit(0)).Block(
-			jen.Id("result").Dot("Match").Op("=").Add(getSlice(
+			jen.Id("r").Dot("Match").Op("=").Add(getSlice(
 				jen.Id(tagsVar).Index(jen.Lit(0)),
 				jen.Id(tagsVar).Index(jen.Lit(1)),
 			)),
@@ -916,14 +992,14 @@ func (g *TDFAGenerator) generateResultConstruction(tagsVar string) []jen.Code {
 		// Generate assignment
 		// if tags[2*i] >= 0 {
 		//     if tags[2*i+1] < 0 { tags[2*i+1] = tags[1] } // Close open group at match end
-		//     result.Field = input[tags[2*i]:tags[2*i+1]]
+		//     r.Field = input[tags[2*i]:tags[2*i+1]]
 		// }
 		code = append(code,
 			jen.If(jen.Id(tagsVar).Index(jen.Lit(2*i)).Op(">=").Lit(0)).Block(
 				jen.If(jen.Id(tagsVar).Index(jen.Lit(2*i+1)).Op("<").Lit(0)).Block(
 					jen.Id(tagsVar).Index(jen.Lit(2*i+1)).Op("=").Id(tagsVar).Index(jen.Lit(1)),
 				),
-				jen.Id("result").Dot(fieldName).Op("=").Add(getSlice(
+				jen.Id("r").Dot(fieldName).Op("=").Add(getSlice(
 					jen.Id(tagsVar).Index(jen.Lit(2*i)),
 					jen.Id(tagsVar).Index(jen.Lit(2*i+1)),
 				)),
@@ -931,6 +1007,6 @@ func (g *TDFAGenerator) generateResultConstruction(tagsVar string) []jen.Code {
 		)
 	}
 
-	code = append(code, jen.Return(jen.Id("result"), jen.True()))
+	code = append(code, jen.Return(jen.True()))
 	return code
 }
