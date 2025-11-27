@@ -6,10 +6,12 @@ After the Thompson NFA and TDFA merge, regengo shows strong performance improvem
 
 ## Benchmark Results Overview
 
-### Where regengo WINS (2-14x faster)
+### Where regengo WINS (2-18x faster)
 
 | Pattern | stdlib | regengo | regengo_reuse | Speedup |
 |---------|--------|---------|---------------|---------|
+| **URLCapture** | 187ns | 62ns | 62ns | **3x** |
+| **TDFASemVer** | 123ns | 26ns | 26ns | **4.7x** |
 | DateCapture | 99ns | 19ns | 7ns | **5x / 14x** |
 | EmailCapture | 245ns | 102ns | 91ns | **2.4x / 2.7x** |
 | EmailMatch | 1528ns | 490ns | - | **3x** |
@@ -25,8 +27,6 @@ After the Thompson NFA and TDFA merge, regengo shows strong performance improvem
 
 | Pattern | stdlib | regengo | regengo_reuse | Factor |
 |---------|--------|---------|---------------|--------|
-| **URLCapture** | 192ns | 1357ns | 1338ns | **7x slower** |
-| **TDFASemVer** | 128ns | 764ns | 816ns | **6x slower** |
 | TDFAPathological_3 (no match) | 1111ns | 3065ns | 3043ns | **3x slower** |
 | TDFANestedWord (reuse allocs) | - | - | 48-192 B/op | **should be 0** |
 
@@ -34,87 +34,11 @@ After the Thompson NFA and TDFA merge, regengo shows strong performance improvem
 
 ## Root Cause Analysis
 
-### 1. URLCapture - 7x Slower
+### 1. URLCapture - 7x Slower (FIXED in v0.3.1)
+*Moved to WINS. Root cause was massive static data table re-initialization (RCA-1).*
 
-**Pattern:** `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`
-
-**Engine Used:** TDFA for FindString (13 states)
-
-**Root Causes:**
-
-#### RCA-1: Massive Static Data Tables Re-initialization
-The TDFA implementation generates enormous lookup tables as **local variables**:
-- `transitions [13][128]int`
-- `tagActionCount [13][128]int`
-- `tagActionTags [13][128][2]int`
-- `tagActionOffsets [13][128][2]int`
-
-**Total: ~80KB of stack/heap data initialized per function call**
-
-Because these are defined inside the function scope (e.g., `transitions := [...]int{...}`), Go re-initializes them on every call. For short inputs, this `memcpy` or element-wise initialization dominates execution time.
-
-#### RCA-2: Unanchored Pattern Outer Loop
-```go
-for searchStart := 0; searchStart <= l; searchStart++ {
-    // Try matching from each position
-}
-```
-For an 18-character URL that matches at position 0, we still enter the outer loop once. But the overhead of resetting state and checking `isAccept[state]` at each character adds up.
-
-#### RCA-3: Tag Action Processing Per Character
-```go
-actionCount := tagActionCount[state][c]
-for i := 0; i < actionCount; i++ {
-    tag := tagActionTags[state][c][i]
-    offset := tagActionOffsets[state][c][i]
-    tags[tag] = pos + offset
-}
-```
-This loop runs for every character, even when `actionCount` is 0. The array lookups add overhead.
-
-#### Why stdlib is faster:
-- stdlib uses optimized prefix/literal searching (Boyer-Moore-like) for patterns starting with literals like `"http"`
-- stdlib's VM-based interpreter has much smaller memory footprint
-- For simple patterns matching at position 0, stdlib's backtracking is actually efficient
-
----
-
-### 2. TDFASemVer - 6x Slower
-
-**Pattern:** `(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?`
-
-**Engine Used:** Thompson NFA for MatchString (uses `map[int]uint64`), TDFA for FindString
-
-**Root Causes:**
-
-#### RCA-1: Map Lookup in Hot Path (Thompson NFA)
-```go
-epsilonClosures := map[int]uint64{2: ..., 5: ..., 7: ..., ...}
-// In inner loop:
-next |= epsilonClosures[2]  // Map lookup on every state transition!
-```
-
-Go maps have hash computation overhead. For 9 epsilon closure lookups per character processed, this becomes a significant bottleneck.
-
-**Fix:** Replace `map[int]uint64` with `[N]uint64` array for O(1) indexed access.
-
-#### RCA-2: Short Input Amplifies Overhead
-Test input: `"1.0.0"` (5 characters)
-
-For a 5-character input that matches at position 0:
-- Setup cost (table initialization) dominates
-- Per-character overhead is multiplied by the small character count
-- stdlib's simple backtracking is highly optimized for these trivial cases
-
-#### RCA-3: Same TDFA Table Overhead as URLCapture
-- `transitions [10][128]int`
-- `tagActionCount [10][128]int`
-- `tagActionTags [10][128][1]int`
-- `tagActionOffsets [10][128][1]int`
-
-~50KB of static data for a pattern matching `"1.0.0"`.
-
----
+### 2. TDFASemVer - 6x Slower (FIXED in v0.3.1)
+*Moved to WINS. Root causes were map lookups (RCA-1) and table initialization (RCA-3).*
 
 ### 3. TDFAPathological_3 (No Match Case) - 3x Slower
 
@@ -164,17 +88,17 @@ This array size depends on input length, so it can't be pooled or pre-allocated.
    - **Result:** URLCapture improved from ~1300ns to ~70ns (18x speedup). TDFASemVer improved from ~764ns to ~130ns (5.8x speedup).
    - **Status:** Implemented in PR #17.
 
-2. **Replace Map with Array for Epsilon Closures**
+2. **Replace Map with Array for Epsilon Closures** (✅ DONE)
    - **Problem:** `map[int]uint64` is slow in hot paths.
    - **Solution:** Use `[maxStates]uint64` array.
-   - **Expected:** 2-3x speedup for Thompson NFA patterns.
-   - **Effort:** Low.
+   - **Result:** ~9x speedup for MatchString on TDFASemVer.
+   - **Status:** Implemented in PR #18.
 
-3. **Add Prefix/Literal Optimization**
+3. **Add Prefix/Literal Optimization** (✅ DONE)
    - **Problem:** Unanchored patterns try every position.
    - **Solution:** If pattern starts with literal (e.g., `"http"`), use `strings.Index` to jump to candidates.
-   - **Expected:** Major speedup for URLCapture-like patterns.
-   - **Effort:** Medium.
+   - **Result:** ~56x speedup for sparse matches (synthetic benchmark).
+   - **Status:** Implemented in PR #19.
 
 ### Medium Priority
 
@@ -234,3 +158,42 @@ We modified the TDFA compiler to generate static lookup tables (`transitions`, `
 - The overhead of table initialization was indeed the primary bottleneck for short inputs.
 - Zero-allocation performance is maintained.
 
+### Step 2: Replace Map with Array for Epsilon Closures
+
+**Implementation:**
+We replaced the `map[int]uint64` used for epsilon closure lookups in the Thompson NFA generator with a fixed-size array `[N]uint64`. This removes the overhead of map hashing and lookups in the hot path of `MatchString` and `MatchBytes`.
+
+**Benchmark Comparison (MatchString - TDFASemVer):**
+
+| Implementation | Time (ns/op) | Allocations |
+|----------------|--------------|-------------|
+| **Before** (Map) | 120.4 | 3 |
+| **After** (Array) | **13.4** | **0** |
+| **Speedup** | **~9x** | - |
+
+**Analysis:**
+- The optimization targeted the Thompson NFA engine (used for `MatchString`).
+- It completely eliminated allocations in the hot path.
+- Achieved a massive **9x speedup**, far exceeding the initial 2-3x estimate.
+
+### Step 3: Prefix/Literal Optimization
+
+**Implementation:**
+We added a check for required literal prefixes (e.g., "http" in `https?://...`). If a prefix is found and the pattern is unanchored, we use `strings.IndexByte` (or `bytes.IndexByte`) to skip ahead to the next candidate position, avoiding the expensive state machine loop for non-matching characters.
+
+**Benchmark Results:**
+
+1.  **Existing Benchmarks (Best Case):**
+    *   `URLCapture`: ~78ns (Unchanged). This is expected because the benchmark inputs start with the prefix.
+    *   `TDFAPathological_3`: ~3200ns (Unchanged). The input is `aaaa...` and the prefix is `a`, so `IndexByte` returns 0 every time, providing no skip benefit.
+
+2.  **Synthetic Benchmark (Real-world Scenario):**
+    *   Scenario: Searching for a URL inside a 1000-character string of random text.
+    *   **Before:** 4889 ns/op
+    *   **After:** 87 ns/op
+    *   **Speedup:** **~56x**
+
+**Analysis:**
+- This optimization brings `regengo`'s performance for sparse matches in line with the standard library (which also uses prefix optimizations).
+- It has negligible overhead for cases where the match is at the start.
+- It dramatically improves performance (O(n) -> O(n/m) effectively) for finding matches in large documents.

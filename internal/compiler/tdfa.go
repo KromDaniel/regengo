@@ -885,6 +885,7 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 	}
 
 	// Build the outer loop body
+	// Build the outer loop body
 	outerLoopBody := []jen.Code{
 		jen.Id("state").Op(":=").Lit(0),
 		jen.Id("matchEnd").Op(":=").Lit(-1),
@@ -894,64 +895,98 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 		),
 		jen.Line(),
 		jen.Comment("Iterate over all possible start positions"),
-		jen.For(jen.Id("start").Op(":=").Lit(0), jen.Id("start").Op("<=").Id(codegen.InputLenName), jen.Id("start").Op("++")).Block(
-			jen.Comment("Reset tags for this attempt"),
-			jen.For(jen.Id("j").Op(":=").Range().Id("tags")).Block(
-				jen.Id("tags").Index(jen.Id("j")).Op("=").Lit(-1),
+	}
+
+	// Optimization: Check for required prefix
+	prefix, hasPrefix := g.compiler.findRequiredPrefix()
+	loopBlock := []jen.Code{}
+
+	if hasPrefix && !g.compiler.isAnchored {
+		var indexCall *jen.Statement
+		if g.isBytes {
+			indexCall = jen.Qual("bytes", "IndexByte").Call(
+				jen.Id(codegen.InputName).Index(jen.Id("start").Op(":")),
+				jen.Lit(byte(prefix)),
+			)
+		} else {
+			indexCall = jen.Qual("strings", "IndexByte").Call(
+				jen.Id(codegen.InputName).Index(jen.Id("start").Op(":")),
+				jen.Lit(byte(prefix)),
+			)
+		}
+
+		loopBlock = append(loopBlock,
+			jen.Comment("Optimization: fast-forward to next prefix occurrence"),
+			jen.Id("idx").Op(":=").Add(indexCall),
+			jen.If(jen.Id("idx").Op("<").Lit(0)).Block(
+				jen.Break(),
 			),
-			jen.Id("tags").Index(jen.Lit(0)).Op("=").Id("start"), // Group 0 start
+			jen.Id("start").Op("+=").Id("idx"),
 			jen.Line(),
-			jen.Comment("Choose start state based on position"),
-			jen.If(jen.Id("start").Op("==").Lit(0)).Block(setupBegin...).Else().Block(setupAny...),
+		)
+	}
+
+	loopBlock = append(loopBlock,
+		jen.Comment("Reset tags for this attempt"),
+		jen.For(jen.Id("j").Op(":=").Range().Id("tags")).Block(
+			jen.Id("tags").Index(jen.Id("j")).Op("=").Lit(-1),
+		),
+		jen.Id("tags").Index(jen.Lit(0)).Op("=").Id("start"), // Group 0 start
+		jen.Line(),
+		jen.Comment("Choose start state based on position"),
+		jen.If(jen.Id("start").Op("==").Lit(0)).Block(setupBegin...).Else().Block(setupAny...),
+		jen.Line(),
+		jen.Comment("Check if start state is accepting (empty match)"),
+		jen.If(jen.Id(g.getVarName("acceptStates")).Index(jen.Id("state"))).Block(
+			append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
+		),
+		jen.Comment("Check if start state is accepting at EOT"),
+		jen.If(jen.Id("start").Op("==").Id(codegen.InputLenName).Op("&&").Id(g.getVarName("acceptStatesEOT")).Index(jen.Id("state"))).Block(
+			append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
+		),
+		jen.Line(),
+		jen.For(jen.Id("i").Op(":=").Id("start"), jen.Id("i").Op("<").Id(codegen.InputLenName), jen.Id("i").Op("++")).Block(
+			jen.Id("c").Op(":=").Add(inputAccess),
+			jen.If(jen.Id("c").Op(">=").Lit(128)).Block(
+				jen.Break(), // Non-ASCII, exit
+			),
 			jen.Line(),
-			jen.Comment("Check if start state is accepting (empty match)"),
+			jen.Comment("Look up transition (array-based for speed)"),
+			jen.Id("nextState").Op(":=").Id(g.getVarName("transitions")).Index(jen.Id("state")).Index(jen.Id("c")),
+			jen.If(jen.Id("nextState").Op("<").Lit(0)).Block(
+				jen.Break(),
+			),
+			jen.Line(),
+			applyTagActions,
+			jen.Line(),
+			jen.Id("state").Op("=").Id("nextState"),
 			jen.If(jen.Id(g.getVarName("acceptStates")).Index(jen.Id("state"))).Block(
-				append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
+				append([]jen.Code{
+					applyAcceptActions,
+					jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
+				}, copyTagsCode...)...,
 			),
-			jen.Comment("Check if start state is accepting at EOT"),
-			jen.If(jen.Id("start").Op("==").Id(codegen.InputLenName).Op("&&").Id(g.getVarName("acceptStatesEOT")).Index(jen.Id("state"))).Block(
-				append([]jen.Code{jen.Id("matchEnd").Op("=").Id("start")}, copyTagsCode...)...,
-			),
-			jen.Line(),
-			jen.For(jen.Id("i").Op(":=").Id("start"), jen.Id("i").Op("<").Id(codegen.InputLenName), jen.Id("i").Op("++")).Block(
-				jen.Id("c").Op(":=").Add(inputAccess),
-				jen.If(jen.Id("c").Op(">=").Lit(128)).Block(
-					jen.Break(), // Non-ASCII, exit
-				),
-				jen.Line(),
-				jen.Comment("Look up transition (array-based for speed)"),
-				jen.Id("nextState").Op(":=").Id(g.getVarName("transitions")).Index(jen.Id("state")).Index(jen.Id("c")),
-				jen.If(jen.Id("nextState").Op("<").Lit(0)).Block(
-					jen.Break(),
-				),
-				jen.Line(),
-				applyTagActions,
-				jen.Line(),
-				jen.Id("state").Op("=").Id("nextState"),
-				jen.If(jen.Id(g.getVarName("acceptStates")).Index(jen.Id("state"))).Block(
-					append([]jen.Code{
-						applyAcceptActions,
-						jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
-					}, copyTagsCode...)...,
-				),
-				jen.If(jen.Id("i").Op("==").Id(codegen.InputLenName).Op("-").Lit(1).Op("&&").Id(g.getVarName("acceptStatesEOT")).Index(jen.Id("state"))).Block(
-					append([]jen.Code{
-						applyAcceptActions,
-						jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
-					}, copyTagsCode...)...,
-				),
-			),
-			jen.Line(),
-			jen.Comment("If we found a match, return it"),
-			jen.If(jen.Id("matchEnd").Op(">=").Lit(0)).Block(
-				append(
-					[]jen.Code{jen.Id("matchTags").Index(jen.Lit(1)).Op("=").Id("matchEnd")}, // Group 0 end
-					g.generateResultConstruction("matchTags")...,
-				)...,
+			jen.If(jen.Id("i").Op("==").Id(codegen.InputLenName).Op("-").Lit(1).Op("&&").Id(g.getVarName("acceptStatesEOT")).Index(jen.Id("state"))).Block(
+				append([]jen.Code{
+					applyAcceptActions,
+					jen.Id("matchEnd").Op("=").Id("i").Op("+").Lit(1),
+				}, copyTagsCode...)...,
 			),
 		),
+		jen.Line(),
+		jen.Comment("If we found a match, return it"),
+		jen.If(jen.Id("matchEnd").Op(">=").Lit(0)).Block(
+			append(
+				[]jen.Code{jen.Id("matchTags").Index(jen.Lit(1)).Op("=").Id("matchEnd")}, // Group 0 end
+				g.generateResultConstruction("matchTags")...,
+			)...,
+		),
+	)
+
+	outerLoopBody = append(outerLoopBody,
+		jen.For(jen.Id("start").Op(":=").Lit(0), jen.Id("start").Op("<=").Id(codegen.InputLenName), jen.Id("start").Op("++")).Block(loopBlock...),
 		jen.Return(jen.False()),
-	}
+	)
 
 	// No need to differentiate bytes vs string for the false return since it's just bool now
 
