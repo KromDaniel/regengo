@@ -14,29 +14,122 @@ Regengo is a **compile-time finite state machine generator** for regular express
 ## Table of Contents
 
 - [Performance](#performance)
+- [Smart Analysis](#smart-analysis)
+- [Complexity Guarantees](#complexity-guarantees)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Advanced Options](#advanced-options)
 - [Generated Output](#generated-output)
 - [Capture Groups](#capture-groups)
 - [API Comparison](#api-comparison)
-- [CLI Options](#cli-options)
+- [CLI Reference](#cli-reference)
 - [Detailed Benchmarks](#detailed-benchmarks)
 - [License](#license)
 
 ## Performance
 
-Regengo outperforms Go's standard `regexp` package across all benchmarks:
+Regengo consistently outperforms Go's standard `regexp` package:
 
-| Pattern | Type | stdlib | regengo | Speedup |
-|---------|------|--------|---------|---------|
-| `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})` | FindString | 99 ns | 18 ns | **5.5x faster** |
-| `[\w\.+-]+@[\w\.-]+\.[\w\.-]+` | MatchString | 1549 ns | 488 ns | **3.2x faster** |
-| `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)` | FindString | 242 ns | 99 ns | **2.4x faster** |
-| `https?://[\w\.-]+(?::\d+)?(?:/[\w\./]*)?` | FindString | 367 ns | 229 ns | **1.6x faster** |
+### Best Results
 
-Memory usage is also reduced: **50% fewer allocations** and **50% less bytes per operation** for capture groups.
+| Pattern | Method | stdlib | regengo | Speedup |
+|---------|--------|--------|---------|---------|
+| Date `\d{4}-\d{2}-\d{2}` | FindString | 103 ns | 7 ns | **14x faster** |
+| Multi-date extraction | FindAllString | 425 ns | 48 ns | **9x faster** |
+| Date capture | FindString | 103 ns | 19 ns | **5x faster** |
+
+### Typical Results
+
+| Pattern | Method | stdlib | regengo | Speedup |
+|---------|--------|--------|---------|---------|
+| Email validation | MatchString | 1574 ns | 500 ns | **3x faster** |
+| Email capture | FindString | 294 ns | 105 ns | **2.8x faster** |
+| Log parser (TDFA) | FindString | 408 ns | 111 ns | **3.7x faster** |
+
+### Memory Efficiency
+
+- **50-100% fewer allocations** per operation
+- **Zero allocations** with `Reuse` variants
+- Typed structs instead of `[]string` slices
 
 See [Detailed Benchmarks](#detailed-benchmarks) for complete results.
+
+## Smart Analysis
+
+Regengo automatically analyzes your pattern and selects the optimal matching engine:
+
+### Supported Algorithms
+
+| Algorithm | Use Case | Complexity | Status |
+|-----------|----------|------------|--------|
+| **Backtracking DFA** | Simple patterns | O(n) typical | ✅ Default |
+| **Thompson NFA** | Patterns at risk of catastrophic backtracking | O(n×m) guaranteed | ✅ Supported |
+| **Tagged DFA (TDFA)** | Capture groups with complex patterns | O(n) guaranteed | ✅ Supported |
+| **Bit-vector Memoization** | Nested quantifiers with captures | O(n×m) with caching | ✅ Supported |
+
+### Auto-Detection Examples
+
+```
+Pattern: [\w\.+-]+@[\w\.-]+
+ → Backtracking DFA (simple, fast)
+
+Pattern: (a+)+b
+ → Thompson NFA (prevents exponential backtracking)
+
+Pattern: (?P<user>\w+)@(?P<domain>\w+)
+ → Tagged DFA (O(n) captures)
+
+Pattern: (?P<outer>(?P<inner>a+)+)b
+ → TDFA + Memoization (complex nested captures)
+```
+
+### Verbose Mode
+
+See analysis decisions with `-verbose`:
+
+```bash
+regengo -pattern '(a+)+b' -name Test -output test.go -verbose
+```
+
+```
+=== Pattern Analysis ===
+Pattern: (a+)+b
+NFA states: 8
+Has nested quantifiers: true
+Has catastrophic risk: true
+→ Using Thompson NFA for MatchString
+→ Using Tagged DFA for FindString
+```
+
+## Complexity Guarantees
+
+### Runtime Complexity
+
+| Operation | Go stdlib | Regengo | Notes |
+|-----------|-----------|---------|-------|
+| Simple match | O(n) | O(n) | Both efficient |
+| Nested quantifiers `(a+)+` | **O(2ⁿ)** worst case | **O(n×m)** guaranteed | Thompson NFA prevents catastrophic backtracking |
+| Captures | O(n) typical | O(n) guaranteed | TDFA eliminates backtracking overhead |
+| Complex captures | O(2ⁿ) worst case | **O(n×m)** with memoization | Bit-vector caching |
+
+### Memory Complexity
+
+| Aspect | Go stdlib | Regengo |
+|--------|-----------|---------|
+| Per-match allocation | 2 allocs (128-192 B) | 1 alloc (64-96 B) |
+| With reuse API | N/A | **0 allocs** |
+| Result storage | `[]string` slices | Typed structs |
+| Backtracking stack | Dynamic allocation | `sync.Pool` reuse |
+
+### Where Regengo May Be Slower
+
+| Scenario | Reason | Mitigation |
+|----------|--------|------------|
+| Very short inputs (< 10 chars) | Function call overhead vs interpreted bytecode | Use stdlib for micro-strings |
+| Patterns with many optional groups | TDFA state explosion | Increase `-tdfa-threshold` or pattern redesign |
+| First cold call | No JIT, but consistent performance | Warm up in init() if needed |
+
+> **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
 
 ## Installation
 
@@ -87,6 +180,61 @@ type Options struct {
     GenerateTestFile bool     // Generate test file with benchmarks
     TestFileInputs   []string // Test inputs for generated tests
 }
+```
+
+## Advanced Options
+
+For fine-grained control over the compilation engine, use these advanced options:
+
+### Library API
+
+```go
+type Options struct {
+    // ... basic options ...
+
+    // Engine selection
+    ForceThompson bool // Force Thompson NFA for all match functions
+    ForceTNFA     bool // Force Tagged NFA for capture functions
+    ForceTDFA     bool // Force Tagged DFA for capture functions
+
+    // Tuning parameters
+    TDFAThreshold int  // Max DFA states before fallback (default: 500)
+    Verbose       bool // Print analysis decisions to stderr
+}
+```
+
+### When to Use Each Engine
+
+| Option | Use Case |
+|--------|----------|
+| `ForceThompson` | Guaranteed O(n×m) for untrusted patterns |
+| `ForceTNFA` | Debugging, or patterns with many optional groups |
+| `ForceTDFA` | Maximize capture performance, predictable patterns |
+| `TDFAThreshold` | Increase for complex patterns with known bounds |
+| `Verbose` | Debug engine selection, understand analysis decisions |
+
+### Example: Force TDFA for Trusted Patterns
+
+```go
+err := regengo.Compile(regengo.Options{
+    Pattern:    `(?P<key>\w+)=(?P<value>[^;]+)`,
+    Name:       "KeyValue",
+    OutputFile: "keyvalue.go",
+    Package:    "parser",
+    ForceTDFA:  true,  // Skip analysis, use O(n) TDFA directly
+})
+```
+
+### Example: Safe Mode for User Input
+
+```go
+err := regengo.Compile(regengo.Options{
+    Pattern:       userPattern,
+    Name:          "UserRegex",
+    OutputFile:    "user_regex.go",
+    Package:       "validator",
+    ForceThompson: true,  // Guaranteed O(n×m), prevents ReDoS
+})
 ```
 
 ## Generated Output
@@ -260,26 +408,72 @@ This is particularly useful when processing many inputs in a loop, as it avoids 
 | `Split(s string, n int) []string` | - | Not implemented |
 | `FindStringIndex(s string) []int` | - | Not implemented |
 
-## CLI Options
+## CLI Reference
 
 ```
--pattern string    Regex pattern to compile (required)
--name string       Name for generated struct (required)
--output string     Output file path (required)
--package string    Package name (default "main")
--no-pool          Disable sync.Pool optimization
--no-test          Disable test file generation
--test-inputs      Comma-separated test inputs
+Required:
+  -pattern string    Regex pattern to compile
+  -name string       Name for generated struct
+  -output string     Output file path
+
+Basic:
+  -package string    Package name (default "main")
+  -no-pool           Disable sync.Pool optimization
+  -no-test           Disable test file generation
+  -test-inputs       Comma-separated test inputs
+
+Advanced (Engine Selection):
+  -force-thompson    Force Thompson NFA for match functions
+  -force-tnfa        Force Tagged NFA for capture functions
+  -force-tdfa        Force Tagged DFA for capture functions
+
+Tuning:
+  -tdfa-threshold int  Max DFA states before fallback (default 500)
+  -verbose             Print analysis decisions to stderr
 ```
 
-### Example
+### Basic Example
 
 ```bash
 regengo -pattern '[\w\.+-]+@[\w\.-]+\.[\w\.-]+' \
         -name Email \
         -output email.go \
-        -package myapp \
-        -test-inputs 'user@example.com,invalid,test@test.org'
+        -package myapp
+```
+
+### Advanced Example: Verbose Analysis
+
+```bash
+regengo -pattern '(a+)+b' \
+        -name Dangerous \
+        -output dangerous.go \
+        -verbose
+```
+
+Output:
+```
+=== Pattern Analysis ===
+Pattern: (a+)+b
+NFA states: 8
+Has nested quantifiers: true
+→ Using Thompson NFA for MatchString (prevents ReDoS)
+→ Using Tagged DFA for FindString
+```
+
+### Advanced Example: Force Specific Engine
+
+```bash
+# Force TDFA for maximum capture performance
+regengo -pattern '(?P<k>\w+)=(?P<v>[^;]+)' \
+        -name KV \
+        -output kv.go \
+        -force-tdfa
+
+# Force Thompson NFA for untrusted patterns
+regengo -pattern "$USER_PATTERN" \
+        -name UserRegex \
+        -output user.go \
+        -force-thompson
 ```
 
 ## Detailed Benchmarks
