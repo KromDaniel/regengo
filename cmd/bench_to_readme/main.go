@@ -26,14 +26,19 @@ type BenchGroup struct {
 }
 
 var patternMap = map[string]string{
-	"DateCapture":  `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
-	"EmailCapture": `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`,
-	"URLCapture":   `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`,
-	"Email":        `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`,
-	"Greedy":       `(?:(?:a|b)|(?:k)+)*abcd`,
-	"Lazy":         `(?:(?:a|b)|(?:k)+)+?abcd`,
-	"MultiDate":    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
-	"MultiEmail":   `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`,
+	"DateCapture":      `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+	"EmailCapture":     `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`,
+	"URLCapture":       `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`,
+	"Email":            `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`,
+	"Greedy":           `(?:(?:a|b)|(?:k)+)*abcd`,
+	"Lazy":             `(?:(?:a|b)|(?:k)+)+?abcd`,
+	"MultiDate":        `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+	"MultiEmail":       `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`,
+	"TDFAPathological": `(?P<outer>(?P<inner>a+)+)b`,
+	"TDFANestedWord":   `(?P<words>(?P<word>\w+\s*)+)end`,
+	"TDFAComplexURL":   `(?P<scheme>https?)://(?P<auth>(?P<user>[\w.-]+)(?::(?P<pass>[\w.-]+))?@)?(?P<host>[\w.-]+)(?::(?P<port>\d+))?(?P<path>/[\w./-]*)?(?:\?(?P<query>[\w=&.-]+))?`,
+	"TDFALogParser":    `(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<ms>\d{3}))?(?P<tz>Z|[+-]\d{2}:\d{2})?\s+\[(?P<level>\w+)\]\s+(?P<message>.+)`,
+	"TDFASemVer":       `(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?`,
 }
 
 func main() {
