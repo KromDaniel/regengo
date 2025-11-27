@@ -178,7 +178,7 @@ Has catastrophic risk: true
 | Scenario | Reason | Mitigation |
 |----------|--------|------------|
 | Patterns with many optional groups | TDFA state explosion | Increase `-tdfa-threshold` or pattern redesign |
-| Non-matching pathological patterns | Memoization overhead in capture groups | Use stdlib or reduce capture complexity |
+| Non-matching pathological inputs | Memoization overhead in nested capture groups (e.g., `(?P<outer>(?P<inner>a+)+)b` with input `"aaa...c"`) — up to **2.8x slower** | Use stdlib for patterns expected to frequently not match, or reduce capture nesting |
 | First cold call | No JIT, but consistent performance | Warm up in init() if needed |
 
 > **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
@@ -678,11 +678,18 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 **Method:** `FindString`
 
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 492.3 | 84 | 1 | - |
-| regengo | 896.5 | 80 | 1 | **0.5x faster** |
-| regengo (reuse) | 888.9 | 44 | 0 | **0.6x faster** |
+This benchmark tests nested quantifier patterns with captures. Regengo wins on matching inputs but loses on non-matching pathological cases:
+
+| Input | Variant | ns/op | B/op | allocs/op | vs stdlib |
+|-------|---------|------:|-----:|----------:|----------:|
+| matching | stdlib | 210 | 112 | 2 | - |
+| matching | regengo | 119 | 48 | 1 | **1.8x faster** |
+| matching | regengo (reuse) | 110 | 0 | 0 | **1.9x faster** |
+| non-matching | stdlib | 1076 | 0 | 0 | - |
+| non-matching | regengo | 3007 | 0 | 0 | **2.8x slower** |
+| non-matching | regengo (reuse) | 3005 | 0 | 0 | **2.8x slower** |
+
+> **Note:** For pathological non-matching inputs like `"aaaaaaaaaaaaaaaaaaaac"`, the memoization overhead in capture groups causes regengo to be slower. See [Where Regengo May Be Slower](#where-regengo-may-be-slower).
 
 ### TDFASemVerFindString
 
