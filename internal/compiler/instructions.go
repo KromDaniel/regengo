@@ -8,6 +8,14 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
+// boolToInt converts a bool to int for use in generated code
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 // generateStepSelector generates the instruction dispatch switch.
 func (c *Compiler) generateStepSelector() []jen.Code {
 	cases := []jen.Code{}
@@ -170,28 +178,64 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 	// This indicates patterns like +, *, {n,} quantifiers
 	isGreedyLoop := inst.Out < id
 
-	// Prepare memoization code
+	// Prepare memoization code using bit-vector
+	// idx = stateId * (l + 1) + offset; word = idx/32; bit = 1 << (idx%32)
 	var memoCheck []jen.Code
 	if c.useMemoization {
+		numInst := len(c.config.Program.Inst)
 		memoCheck = []jen.Code{
-			jen.Id("key").Op(":=").Parens(jen.Lit(uint64(id)).Op("<<").Lit(32)).Op("|").Call(jen.Uint64().Call(jen.Id(codegen.OffsetName))),
-			jen.If(jen.List(jen.Id("_"), jen.Id("seen")).Op(":=").Id("visited").Index(jen.Id("key")), jen.Id("seen")).Block(
+			// idx := stateId * (l + 1) + offset
+			jen.Id("idx").Op(":=").Lit(int(id)).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)).Op("+").Id(codegen.OffsetName),
+			// word, bit := idx/32, uint32(1)<<(idx%32)
+			jen.List(jen.Id("word"), jen.Id("bit")).Op(":=").
+				Id("idx").Op("/").Lit(32).Op(",").
+				Uint32().Call(jen.Lit(1)).Op("<<").Parens(jen.Id("idx").Op("%").Lit(32)),
+			// if visited[word] & bit != 0 { goto TryFallback }
+			jen.If(jen.Id(codegen.VisitedName).Index(jen.Id("word")).Op("&").Id("bit").Op("!=").Lit(0)).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
-			jen.Id("visited").Index(jen.Id("key")).Op("=").Struct().Values(),
+			// visited[word] |= bit
+			jen.Id(codegen.VisitedName).Index(jen.Id("word")).Op("|=").Id("bit"),
 		}
+		_ = numInst // numInst available for potential future optimizations
 	}
 
-	// Optimization #1: When generating Find* functions with captures, save capture checkpoint
+	// Optimization #1: When generating Find* functions with captures
 	if c.generatingCaptures {
 		block := append([]jen.Code{}, memoCheck...)
+
+		// Per-capture checkpointing mode: captures are saved at InstCapture instructions,
+		// not at Alt instructions. This is the stdlib-style approach with zero array copies.
+		if c.usePerCaptureCheckpointing {
+			block = append(block,
+				// Push simple backtrack entry (type=0 for Alt backtrack)
+				jen.Id(codegen.StackName).Op("=").Append(
+					jen.Id(codegen.StackName),
+					jen.Index(jen.Lit(3)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg)), jen.Lit(0)),
+				),
+				jen.Goto().Id(codegen.InstructionName(inst.Out)),
+			)
+			return []jen.Code{
+				label,
+				jen.Block(block...),
+			}, nil
+		}
+
+		// Array-copy checkpointing mode (for patterns with few checkpoint-needing Alts)
+		// Only checkpoint if this Alt's Out branch can modify captures (selective checkpointing)
+		needsCheckpoint := c.altsNeedingCheckpoint[int(id)]
+		if needsCheckpoint {
+			block = append(block,
+				// Save current capture state as checkpoint (flattened)
+				jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()).Op("...")),
+			)
+		}
+
 		block = append(block,
-			// Save current capture state as checkpoint (flattened)
-			jen.Id("captureStack").Op("=").Append(jen.Id("captureStack"), jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()).Op("...")),
-			// Push to backtracking stack
+			// Push to backtracking stack with checkpoint flag
 			jen.Id(codegen.StackName).Op("=").Append(
 				jen.Id(codegen.StackName),
-				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+				jen.Index(jen.Lit(3)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg)), jen.Lit(boolToInt(needsCheckpoint))),
 			),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		)
@@ -201,17 +245,31 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 		}, nil
 	}
 
+	// Determine stack entry size - must match the pool type
+	// When captures are enabled (not TDFA), we use [3]int even for Match functions
+	// because they share the same pool
+	stackSize := 2
+	if c.config.WithCaptures && !c.useTDFAForCaptures {
+		stackSize = 3
+	}
+
 	// Optimization #2: Greedy loop optimization (auto-detected)
 	// Only optimize simple greedy loops where the target is a character-matching instruction
 	// Avoid optimizing nested alternations (like in complex patterns) to prevent regressions
 	if isGreedyLoop && c.isSimpleGreedyLoop(inst) {
 		block := append([]jen.Code{}, memoCheck...)
+		var stackEntry jen.Code
+		if stackSize == 3 {
+			stackEntry = jen.Index(jen.Lit(3)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out)), jen.Lit(0))
+		} else {
+			stackEntry = jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out)))
+		}
 		block = append(block,
 			// For greedy loops, push to stack with the loop start (for backtracking)
 			// Then try the continuation instruction first
 			jen.Id(codegen.StackName).Op("=").Append(
 				jen.Id(codegen.StackName),
-				jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Out))),
+				stackEntry,
 			),
 			// Try continuation first (greedy behavior: we've matched, now try what comes next)
 			jen.Goto().Id(codegen.InstructionName(inst.Arg)),
@@ -224,10 +282,16 @@ func (c *Compiler) generateAltInst(label *jen.Statement, inst *syntax.Inst, id u
 
 	// Standard alternation: Just use append - Go's runtime handles capacity efficiently
 	block := append([]jen.Code{}, memoCheck...)
+	var stackEntry jen.Code
+	if stackSize == 3 {
+		stackEntry = jen.Index(jen.Lit(3)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg)), jen.Lit(0))
+	} else {
+		stackEntry = jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg)))
+	}
 	block = append(block,
 		jen.Id(codegen.StackName).Op("=").Append(
 			jen.Id(codegen.StackName),
-			jen.Index(jen.Lit(2)).Int().Values(jen.Id(codegen.OffsetName), jen.Lit(int(inst.Arg))),
+			stackEntry,
 		),
 		jen.Goto().Id(codegen.InstructionName(inst.Out)),
 	)

@@ -31,6 +31,27 @@ type Options struct {
 
 	// TestFileInputs is a list of test inputs for the generated test file. If empty and GenerateTestFile is true, defaults to []string{"example"}
 	TestFileInputs []string
+
+	// ForceThompson forces Thompson NFA for MatchString/MatchBytes even if pattern analysis
+	// doesn't require it. Use this to guarantee O(n*m) time complexity.
+	ForceThompson bool
+
+	// ForceTNFA forces Tagged NFA for FindString/FindBytes even if pattern analysis
+	// doesn't require it. Use this for guaranteed linear-time capture group matching.
+	ForceTNFA bool
+
+	// ForceTDFA forces Tagged DFA for FindString/FindBytes even if pattern analysis
+	// doesn't require it. Use this for guaranteed O(n) capture group matching.
+	ForceTDFA bool
+
+	// TDFAThreshold sets the maximum number of DFA states allowed before falling
+	// back to other engines. Default is 500.
+	TDFAThreshold int
+
+	// Verbose enables detailed logging of analysis decisions during compilation.
+	// Output is written to stderr and includes pattern analysis, engine selection,
+	// and code generation details.
+	Verbose bool
 }
 
 // Validate checks if the options are valid.
@@ -105,6 +126,11 @@ func Compile(opts Options) error {
 		RegexAST:         regexAST,
 		GenerateTestFile: generateTestFile,
 		TestFileInputs:   testInputs,
+		ForceThompson:    opts.ForceThompson,
+		ForceTNFA:        opts.ForceTNFA,
+		ForceTDFA:        opts.ForceTDFA,
+		TDFAThreshold:    opts.TDFAThreshold,
+		Verbose:          opts.Verbose,
 	}
 
 	c := compiler.NewCompiler(config)

@@ -20,6 +20,7 @@ const (
 	categorySimple      patternCategory = "simple"
 	categoryComplex     patternCategory = "complex"
 	categoryVeryComplex patternCategory = "very_complex"
+	categoryTDFA        patternCategory = "tdfa" // Tagged DFA patterns with catastrophic backtracking risk
 )
 
 type patternSpec struct {
@@ -137,10 +138,11 @@ func main() {
 }
 
 func buildPatternSpecs() []patternSpec {
-	specs := make([]patternSpec, 0, 90+45+20)
+	specs := make([]patternSpec, 0, 90+45+20+50)
 	specs = append(specs, generateSimpleSpecs(90)...)
 	specs = append(specs, generateComplexSpecs(45)...)
 	specs = append(specs, generateVeryComplexSpecs(20)...)
+	specs = append(specs, generateTDFASpecs(50)...)
 	return specs
 }
 
@@ -425,6 +427,331 @@ func buildAPIPathSpec(idx int, name string) patternSpec {
 	}
 }
 
+// generateTDFASpecs generates patterns that trigger Tagged DFA due to catastrophic backtracking risk.
+// These patterns have nested quantifiers + captures which would cause exponential backtracking without TDFA.
+func generateTDFASpecs(count int) []patternSpec {
+	specs := make([]patternSpec, 0, count)
+
+	templates := []func(int, string) patternSpec{
+		buildPathologicalSpec,
+		buildNestedWordSpec,
+		buildComplexURLSpec,
+		buildLogParserSpec,
+		buildSemVerSpec,
+		buildEmailCaptureSpec,
+		buildIPv4CaptureSpec,
+		buildUUIDCaptureSpec,
+		buildCreditCardSpec,
+		buildHTMLTagSpec,
+	}
+
+	for i := 0; i < count; i++ {
+		template := templates[i%len(templates)]
+		name := fmt.Sprintf("TDFACase%03d", i+1)
+		specs = append(specs, template(i, name))
+	}
+
+	return specs
+}
+
+// buildPathologicalSpec creates patterns with nested quantifiers that cause catastrophic backtracking
+func buildPathologicalSpec(idx int, name string) patternSpec {
+	// Vary the nested quantifier pattern
+	repeatChar := string(rune('a' + (idx % 5)))
+	innerRepeat := 1 + (idx % 3)
+	outerRepeat := 1 + ((idx / 3) % 3)
+
+	var pattern string
+	switch idx % 5 {
+	case 0:
+		// Classic (a+)+b pattern
+		pattern = fmt.Sprintf(`(?P<outer>(?P<inner>%s+)+)b`, repeatChar)
+	case 1:
+		// Nested alternation with quantifier
+		pattern = fmt.Sprintf(`(?P<match>(?:%s|%s%s)+)end`, repeatChar, repeatChar, repeatChar)
+	case 2:
+		// Multiple nested groups
+		pattern = fmt.Sprintf(`(?P<g1>(?P<g2>%s{%d})+)(?P<g3>b+)`, repeatChar, innerRepeat)
+	case 3:
+		// Alternation with nested quantifier
+		pattern = fmt.Sprintf(`(?P<result>(?:x+|y+|%s+){%d})z`, repeatChar, outerRepeat)
+	default:
+		// Complex nesting
+		pattern = fmt.Sprintf(`(?P<full>(?P<part>(?:%s+)+){%d})end`, repeatChar, innerRepeat)
+	}
+
+	repeatCount := 10 + (idx % 20)
+	inputs := []string{
+		strings.Repeat(repeatChar, repeatCount) + "b",
+		strings.Repeat(repeatChar, repeatCount+10) + "end",
+		strings.Repeat(repeatChar, repeatCount) + strings.Repeat("b", 5),
+		strings.Repeat(repeatChar, repeatCount) + "z",
+		strings.Repeat(repeatChar, repeatCount/2), // non-match
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildNestedWordSpec creates patterns with nested word quantifiers
+func buildNestedWordSpec(idx int, name string) patternSpec {
+	wordCount := 2 + (idx % 4)
+	spacePattern := `\s+`
+	if idx%2 == 0 {
+		spacePattern = `\s*`
+	}
+
+	pattern := fmt.Sprintf(`(?P<words>(?P<word>\w+%s){%d})(?P<end>\w+)`, spacePattern, wordCount)
+
+	words := []string{"hello", "world", "foo", "bar", "test", "data", "alpha", "beta"}
+	var builder strings.Builder
+	for i := 0; i <= wordCount; i++ {
+		if i > 0 {
+			builder.WriteString(" ")
+		}
+		builder.WriteString(words[(idx+i)%len(words)])
+	}
+	match1 := builder.String()
+
+	inputs := []string{
+		match1,
+		strings.Repeat("word ", wordCount) + "end",
+		"a b c d e f g h i j k end",
+		strings.Repeat("x ", wordCount*2) + "y",
+		"no match here",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildComplexURLSpec creates complex URL patterns with many optional groups
+func buildComplexURLSpec(idx int, name string) patternSpec {
+	// Vary the complexity
+	var pattern string
+	switch idx % 4 {
+	case 0:
+		pattern = `(?P<scheme>https?)://(?P<auth>(?P<user>[\w.-]+)(?::(?P<pass>[\w.-]+))?@)?(?P<host>[\w.-]+)(?::(?P<port>\d+))?(?P<path>/[\w./-]*)?`
+	case 1:
+		pattern = `(?P<protocol>https?)://(?P<host>[\w.-]+)(?::(?P<port>\d{1,5}))?(?P<path>(?:/[\w.-]+)*)(?:\?(?P<query>[\w=&.-]+))?(?:#(?P<fragment>[\w.-]+))?`
+	case 2:
+		pattern = `(?P<url>(?P<scheme>https?)://(?P<domain>(?:[\w-]+\.)+[\w-]+)(?P<port>:\d+)?(?P<path>/[^\s?#]*)?(?P<query>\?[^\s#]*)?)`
+	default:
+		pattern = `(?P<full>(?P<proto>https?|ftp)://(?P<host>[\w.-]+)(?P<port>:\d+)?(?P<path>/[\w./-]*)?)(?P<extra>.*)?`
+	}
+
+	inputs := []string{
+		"https://example.com",
+		"http://user:pass@api.example.com:8080/path/to/resource?key=value",
+		fmt.Sprintf("https://sub%d.domain.com/api/v%d/users", idx%10, idx%5+1),
+		"http://localhost:3000/test",
+		"not a url",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildLogParserSpec creates log line parsing patterns
+func buildLogParserSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 4 {
+	case 0:
+		pattern = `(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<ms>\d{3}))?(?P<tz>Z|[+-]\d{2}:\d{2})?\s+\[(?P<level>\w+)\]\s+(?P<message>.+)`
+	case 1:
+		pattern = `(?P<date>\d{4}/\d{2}/\d{2})\s+(?P<time>\d{2}:\d{2}:\d{2})\s+(?P<level>DEBUG|INFO|WARN|ERROR)\s+(?P<component>[\w.]+):\s+(?P<msg>.*)`
+	case 2:
+		pattern = `\[(?P<level>\w+)\]\s+(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+-\s+(?P<logger>[\w.]+)\s+-\s+(?P<message>.*)`
+	default:
+		pattern = `(?P<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+-\s+-\s+\[(?P<date>[^\]]+)\]\s+"(?P<method>\w+)\s+(?P<path>[^\s]+)\s+(?P<proto>[^"]+)"\s+(?P<status>\d+)\s+(?P<size>\d+)`
+	}
+
+	inputs := []string{
+		"2024-01-15T10:30:45.123Z [INFO] Server started successfully",
+		"2024/01/15 10:30:45 ERROR app.server: Connection failed",
+		"[WARN] 2024-01-15 10:30:45 - com.app.Service - Timeout occurred",
+		`192.168.1.1 - - [15/Jan/2024:10:30:45 +0000] "GET /api/users HTTP/1.1" 200 1234`,
+		"invalid log line",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildSemVerSpec creates semantic version patterns
+func buildSemVerSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 3 {
+	case 0:
+		pattern = `(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?`
+	case 1:
+		pattern = `v?(?P<version>(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?)(?P<suffix>-[\w.]+)?`
+	default:
+		pattern = `(?P<full>(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))(?P<pre>-(?:alpha|beta|rc)\.?\d*)?(?P<meta>\+[\w.]+)?`
+	}
+
+	inputs := []string{
+		"1.0.0",
+		"2.1.3-alpha.1",
+		"3.0.0-beta.2+build.123",
+		fmt.Sprintf("%d.%d.%d-rc.%d+20240115", idx%10, idx%20, idx%100, idx%5),
+		"v10.20.30",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildEmailCaptureSpec creates email patterns with captures
+func buildEmailCaptureSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 3 {
+	case 0:
+		pattern = `(?P<email>(?P<local>[\w.+-]+)@(?P<domain>[\w.-]+)\.(?P<tld>[a-z]{2,}))`
+	case 1:
+		pattern = `(?P<user>[\w.%+-]+)@(?P<subdomain>(?:[\w-]+\.)*)?(?P<domain>[\w-]+)\.(?P<tld>[a-z]{2,6})`
+	default:
+		pattern = `(?P<full>(?P<name>[\w.+-]+)@(?P<host>[\w.-]+))(?P<extra>\s.*)?`
+	}
+
+	inputs := []string{
+		"user@example.com",
+		"john.doe+tag@subdomain.example.co.uk",
+		fmt.Sprintf("test%d@domain%d.org", idx%100, idx%50),
+		"complex.email+filter@sub.domain.example.com",
+		"invalid email",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildIPv4CaptureSpec creates IPv4 patterns with captures
+func buildIPv4CaptureSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 2 {
+	case 0:
+		pattern = `(?P<ip>(?P<a>\d{1,3})\.(?P<b>\d{1,3})\.(?P<c>\d{1,3})\.(?P<d>\d{1,3}))(?::(?P<port>\d{1,5}))?`
+	default:
+		pattern = `(?P<full>(?P<ip>(?:\d{1,3}\.){3}\d{1,3})(?:/(?P<cidr>\d{1,2}))?)`
+	}
+
+	inputs := []string{
+		"192.168.1.1",
+		"10.0.0.1:8080",
+		fmt.Sprintf("%d.%d.%d.%d", idx%256, (idx+1)%256, (idx+2)%256, (idx+3)%256),
+		"192.168.0.0/24",
+		"not an ip",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildUUIDCaptureSpec creates UUID patterns with captures
+func buildUUIDCaptureSpec(idx int, name string) patternSpec {
+	pattern := `(?P<uuid>(?P<time_low>[0-9a-f]{8})-(?P<time_mid>[0-9a-f]{4})-(?P<version>[0-9a-f]{4})-(?P<variant>[0-9a-f]{4})-(?P<node>[0-9a-f]{12}))`
+
+	inputs := []string{
+		"550e8400-e29b-41d4-a716-446655440000",
+		fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", idx, idx%0xffff, 0x4000|(idx%0xfff), 0x8000|(idx%0x3fff), idx*12345),
+		"123e4567-e89b-12d3-a456-426614174000",
+		"not-a-valid-uuid-string",
+		"AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildCreditCardSpec creates credit card patterns with captures
+func buildCreditCardSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 2 {
+	case 0:
+		pattern = `(?P<card>(?P<issuer>4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[\s-]?(?P<digits>(?:\d{4}[\s-]?){3}|\d{6}[\s-]?\d{5}))`
+	default:
+		pattern = `(?P<number>(?P<prefix>\d{4})[\s-]?(?P<middle>\d{4}[\s-]?\d{4})[\s-]?(?P<suffix>\d{4}))`
+	}
+
+	inputs := []string{
+		"4111-1111-1111-1111",
+		"5500 0000 0000 0004",
+		"378282246310005",
+		fmt.Sprintf("4%03d-%04d-%04d-%04d", idx%1000, idx%10000, idx%10000, idx%10000),
+		"invalid card number",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
+// buildHTMLTagSpec creates HTML tag patterns with captures
+func buildHTMLTagSpec(idx int, name string) patternSpec {
+	var pattern string
+	switch idx % 3 {
+	case 0:
+		pattern = `<(?P<tag>[\w-]+)(?:\s+(?P<attrs>(?:[\w-]+="[^"]*"\s*)*))?(?P<close>/?)>`
+	case 1:
+		pattern = `<(?P<element>(?P<name>[\w-]+)(?:\s+(?P<attr>[\w-]+)="(?P<value>[^"]*)")*\s*/?)>`
+	default:
+		pattern = `(?P<full><(?P<tag>\w+)(?P<attributes>(?:\s+\w+="[^"]*")*)>(?P<content>.*?)</\2>)`
+	}
+
+	tags := []string{"div", "span", "p", "a", "input", "button", "form", "table"}
+	tag := tags[idx%len(tags)]
+	inputs := []string{
+		fmt.Sprintf(`<%s class="container" id="main">`, tag),
+		fmt.Sprintf(`<%s/>`, tag),
+		fmt.Sprintf(`<%s href="https://example.com" target="_blank">`, tag),
+		fmt.Sprintf(`<%s>content</%s>`, tag, tag),
+		"not an html tag",
+	}
+
+	return patternSpec{
+		Category: categoryTDFA,
+		Name:     name,
+		Pattern:  pattern,
+		Inputs:   normalizeInputs(inputs, 5),
+	}
+}
+
 func normalizeInputs(raw []string, min int) []string {
 	inputs := dedupeInputs(raw)
 	for len(inputs) < min {
@@ -511,7 +838,7 @@ func analyzeBenchmarks(output string, specs []patternSpec) map[patternCategory]*
 	comparisons := make(map[patternCategory]*benchmarkComparison)
 
 	// Initialize comparisons for each category
-	for _, cat := range []patternCategory{categorySimple, categoryComplex, categoryVeryComplex} {
+	for _, cat := range []patternCategory{categorySimple, categoryComplex, categoryVeryComplex, categoryTDFA} {
 		comparisons[cat] = &benchmarkComparison{Category: cat}
 	}
 
@@ -678,7 +1005,7 @@ func printBenchmarkAnalysis(output string, specs []patternSpec) {
 	fmt.Println("======== Benchmark Comparison Summary ========")
 	fmt.Println()
 
-	orderedCategories := []patternCategory{categorySimple, categoryComplex, categoryVeryComplex}
+	orderedCategories := []patternCategory{categorySimple, categoryComplex, categoryVeryComplex, categoryTDFA}
 
 	var totalRegengoFaster, totalStdlibFaster int
 	var overallRegengoNs, overallStdlibNs float64

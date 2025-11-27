@@ -56,6 +56,9 @@ func (c *Compiler) generateCaptureStruct(structName string) {
 		jen.Id("Match").String().Comment("Full match"),
 	}
 
+	usedNames := make(map[string]bool)
+	usedNames["Match"] = true // Reserve for full match
+
 	// Add fields for each capture group (skip group 0 which is the full match)
 	for i := 1; i < len(c.captureNames); i++ {
 		fieldName := c.captureNames[i]
@@ -64,6 +67,11 @@ func (c *Compiler) generateCaptureStruct(structName string) {
 		} else {
 			fieldName = codegen.UpperFirst(fieldName)
 		}
+		// Handle collisions by adding group number suffix
+		if usedNames[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNames[fieldName] = true
 		fields = append(fields, jen.Id(fieldName).String())
 	}
 
@@ -86,6 +94,9 @@ func (c *Compiler) generateCaptureStructBytes(structName string) {
 		jen.Id("Match").Index().Byte().Comment("Full match"),
 	}
 
+	usedNames := make(map[string]bool)
+	usedNames["Match"] = true // Reserve for full match
+
 	// Add fields for each capture group (skip group 0 which is the full match)
 	for i := 1; i < len(c.captureNames); i++ {
 		fieldName := c.captureNames[i]
@@ -94,6 +105,11 @@ func (c *Compiler) generateCaptureStructBytes(structName string) {
 		} else {
 			fieldName = codegen.UpperFirst(fieldName)
 		}
+		// Handle collisions by adding group number suffix
+		if usedNames[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNames[fieldName] = true
 		fields = append(fields, jen.Id(fieldName).Index().Byte())
 	}
 
@@ -102,11 +118,39 @@ func (c *Compiler) generateCaptureStructBytes(structName string) {
 }
 
 // generateCaptureInst generates code for InstCapture (record capture position).
+// When usePerCaptureCheckpointing is enabled, saves the old capture value on the stack
+// for efficient per-capture restore during backtracking (stdlib-style approach).
 func (c *Compiler) generateCaptureInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	captureIdx := int(inst.Arg)
+
+	// Per-capture checkpointing: save old value before setting new one
+	// Stack entry: [oldValue, captureIndex, 2] where 2 marks this as a capture restore point
+	if c.generatingCaptures && c.usePerCaptureCheckpointing {
+		return []jen.Code{
+			label,
+			jen.Block(
+				// Save old capture value on stack for potential restore
+				jen.Id(codegen.StackName).Op("=").Append(
+					jen.Id(codegen.StackName),
+					jen.Index(jen.Lit(3)).Int().Values(
+						jen.Id(codegen.CapturesName).Index(jen.Lit(captureIdx)), // old value
+						jen.Lit(captureIdx), // capture index
+						jen.Lit(2),          // type=2 means capture restore
+					),
+				),
+				// Set new capture value
+				jen.Id(codegen.CapturesName).Index(jen.Lit(captureIdx)).Op("=").Id(codegen.OffsetName),
+				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(inst.Out)),
+				jen.Goto().Id(codegen.StepSelectName),
+			),
+		}, nil
+	}
+
+	// Standard capture (no checkpointing or array-copy mode)
 	return []jen.Code{
 		label,
 		jen.Block(
-			jen.Id(codegen.CapturesName).Index(jen.Lit(int(inst.Arg))).Op("=").Id(codegen.OffsetName),
+			jen.Id(codegen.CapturesName).Index(jen.Lit(captureIdx)).Op("=").Id(codegen.OffsetName),
 			jen.Id(codegen.NextInstructionName).Op("=").Lit(int(inst.Out)),
 			jen.Goto().Id(codegen.StepSelectName),
 		),

@@ -86,6 +86,65 @@ var findAllCases = []CaptureCase{
 	},
 }
 
+// tdfaCases contains patterns that trigger Tagged DFA due to catastrophic backtracking risk.
+// These patterns have nested quantifiers + captures which would cause exponential backtracking
+// without TDFA's O(n) guarantee.
+var tdfaCases = []CaptureCase{
+	{
+		// Classic pathological pattern: (a+)+ with captures
+		// Without TDFA this would be O(2^n), with TDFA it's O(n)
+		Name:    "TDFAPathological",
+		Pattern: `(?P<outer>(?P<inner>a+)+)b`,
+		Input: []string{
+			"aaaaaaaaaaaaaaaaaaaab",           // 20 a's + b (matches)
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaab", // 30 a's + b (matches)
+			strings.Repeat("a", 50) + "b",     // 50 a's + b (matches)
+			strings.Repeat("a", 30),           // no match - would hang without TDFA
+		},
+	},
+	{
+		// Nested quantifiers with word boundaries - common in real patterns
+		Name:    "TDFANestedWord",
+		Pattern: `(?P<words>(?P<word>\w+\s*)+)end`,
+		Input: []string{
+			"hello world end",
+			"a b c d e f g h i j end",
+			strings.Repeat("word ", 20) + "end",
+		},
+	},
+	{
+		// Complex URL with optional components - uses character class compression
+		Name:    "TDFAComplexURL",
+		Pattern: `(?P<scheme>https?)://(?P<auth>(?P<user>[\w.-]+)(?::(?P<pass>[\w.-]+))?@)?(?P<host>[\w.-]+)(?::(?P<port>\d+))?(?P<path>/[\w./-]*)?(?:\?(?P<query>[\w=&.-]+))?`,
+		Input: []string{
+			"https://example.com",
+			"http://user:pass@example.com:8080/path/to/resource?key=value&foo=bar",
+			"https://api.github.com/repos/owner/repo",
+		},
+	},
+	{
+		// Log line parser with multiple optional groups
+		Name:    "TDFALogParser",
+		Pattern: `(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<ms>\d{3}))?(?P<tz>Z|[+-]\d{2}:\d{2})?\s+\[(?P<level>\w+)\]\s+(?P<message>.+)`,
+		Input: []string{
+			"2024-01-15T10:30:45.123Z [INFO] Server started successfully",
+			"2024-01-15T10:30:45+00:00 [ERROR] Connection failed",
+			"2024-01-15T10:30:45 [DEBUG] Processing request id=12345",
+		},
+	},
+	{
+		// Semantic version with optional pre-release and build metadata
+		Name:    "TDFASemVer",
+		Pattern: `(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?`,
+		Input: []string{
+			"1.0.0",
+			"2.1.3-alpha.1",
+			"3.0.0-beta.2+build.123",
+			"10.20.30-rc.1+20240115",
+		},
+	},
+}
+
 var testTemplate = `
 package generated
 
@@ -413,7 +472,31 @@ func main() {
 		}
 	}
 
+	// Generate TDFA benchmark cases (patterns with catastrophic backtracking risk)
+	for _, tdfaCase := range tdfaCases {
+		if err := regengo.Compile(regengo.Options{
+			Pattern:    tdfaCase.Pattern,
+			Name:       tdfaCase.Name,
+			OutputFile: filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s.go", tdfaCase.Name)),
+			Package:    "generated",
+		}); err != nil {
+			panic(err)
+		}
+
+		testFile, err := os.Create(filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s_test.go", tdfaCase.Name)))
+		if err != nil {
+			panic(err)
+		}
+		if err := captureTemplate.Execute(testFile, tdfaCase); err != nil {
+			panic(err)
+		}
+		if err := testFile.Close(); err != nil {
+			panic(err)
+		}
+	}
+
 	fmt.Printf("✓ Generated %d regular matchers\n", len(testCases))
 	fmt.Printf("✓ Generated %d capture group matchers\n", len(captureCases))
 	fmt.Printf("✓ Generated %d FindAll matchers\n", len(findAllCases))
+	fmt.Printf("✓ Generated %d TDFA benchmark matchers\n", len(tdfaCases))
 }

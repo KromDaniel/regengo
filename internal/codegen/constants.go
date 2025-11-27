@@ -13,6 +13,8 @@ const (
 	NextInstructionName = "nextInstruction"
 	StepSelectName      = "StepSelect"
 	TryFallbackName     = "TryFallback"
+	VisitedName         = "visited"
+	NumInstName         = "numInst"
 )
 
 // InstructionName returns the label name for an instruction.

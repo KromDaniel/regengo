@@ -2,15 +2,52 @@ package compiler
 
 import "regexp/syntax"
 
+// ComplexityAnalysis holds the results of pattern complexity analysis.
+// This determines which engine strategy to use for code generation.
+type ComplexityAnalysis struct {
+	// HasNestedLoops is true if the pattern has nested alternation loops
+	// (current memoization trigger from detectComplexity)
+	HasNestedLoops bool
+
+	// HasCatastrophicRisk is true if the pattern has nested quantifiers
+	// like (a+)+b that can cause exponential backtracking
+	HasCatastrophicRisk bool
+
+	// UseThompsonNFA is true if Thompson NFA is recommended for this pattern
+	UseThompsonNFA bool
+
+	// UseTDFA is true if Tagged DFA is recommended for captures
+	// (catastrophic risk + captures + feasible state count)
+	UseTDFA bool
+
+	// EstimatedNFAStates is the number of instructions in the compiled program
+	EstimatedNFAStates int
+
+	// HasCaptures is true if the pattern has capture groups
+	HasCaptures bool
+
+	// HasEndAnchor is true if the pattern has $ anchor
+	HasEndAnchor bool
+}
+
 // extractCaptureNames extracts capture group names from the regex AST.
+// When {n} expands captures (e.g., (?P<x>a){2} becomes two OpCapture nodes),
+// we deduplicate by Cap number to match Go's regexp behavior.
 func extractCaptureNames(re *syntax.Regexp) []string {
-	var names []string
-	names = append(names, "") // Group 0 is always the full match (unnamed)
+	// Use a map to track captures by Cap number, then build ordered slice
+	capMap := make(map[int]string)
+	maxCap := 0
 
 	var walk func(*syntax.Regexp)
 	walk = func(r *syntax.Regexp) {
 		if r.Op == syntax.OpCapture {
-			names = append(names, r.Name)
+			// Only record the first occurrence of each Cap number
+			if _, exists := capMap[r.Cap]; !exists {
+				capMap[r.Cap] = r.Name
+				if r.Cap > maxCap {
+					maxCap = r.Cap
+				}
+			}
 		}
 		for _, sub := range r.Sub {
 			walk(sub)
@@ -18,6 +55,13 @@ func extractCaptureNames(re *syntax.Regexp) []string {
 	}
 
 	walk(re)
+
+	// Build names slice in order: group 0 (unnamed), then 1, 2, etc.
+	names := make([]string, maxCap+1)
+	names[0] = "" // Group 0 is always the full match (unnamed)
+	for cap, name := range capMap {
+		names[cap] = name
+	}
 	return names
 }
 
@@ -192,4 +236,227 @@ func reaches(prog *syntax.Prog, start, target int) bool {
 		}
 	}
 	return false
+}
+
+// analyzeComplexity performs comprehensive pattern analysis to determine
+// the optimal engine strategy for code generation.
+func analyzeComplexity(prog *syntax.Prog, ast *syntax.Regexp) ComplexityAnalysis {
+	analysis := ComplexityAnalysis{}
+
+	if prog == nil {
+		return analysis
+	}
+
+	// Count NFA states
+	analysis.EstimatedNFAStates = len(prog.Inst)
+
+	// Check for captures
+	analysis.HasCaptures = prog.NumCap > 2
+
+	// Check for end anchor ($) in program - Thompson NFA doesn't handle this yet
+	analysis.HasEndAnchor = hasEndAnchor(prog)
+
+	// Detect nested loops at program level (catches issues even after AST simplification)
+	analysis.HasNestedLoops = detectComplexity(prog)
+
+	// Detect nested quantifiers at AST level (may miss some after simplification)
+	if ast != nil {
+		analysis.HasCatastrophicRisk = detectNestedQuantifiers(ast)
+	}
+
+	// Decision logic: recommend Thompson NFA if pattern has catastrophic risk
+	// OR if it has nested loops that could cause exponential backtracking
+	// BUT NOT if it has end anchor (Thompson NFA doesn't handle $ yet)
+	if (analysis.HasCatastrophicRisk || analysis.HasNestedLoops) && !analysis.HasEndAnchor {
+		analysis.UseThompsonNFA = true
+	}
+
+	return analysis
+}
+
+// hasEndAnchor checks if the program has an end-of-text anchor ($).
+func hasEndAnchor(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	for _, inst := range prog.Inst {
+		if inst.Op == syntax.InstEmptyWidth {
+			// Check if this is an end-of-text anchor
+			if syntax.EmptyOp(inst.Arg)&syntax.EmptyEndText != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// detectNestedQuantifiers checks if the regex AST has nested quantifiers
+// that could cause catastrophic backtracking (e.g., (a+)+b, (a*)*b).
+func detectNestedQuantifiers(re *syntax.Regexp) bool {
+	return walkDetectNestedQuantifiers(re, 0)
+}
+
+// walkDetectNestedQuantifiers recursively walks the AST to detect nested quantifiers.
+// quantifierDepth tracks how many quantifiers we're currently nested inside.
+func walkDetectNestedQuantifiers(re *syntax.Regexp, quantifierDepth int) bool {
+	if re == nil {
+		return false
+	}
+
+	isQuantifier := false
+	switch re.Op {
+	case syntax.OpStar, syntax.OpPlus, syntax.OpQuest, syntax.OpRepeat:
+		isQuantifier = true
+		if quantifierDepth > 0 {
+			// Found a quantifier nested inside another quantifier
+			return true
+		}
+	}
+
+	newDepth := quantifierDepth
+	if isQuantifier {
+		newDepth++
+	}
+
+	// Recursively check children
+	for _, sub := range re.Sub {
+		if walkDetectNestedQuantifiers(sub, newDepth) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// computeAltsNeedingCheckpoint returns a set of Alt instruction indices that
+// need capture checkpointing because their Out branch can reach an InstCapture.
+// This optimization reduces checkpoint overhead for Alts where captures won't change.
+func computeAltsNeedingCheckpoint(prog *syntax.Prog) map[int]bool {
+	if prog == nil {
+		return nil
+	}
+
+	result := make(map[int]bool)
+
+	// For each Alt instruction, check if the Out branch can reach an InstCapture
+	for i, inst := range prog.Inst {
+		if inst.Op == syntax.InstAlt {
+			if canReachCapture(prog, int(inst.Out)) {
+				result[i] = true
+			}
+		}
+	}
+
+	return result
+}
+
+// PerCaptureCheckpointThreshold is the number of Alts needing checkpoints
+// above which we switch to the stdlib-style per-capture checkpointing approach.
+// Below this threshold, array copying is simpler and efficient enough.
+const PerCaptureCheckpointThreshold = 3
+
+// shouldUsePerCaptureCheckpointing determines if the pattern would benefit from
+// the stdlib-style per-capture checkpointing approach.
+// Returns true if the number of Alt instructions needing capture checkpoints
+// exceeds the threshold, indicating array-copying would be too expensive.
+func shouldUsePerCaptureCheckpointing(altsNeedingCheckpoint map[int]bool) bool {
+	return len(altsNeedingCheckpoint) > PerCaptureCheckpointThreshold
+}
+
+// canReachCapture checks if any path from startIdx can reach an InstCapture.
+// Uses BFS to explore all reachable instructions.
+func canReachCapture(prog *syntax.Prog, startIdx int) bool {
+	visited := make(map[int]bool)
+	queue := []int{startIdx}
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		if curr < 0 || curr >= len(prog.Inst) || visited[curr] {
+			continue
+		}
+		visited[curr] = true
+
+		inst := prog.Inst[curr]
+
+		// Found a capture instruction - this Alt needs checkpointing
+		if inst.Op == syntax.InstCapture {
+			return true
+		}
+
+		// Don't follow past Match or Fail
+		if inst.Op == syntax.InstMatch || inst.Op == syntax.InstFail {
+			continue
+		}
+
+		// Follow successors
+		if inst.Op == syntax.InstAlt {
+			queue = append(queue, int(inst.Out), int(inst.Arg))
+		} else {
+			queue = append(queue, int(inst.Out))
+		}
+	}
+
+	return false
+}
+
+// computeEpsilonClosures precomputes epsilon closures for all states in the program.
+// Returns a slice where closures[i] is the bitset of states reachable via epsilon
+// transitions from state i.
+func computeEpsilonClosures(prog *syntax.Prog) []uint64 {
+	if prog == nil || len(prog.Inst) == 0 {
+		return nil
+	}
+
+	closures := make([]uint64, len(prog.Inst))
+	for i := range prog.Inst {
+		closures[i] = computeEpsilonClosureForState(prog, i)
+	}
+	return closures
+}
+
+// computeEpsilonClosureForState computes the epsilon closure for a single state.
+// The epsilon closure is the set of all states reachable by following only
+// epsilon transitions (Nop, Capture, Alt branches).
+func computeEpsilonClosureForState(prog *syntax.Prog, start int) uint64 {
+	if start >= 64 {
+		// For now, only support up to 64 states with bitset
+		// Larger programs will need different representation
+		return 0
+	}
+
+	var result uint64
+	visited := make(map[int]bool)
+	queue := []int{start}
+
+	for len(queue) > 0 {
+		state := queue[0]
+		queue = queue[1:]
+
+		if visited[state] {
+			continue
+		}
+		visited[state] = true
+
+		if state < 64 {
+			result |= (1 << state)
+		}
+
+		if state >= len(prog.Inst) {
+			continue
+		}
+
+		inst := prog.Inst[state]
+		// Follow epsilon transitions
+		switch inst.Op {
+		case syntax.InstNop, syntax.InstCapture:
+			queue = append(queue, int(inst.Out))
+		case syntax.InstAlt:
+			queue = append(queue, int(inst.Out), int(inst.Arg))
+		}
+	}
+
+	return result
 }
