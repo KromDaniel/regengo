@@ -300,7 +300,14 @@ for _, m := range matches {
 Regengo automatically generates a `_test.go` file alongside your output file (unless disabled). This file contains:
 
 1. **Correctness Tests**: Verifies that Regengo's output matches `regexp` stdlib exactly for provided inputs.
+   - `Test...MatchString`: Validates boolean matching.
+   - `Test...MatchBytes`: Validates byte-slice matching.
+   - `Test...FindString`: Validates capture groups (if present), checking both the full match and every individual captured group against stdlib's `FindStringSubmatch`.
+   - `Test...FindAllString`: Validates all matches and their captures against stdlib's `FindAllStringSubmatch`.
+
 2. **Benchmarks**: Comparison benchmarks to measure speedup vs stdlib.
+   - `Benchmark...MatchString`: Performance of simple matching.
+   - `Benchmark...FindString`: Performance of capture extraction (if applicable).
 
 ### Customizing Tests
 
