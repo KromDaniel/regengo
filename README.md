@@ -86,17 +86,17 @@ Regengo consistently outperforms Go's standard `regexp` package:
 
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
-| Date `\d{4}-\d{2}-\d{2}` | FindString | 103 ns | 7 ns | **14x faster** |
-| Multi-date extraction | FindAllString | 738 ns | 146 ns | **5x faster** |
-| Date capture | FindString | 103 ns | 19 ns | **5x faster** |
+| Date `\d{4}-\d{2}-\d{2}` | FindString | 105 ns | 7 ns | **14x faster** |
+| Multi-date extraction | FindAllString | 431 ns | 49 ns | **8.9x faster** |
+| Date capture | FindString | 105 ns | 20 ns | **5.3x faster** |
 
 ### Typical Results
 
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
-| Email validation | MatchString | 1574 ns | 500 ns | **3x faster** |
-| Email capture | FindString | 294 ns | 105 ns | **2.8x faster** |
-| Log parser (TDFA) | FindString | 408 ns | 111 ns | **3.7x faster** |
+| Email validation | MatchString | 1554 ns | 507 ns | **3x faster** |
+| Email capture | FindString | 296 ns | 127 ns | **2.3x faster** |
+| Log parser (TDFA) | FindString | 399 ns | 121 ns | **3.3x faster** |
 
 ### Memory Efficiency
 
@@ -533,9 +533,9 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 102.8 | 128 | 2 | - |
-| regengo | 19.4 | 64 | 1 | **5.3x faster** |
-| regengo (reuse) | 7.4 | 0 | 0 | **13.8x faster** |
+| stdlib | 105.3 | 128 | 2 | - |
+| regengo | 19.7 | 64 | 1 | **5.3x faster** |
+| regengo (reuse) | 7.3 | 0 | 0 | **14.4x faster** |
 
 ### EmailCaptureFindString
 
@@ -548,9 +548,9 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 294.2 | 128 | 2 | - |
-| regengo | 115.5 | 64 | 1 | **2.5x faster** |
-| regengo (reuse) | 104.8 | 0 | 0 | **2.8x faster** |
+| stdlib | 295.9 | 128 | 2 | - |
+| regengo | 127.3 | 64 | 1 | **2.3x faster** |
+| regengo (reuse) | 115.1 | 0 | 0 | **2.6x faster** |
 
 ### EmailMatchString
 
@@ -563,8 +563,8 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1574.0 | 0 | 0 | - |
-| regengo | 499.7 | 0 | 0 | **3.1x faster** |
+| stdlib | 1554.0 | 0 | 0 | - |
+| regengo | 507.3 | 0 | 0 | **3.1x faster** |
 
 ### GreedyMatchString
 
@@ -577,8 +577,8 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 750.7 | 0 | 0 | - |
-| regengo | 622.4 | 0 | 0 | **1.2x faster** |
+| stdlib | 751.4 | 0 | 0 | - |
+| regengo | 475.3 | 0 | 0 | **1.6x faster** |
 
 ### LazyMatchString
 
@@ -591,8 +591,8 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1252.0 | 0 | 0 | - |
-| regengo | 905.8 | 0 | 0 | **1.4x faster** |
+| stdlib | 1260.0 | 0 | 0 | - |
+| regengo | 478.0 | 0 | 0 | **2.6x faster** |
 
 ### MultiDateFindAllString
 
@@ -605,9 +605,9 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 425.0 | 331 | 3 | - |
-| regengo | 80.7 | 106 | 2 | **5.3x faster** |
-| regengo (reuse) | 48.3 | 0 | 0 | **8.8x faster** |
+| stdlib | 431.4 | 331 | 3 | - |
+| regengo | 82.2 | 106 | 2 | **5.2x faster** |
+| regengo (reuse) | 48.6 | 0 | 0 | **8.9x faster** |
 
 ### MultiEmailFindAllString
 
@@ -620,9 +620,84 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 954.9 | 374 | 4 | - |
-| regengo | 398.2 | 133 | 3 | **2.4x faster** |
-| regengo (reuse) | 366.3 | 0 | 0 | **2.6x faster** |
+| stdlib | 978.1 | 374 | 4 | - |
+| regengo | 478.1 | 133 | 3 | **2.0x faster** |
+| regengo (reuse) | 438.5 | 0 | 0 | **2.2x faster** |
+
+### TDFAComplexURLFindString
+
+**Pattern:**
+```regex
+(?P<scheme>https?)://(?P<auth>(?P<user>[\w.-]+)(?::(?P<pass>[\w.-]+))?@)?(?P<host>[\w.-]+)(?::(?P<port>\d+))?(?P<path>/[\w./-]*)?(?:\?(?P<query>[\w=&.-]+))?
+```
+
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 598.7 | 288 | 2 | - |
+| regengo | 285.4 | 421 | 2 | **2.1x faster** |
+| regengo (reuse) | 263.7 | 277 | 1 | **2.3x faster** |
+
+### TDFALogParserFindString
+
+**Pattern:**
+```regex
+(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<ms>\d{3}))?(?P<tz>Z|[+-]\d{2}:\d{2})?\s+\[(?P<level>\w+)\]\s+(?P<message>.+)
+```
+
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 398.8 | 192 | 2 | - |
+| regengo | 120.9 | 96 | 1 | **3.3x faster** |
+| regengo (reuse) | 106.0 | 0 | 0 | **3.8x faster** |
+
+### TDFANestedWordFindString
+
+**Pattern:**
+```regex
+(?P<words>(?P<word>\w+\s*)+)end
+```
+
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 654.9 | 112 | 2 | - |
+| regengo | 403.6 | 128 | 1 | **1.6x faster** |
+| regengo (reuse) | 394.6 | 80 | 0 | **1.7x faster** |
+
+### TDFAPathologicalFindString
+
+**Pattern:**
+```regex
+(?P<outer>(?P<inner>a+)+)b
+```
+
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 492.3 | 84 | 1 | - |
+| regengo | 896.5 | 80 | 1 | **0.5x faster** |
+| regengo (reuse) | 888.9 | 44 | 0 | **0.6x faster** |
+
+### TDFASemVerFindString
+
+**Pattern:**
+```regex
+(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?
+```
+
+**Method:** `FindString`
+
+| Variant | ns/op | B/op | allocs/op | vs stdlib |
+|---------|------:|-----:|----------:|----------:|
+| stdlib | 211.3 | 192 | 2 | - |
+| regengo | 72.6 | 96 | 1 | **2.9x faster** |
+| regengo (reuse) | 57.1 | 0 | 0 | **3.7x faster** |
 
 ### URLCaptureFindString
 
@@ -635,9 +710,9 @@ Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib v
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 292.0 | 160 | 2 | - |
-| regengo | 165.0 | 80 | 1 | **1.8x faster** |
-| regengo (reuse) | 151.8 | 0 | 0 | **1.9x faster** |
+| stdlib | 293.8 | 160 | 2 | - |
+| regengo | 116.6 | 80 | 1 | **2.5x faster** |
+| regengo (reuse) | 112.7 | 0 | 0 | **2.6x faster** |
 
 ---
 
