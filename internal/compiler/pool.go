@@ -7,13 +7,27 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
-// generateStackPool generates a sync.Pool for stack reuse.
+// generateStackPool generates a sync.Pool for stack reuse (for Match functions).
 func (c *Compiler) generateStackPool() {
 	poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
 
 	c.file.Var().Id(poolName).Op("=").Qual("sync", "Pool").Values(jen.Dict{
 		jen.Id("New"): jen.Func().Params().Interface().Block(
 			jen.Id("stack").Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+			jen.Return(jen.Op("&").Id("stack")),
+		),
+	})
+	c.file.Line()
+}
+
+// generateStackPoolWithCaptures generates a sync.Pool for capture function stacks.
+// Uses [3]int entries: [offset, instruction, hasCheckpoint] for selective checkpointing.
+func (c *Compiler) generateStackPoolWithCaptures() {
+	poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
+
+	c.file.Var().Id(poolName).Op("=").Qual("sync", "Pool").Values(jen.Dict{
+		jen.Id("New"): jen.Func().Params().Interface().Block(
+			jen.Id("stack").Op(":=").Make(jen.Index().Index(jen.Lit(3)).Int(), jen.Lit(0), jen.Lit(32)),
 			jen.Return(jen.Op("&").Id("stack")),
 		),
 	})
@@ -34,19 +48,55 @@ func (c *Compiler) generateCaptureStackPool() {
 	c.file.Line()
 }
 
-// generatePooledStackInit generates code to get a stack from the pool.
+// generatePooledStackInit generates code to get a stack from the pool (for Match functions).
+// Uses the same stack size as the pool (which may be [3]int if captures are enabled).
 func (c *Compiler) generatePooledStackInit() []jen.Code {
 	poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
 
+	// Determine stack entry size based on whether captures are enabled
+	// When captures are enabled (including TNFA), we use [3]int for selective checkpointing
+	// Only TDFA uses a completely different approach and doesn't need this
+	stackSize := 2
+	if c.config.WithCaptures && !c.useTDFAForCaptures {
+		stackSize = 3
+	}
+
+	// Build the zero value for clearing
+	var zeroValues []jen.Code
+	for i := 0; i < stackSize; i++ {
+		zeroValues = append(zeroValues, jen.Lit(0))
+	}
+
 	return []jen.Code{
 		// Get stack from pool
-		jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(2)).Int()),
+		jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(stackSize)).Int()),
 		jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
 		// Defer return to pool
 		jen.Defer().Func().Params().Block(
 			// Clear references to prevent memory leaks
 			jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
-				jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(2)).Int().Values(jen.Lit(0), jen.Lit(0)),
+				jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(stackSize)).Int().Values(zeroValues...),
+			),
+			jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+			jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),
+		).Call(),
+	}
+}
+
+// generatePooledStackInitWithCaptures generates code to get a stack from the pool (for Find functions).
+// Uses [3]int entries for selective checkpointing.
+func (c *Compiler) generatePooledStackInitWithCaptures() []jen.Code {
+	poolName := fmt.Sprintf("%sStackPool", codegen.LowerFirst(c.config.Name))
+
+	return []jen.Code{
+		// Get stack from pool
+		jen.Id("stackPtr").Op(":=").Id(poolName).Dot("Get").Call().Assert(jen.Op("*").Index().Index(jen.Lit(3)).Int()),
+		jen.Id(codegen.StackName).Op(":=").Parens(jen.Op("*").Id("stackPtr")).Index(jen.Empty(), jen.Lit(0)),
+		// Defer return to pool
+		jen.Defer().Func().Params().Block(
+			// Clear references to prevent memory leaks
+			jen.For(jen.Id("i").Op(":=").Range().Id(codegen.StackName)).Block(
+				jen.Id(codegen.StackName).Index(jen.Id("i")).Op("=").Index(jen.Lit(3)).Int().Values(jen.Lit(0), jen.Lit(0), jen.Lit(0)),
 			),
 			jen.Op("*").Id("stackPtr").Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
 			jen.Id(poolName).Dot("Put").Call(jen.Id("stackPtr")),

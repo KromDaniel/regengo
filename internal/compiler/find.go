@@ -151,14 +151,23 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	}
 
 	// Initialize stacks outside the loop (Optimization: Hoist allocations)
+	// Uses [3]int for stack entries to support selective checkpointing: [offset, instruction, type]
 	if c.needsBacktracking {
 		if c.config.UsePool {
-			code = append(code, c.generatePooledCaptureStackInit()...)
-			code = append(code, c.generatePooledStackInit()...)
+			// Per-capture mode doesn't need captureStack (captures saved on main stack)
+			if !c.usePerCaptureCheckpointing {
+				code = append(code, c.generatePooledCaptureStackInit()...)
+			}
+			code = append(code, c.generatePooledStackInitWithCaptures()...)
 		} else {
+			// Per-capture mode doesn't need captureStack
+			if !c.usePerCaptureCheckpointing {
+				code = append(code,
+					jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)),
+				)
+			}
 			code = append(code,
-				jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)),
-				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(3)).Int(), jen.Lit(0), jen.Lit(32)),
 			)
 		}
 	}
@@ -200,8 +209,13 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 
 	// Reset stacks inside the loop
 	if c.needsBacktracking {
+		// Per-capture mode doesn't use captureStack
+		if !c.usePerCaptureCheckpointing {
+			loopBody = append(loopBody,
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+			)
+		}
 		loopBody = append(loopBody,
-			jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
 		)
 	}
@@ -218,20 +232,53 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	// Add backtracking logic that continues to next position on failure
 	// Only if backtracking is needed
 	if c.needsBacktracking {
-		loopBody = append(loopBody,
-			jen.Id(codegen.TryFallbackName).Op(":"),
-			jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
-				jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-				jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
-				jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
-				jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-				jen.Goto().Id(codegen.StepSelectName),
-			).Else().Block(
-				// No match at this position, try next
+		// Per-capture checkpointing mode: loop to process capture restores
+		if c.usePerCaptureCheckpointing {
+			loopBody = append(loopBody,
+				jen.Id(codegen.TryFallbackName).Op(":"),
+				jen.For(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+					jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+					jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+					// Check entry type: 2 = capture restore, 0 = Alt backtrack
+					jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(2)).Block(
+						// Per-capture restore: captures[index] = oldValue
+						jen.Id(codegen.CapturesName).Index(jen.Id("last").Index(jen.Lit(1))).Op("=").Id("last").Index(jen.Lit(0)),
+						jen.Continue(), // Keep processing stack
+					),
+					// Alt backtrack point (type=0): set offset and instruction, jump to selector
+					jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+					jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+					jen.Goto().Id(codegen.StepSelectName),
+				),
+				// Stack empty - try next search position
 				jen.Id("searchStart").Op("++"),
 				jen.Continue(),
-			),
-		)
+			)
+		} else {
+			// Array checkpointing mode
+			loopBody = append(loopBody,
+				jen.Id(codegen.TryFallbackName).Op(":"),
+				jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+					jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+					jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+					jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+					jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+					// Restore captures from checkpoint only if this backtrack point had a checkpoint
+					// (selective checkpointing optimization: last[2] == 1 means checkpoint exists)
+					jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(1).Op("&&").Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
+						jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
+						jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
+						jen.Copy(jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
+						jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
+					),
+					jen.Goto().Id(codegen.StepSelectName),
+				).Else().Block(
+					// No match at this position, try next
+					jen.Id("searchStart").Op("++"),
+					jen.Continue(),
+				),
+			)
+		}
 	} else {
 		// For patterns without backtracking, just move to next position on failure
 		loopBody = append(loopBody,
@@ -316,6 +363,9 @@ func (c *Compiler) generateMatchInstForFindAllAppend(id uint32, structName strin
 		)
 	}
 
+	usedNamesItem := make(map[string]bool)
+	usedNamesItem["Match"] = true // Reserve for full match
+
 	// Add capture group fields
 	for i := 1; i < len(c.captureNames); i++ {
 		fieldName := c.captureNames[i]
@@ -324,6 +374,11 @@ func (c *Compiler) generateMatchInstForFindAllAppend(id uint32, structName strin
 		} else {
 			fieldName = codegen.UpperFirst(fieldName)
 		}
+		// Handle collisions by adding group number suffix
+		if usedNamesItem[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNamesItem[fieldName] = true
 
 		captureStart := i * 2
 		captureEnd := i*2 + 1
@@ -422,8 +477,9 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	}
 
-	// Initialize capture checkpoint stack only if we have alternations (Optimization #1)
-	if c.needsBacktracking {
+	// Initialize capture checkpoint stack only if we have alternations and not using per-capture mode
+	// Per-capture mode saves captures on the main stack, not a separate captureStack
+	if c.needsBacktracking && !c.usePerCaptureCheckpointing {
 		if c.config.UsePool {
 			code = append(code, c.generatePooledCaptureStackInit()...)
 		} else {
@@ -433,13 +489,14 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 	}
 
 	// Only add stack initialization if backtracking is needed
+	// Uses [3]int for selective checkpointing: [offset, instruction, hasCheckpoint]
 	if c.needsBacktracking {
 		// Add stack initialization (pooled or regular)
 		if c.config.UsePool {
-			code = append(code, c.generatePooledStackInit()...)
+			code = append(code, c.generatePooledStackInitWithCaptures()...)
 		} else {
 			code = append(code,
-				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(2)).Int(), jen.Lit(0), jen.Lit(32)),
+				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(3)).Int(), jen.Lit(0), jen.Lit(32)),
 			)
 		}
 	}
@@ -565,6 +622,9 @@ func (c *Compiler) generateMatchInstWithCapturesReuse(id uint32, structName stri
 		)
 	}
 
+	usedNamesReuse := make(map[string]bool)
+	usedNamesReuse["Match"] = true // Reserve for full match
+
 	// Add capture group fields
 	for i := 1; i < len(c.captureNames); i++ {
 		fieldName := c.captureNames[i]
@@ -573,6 +633,11 @@ func (c *Compiler) generateMatchInstWithCapturesReuse(id uint32, structName stri
 		} else {
 			fieldName = codegen.UpperFirst(fieldName)
 		}
+		// Handle collisions by adding group number suffix
+		if usedNamesReuse[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNamesReuse[fieldName] = true
 
 		captureStart := i * 2
 		captureEnd := i*2 + 1
@@ -693,6 +758,9 @@ func (c *Compiler) generateMatchInstWithCaptures(label *jen.Statement, structNam
 		)
 	}
 
+	usedNames := make(map[string]bool)
+	usedNames["Match"] = true // Reserve for full match
+
 	// Add capture group fields (skip group 0)
 	for i := 1; i < len(c.captureNames); i++ {
 		fieldName := c.captureNames[i]
@@ -701,6 +769,11 @@ func (c *Compiler) generateMatchInstWithCaptures(label *jen.Statement, structNam
 		} else {
 			fieldName = codegen.UpperFirst(fieldName)
 		}
+		// Handle collisions by adding group number suffix
+		if usedNames[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNames[fieldName] = true
 
 		captureStart := i * 2
 		captureEnd := i*2 + 1

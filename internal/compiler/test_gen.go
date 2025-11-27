@@ -102,6 +102,8 @@ func (c *Compiler) generateTestFile() error {
 					),
 					// Check each capture group
 					jen.BlockFunc(func(g *jen.Group) {
+						usedNames := make(map[string]bool)
+						usedNames["Match"] = true // Reserve for full match
 						for i := 1; i < len(c.captureNames); i++ {
 							captureName := c.captureNames[i]
 							if captureName == "" {
@@ -109,6 +111,11 @@ func (c *Compiler) generateTestFile() error {
 							} else {
 								captureName = codegen.UpperFirst(captureName)
 							}
+							// Handle collisions by adding group number suffix
+							if usedNames[captureName] {
+								captureName = fmt.Sprintf("%s%d", captureName, i)
+							}
+							usedNames[captureName] = true
 							// Compare capture group with stdlib result
 							g.If(jen.Id("result").Dot(captureName).Op("!=").Id("expectedMatches").Index(jen.Lit(i))).Block(
 								jen.Id("t").Dot("Errorf").Call(
@@ -163,6 +170,8 @@ func (c *Compiler) generateTestFile() error {
 					),
 					// Check each capture group for this match
 					jen.BlockFunc(func(g *jen.Group) {
+						usedNames := make(map[string]bool)
+						usedNames["Match"] = true // Reserve for full match
 						for j := 1; j < len(c.captureNames); j++ {
 							captureName := c.captureNames[j]
 							if captureName == "" {
@@ -170,6 +179,11 @@ func (c *Compiler) generateTestFile() error {
 							} else {
 								captureName = codegen.UpperFirst(captureName)
 							}
+							// Handle collisions by adding group number suffix
+							if usedNames[captureName] {
+								captureName = fmt.Sprintf("%s%d", captureName, j)
+							}
+							usedNames[captureName] = true
 							g.If(jen.Id("results").Index(jen.Id("i")).Dot(captureName).Op("!=").Id("expectedAll").Index(jen.Id("i")).Index(jen.Lit(j))).Block(
 								jen.Id("t").Dot("Errorf").Call(
 									jen.Lit(fmt.Sprintf("FindAllString(%%q, -1)[%%d].%s = %%q, want %%q", captureName)),

@@ -10,15 +10,20 @@ import (
 )
 
 var (
-	pattern    = flag.String("pattern", "", "Regular expression pattern to compile")
-	name       = flag.String("name", "", "Name prefix for generated functions")
-	output     = flag.String("output", "", "Output file path")
-	pkg        = flag.String("package", "main", "Package name for generated code")
-	noPool     = flag.Bool("no-pool", false, "Disable sync.Pool for stack reuse (pool is enabled by default)")
-	noTest     = flag.Bool("no-test", false, "Disable automatic test file generation")
-	testInputs = flag.String("test-inputs", "", "Comma-separated test inputs for generated tests (default: 'example')")
-	version    = flag.Bool("version", false, "Print version information")
-	helpFlag   = flag.Bool("help", false, "Show help message")
+	pattern       = flag.String("pattern", "", "Regular expression pattern to compile")
+	name          = flag.String("name", "", "Name prefix for generated functions")
+	output        = flag.String("output", "", "Output file path")
+	pkg           = flag.String("package", "main", "Package name for generated code")
+	noPool        = flag.Bool("no-pool", false, "Disable sync.Pool for stack reuse (pool is enabled by default)")
+	noTest        = flag.Bool("no-test", false, "Disable automatic test file generation")
+	testInputs    = flag.String("test-inputs", "", "Comma-separated test inputs for generated tests (default: 'example')")
+	verbose       = flag.Bool("verbose", false, "Enable verbose logging of analysis decisions")
+	forceThompson = flag.Bool("force-thompson", false, "Force Thompson NFA for match functions (guarantees O(n*m) complexity)")
+	forceTNFA     = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
+	forceTDFA     = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
+	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max DFA states before falling back to other engines")
+	version       = flag.Bool("version", false, "Print version information")
+	helpFlag      = flag.Bool("help", false, "Show help message")
 )
 
 const (
@@ -77,6 +82,11 @@ func main() {
 		NoPool:           *noPool,
 		GenerateTestFile: !*noTest,
 		TestFileInputs:   testInputsList,
+		Verbose:          *verbose,
+		ForceThompson:    *forceThompson,
+		ForceTNFA:        *forceTNFA,
+		ForceTDFA:        *forceTDFA,
+		TDFAThreshold:    *tdfaThreshold,
 	}
 
 	if err := regengo.Compile(opts); err != nil {
@@ -119,6 +129,21 @@ Options:
   -test-inputs string
       Comma-separated test inputs for generated tests (default: "example")
       Example: -test-inputs "test@example.com,user@domain.org"
+  -verbose
+      Enable verbose logging of analysis decisions to stderr
+      Shows pattern analysis, engine selection, and code generation details
+  -force-thompson
+      Force Thompson NFA for match functions (guarantees O(n*m) complexity)
+      Use for patterns that may cause catastrophic backtracking
+  -force-tnfa
+      Force Tagged NFA for capture functions (guarantees linear-time captures)
+      Use for patterns with captures that may cause backtracking issues
+  -force-tdfa
+      Force Tagged DFA for capture functions (guarantees O(n) captures)
+      2-3x faster than stdlib for patterns with captures
+  -tdfa-threshold int
+      Max DFA states before falling back to other engines (default: 500)
+      Higher values allow more complex patterns to use TDFA
   -version
       Print version information
   -help
@@ -129,6 +154,7 @@ Features:
   - Auto-detects capture groups and generates Find functions
   - Always generates both MatchString and MatchBytes
   - Automatic test file generation with benchmarks
+  - Auto-detects patterns at risk of catastrophic backtracking
 
 Examples:
   # Generate email matcher (pool enabled by default, includes tests)
@@ -143,6 +169,9 @@ Examples:
 
   # Disable pool and tests
   regengo -pattern '\w+' -name Word -output word.go -no-pool -no-test
+
+  # With verbose logging to see analysis decisions
+  regengo -pattern '(a+)+b' -name Pathological -output pathological.go -verbose
 
 For more information, visit: https://github.com/KromDaniel/regengo
 `
