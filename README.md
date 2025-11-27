@@ -35,7 +35,7 @@ Regengo consistently outperforms Go's standard `regexp` package:
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
 | Date `\d{4}-\d{2}-\d{2}` | FindString | 103 ns | 7 ns | **14x faster** |
-| Multi-date extraction | FindAllString | 425 ns | 48 ns | **9x faster** |
+| Multi-date extraction | FindAllString | 738 ns | 146 ns | **5x faster** |
 | Date capture | FindString | 103 ns | 19 ns | **5x faster** |
 
 ### Typical Results
@@ -108,9 +108,9 @@ Has catastrophic risk: true
 | Operation | Go stdlib | Regengo | Notes |
 |-----------|-----------|---------|-------|
 | Simple match | O(n) | O(n) | Both efficient |
-| Nested quantifiers `(a+)+` | **O(2ⁿ)** worst case | **O(n×m)** guaranteed | Thompson NFA prevents catastrophic backtracking |
+| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n×m)** guaranteed | Both use Thompson NFA construction |
 | Captures | O(n) typical | O(n) guaranteed | TDFA eliminates backtracking overhead |
-| Complex captures | O(2ⁿ) worst case | **O(n×m)** with memoization | Bit-vector caching |
+| Complex captures | **O(n×m)** guaranteed | **O(n×m)** with memoization | Both safe, Regengo uses bit-vector caching |
 
 ### Memory Complexity
 
@@ -125,8 +125,8 @@ Has catastrophic risk: true
 
 | Scenario | Reason | Mitigation |
 |----------|--------|------------|
-| Very short inputs (< 10 chars) | Function call overhead vs interpreted bytecode | Use stdlib for micro-strings |
 | Patterns with many optional groups | TDFA state explosion | Increase `-tdfa-threshold` or pattern redesign |
+| Non-matching pathological patterns | Memoization overhead in capture groups | Use stdlib or reduce capture complexity |
 | First cold call | No JIT, but consistent performance | Warm up in init() if needed |
 
 > **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
