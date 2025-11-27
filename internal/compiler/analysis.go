@@ -123,6 +123,24 @@ func isAnchored(prog *syntax.Prog) bool {
 	return startInst.Op == syntax.InstEmptyWidth && syntax.EmptyOp(startInst.Arg)&syntax.EmptyBeginText != 0
 }
 
+// hasWordBoundary checks if the compiled program uses word boundary assertions (\b or \B).
+func hasWordBoundary(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	for i := range prog.Inst {
+		if prog.Inst[i].Op == syntax.InstEmptyWidth {
+			emptyOp := syntax.EmptyOp(prog.Inst[i].Arg)
+			if emptyOp&(syntax.EmptyWordBoundary|syntax.EmptyNoWordBoundary) != 0 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // detectComplexity analyzes the program for patterns that could cause catastrophic backtracking.
 // It returns true if the program contains nested loops or ambiguous alternations that warrant
 // using memoization to guarantee O(N) complexity.

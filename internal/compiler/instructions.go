@@ -390,10 +390,38 @@ func (c *Compiler) generateEmptyWidthInst(label *jen.Statement, inst *syntax.Ins
 		)
 	}
 
-	// Word boundary checks would go here if needed
-	// For now, we'll leave them unimplemented
-	if emptyOp&(syntax.EmptyWordBoundary|syntax.EmptyNoWordBoundary) != 0 {
-		return nil, fmt.Errorf("word boundary assertions (\\b, \\B) are not yet implemented")
+	// Word boundary check (\b)
+	// A word boundary exists when the character before and after the position
+	// have different "word" status. Word characters are [a-zA-Z0-9_].
+	// At start of text, "before" is considered non-word.
+	// At end of text, "after" is considered non-word.
+	if emptyOp&syntax.EmptyWordBoundary != 0 {
+		// Generate: prevIsWord := offset > 0 && isWordChar(input[offset-1])
+		// Generate: currIsWord := offset < inputLen && isWordChar(input[offset])
+		// Generate: if prevIsWord == currIsWord { goto TryFallback } // no boundary
+		checks = append(checks,
+			jen.Id("prevIsWord").Op(":=").Id(codegen.OffsetName).Op(">").Lit(0).Op("&&").
+				Id(codegen.IsWordCharName).Call(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1))),
+			jen.Id("currIsWord").Op(":=").Id(codegen.OffsetName).Op("<").Id(codegen.InputLenName).Op("&&").
+				Id(codegen.IsWordCharName).Call(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName))),
+			jen.If(jen.Id("prevIsWord").Op("==").Id("currIsWord")).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Non-word boundary check (\B)
+	// Matches when NOT at a word boundary (both sides are word chars or both are non-word)
+	if emptyOp&syntax.EmptyNoWordBoundary != 0 {
+		checks = append(checks,
+			jen.Id("prevIsWord").Op(":=").Id(codegen.OffsetName).Op(">").Lit(0).Op("&&").
+				Id(codegen.IsWordCharName).Call(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("-").Lit(1))),
+			jen.Id("currIsWord").Op(":=").Id(codegen.OffsetName).Op("<").Id(codegen.InputLenName).Op("&&").
+				Id(codegen.IsWordCharName).Call(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName))),
+			jen.If(jen.Id("prevIsWord").Op("!=").Id("currIsWord")).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
 	}
 
 	// Add the checks and continue to next instruction

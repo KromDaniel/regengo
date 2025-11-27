@@ -15,6 +15,7 @@ const (
 	TryFallbackName     = "TryFallback"
 	VisitedName         = "visited"
 	NumInstName         = "numInst"
+	IsWordCharName      = "isWordChar"
 )
 
 // InstructionName returns the label name for an instruction.
