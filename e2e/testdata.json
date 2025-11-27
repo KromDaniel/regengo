@@ -2126,5 +2126,117 @@
       "wx",
       "x"
     ]
+  },
+  {
+    "pattern": "\\bword\\b",
+    "inputs": [
+      "word",
+      "a word here",
+      "word at start",
+      "end with word",
+      "password",
+      "wordpress",
+      "words",
+      "sword"
+    ]
+  },
+  {
+    "pattern": "\\btest",
+    "inputs": [
+      "test",
+      "testing",
+      "a test",
+      "contest",
+      "test123",
+      "pretest"
+    ]
+  },
+  {
+    "pattern": "test\\b",
+    "inputs": [
+      "test",
+      "a test",
+      "contest",
+      "testing",
+      "pretest",
+      "test123"
+    ]
+  },
+  {
+    "pattern": "\\b\\d+\\b",
+    "inputs": [
+      "123",
+      "word 456 word",
+      "a1b",
+      "test123test",
+      "12 34 56",
+      "abc123"
+    ]
+  },
+  {
+    "pattern": "\\Bword",
+    "inputs": [
+      "password",
+      "sword",
+      "word",
+      "a word",
+      "keywords",
+      "crossword"
+    ]
+  },
+  {
+    "pattern": "word\\B",
+    "inputs": [
+      "wordpress",
+      "words",
+      "word",
+      "a word",
+      "swordfish",
+      "wordy"
+    ]
+  },
+  {
+    "pattern": "\\Btest\\B",
+    "inputs": [
+      "untested",
+      "protestation",
+      "test",
+      "testing",
+      "contest",
+      "attest"
+    ]
+  },
+  {
+    "pattern": "\\b[a-z]+\\b",
+    "inputs": [
+      "hello",
+      "hello world",
+      "123",
+      "test123",
+      "hello123world",
+      "a"
+    ]
+  },
+  {
+    "pattern": "(?P<word>\\b\\w+\\b)",
+    "inputs": [
+      "hello",
+      "hello world",
+      "  spaces  ",
+      "123",
+      "test_var",
+      "a1b2c3"
+    ]
+  },
+  {
+    "pattern": "\\bfoo\\b|\\bbar\\b",
+    "inputs": [
+      "foo",
+      "bar",
+      "foobar",
+      "foo bar",
+      "food",
+      "crowbar"
+    ]
   }
 ]
