@@ -151,7 +151,7 @@ func (g *ThompsonGenerator) generateEpsilonClosureLookup() []jen.Code {
 	return []jen.Code{
 		jen.Line(),
 		jen.Comment("Epsilon closure lookup for next states after character transitions"),
-		jen.Id("epsilonClosures").Op(":=").Map(jen.Int()).Uint64().Values(closureEntries...),
+		jen.Id("epsilonClosures").Op(":=").Index(jen.Lit(g.stateCount)).Uint64().Values(closureEntries...),
 	}
 }
 

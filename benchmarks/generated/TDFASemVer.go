@@ -25,7 +25,7 @@ func (TDFASemVer) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x8000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x3c)), 5: uint64(uint64(0xc0)), 7: uint64(uint64(0x780)), 10: uint64(uint64(0x1800)), 12: uint64(uint64(0xc30f000)), 15: uint64(uint64(0x30000)), 17: uint64(uint64(0xc2e0000)), 21: uint64(uint64(0xc00000)), 23: uint64(uint64(0xb800000))}
+	epsilonClosures := [28]uint64{2: uint64(uint64(0x3c)), 5: uint64(uint64(0xc0)), 7: uint64(uint64(0x780)), 10: uint64(uint64(0x1800)), 12: uint64(uint64(0xc30f000)), 15: uint64(uint64(0x30000)), 17: uint64(uint64(0xc2e0000)), 21: uint64(uint64(0xc00000)), 23: uint64(uint64(0xb800000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -105,7 +105,7 @@ func (TDFASemVer) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x8000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x3c)), 5: uint64(uint64(0xc0)), 7: uint64(uint64(0x780)), 10: uint64(uint64(0x1800)), 12: uint64(uint64(0xc30f000)), 15: uint64(uint64(0x30000)), 17: uint64(uint64(0xc2e0000)), 21: uint64(uint64(0xc00000)), 23: uint64(uint64(0xb800000))}
+	epsilonClosures := [28]uint64{2: uint64(uint64(0x3c)), 5: uint64(uint64(0xc0)), 7: uint64(uint64(0x780)), 10: uint64(uint64(0x1800)), 12: uint64(uint64(0xc30f000)), 15: uint64(uint64(0x30000)), 17: uint64(uint64(0xc2e0000)), 21: uint64(uint64(0xc00000)), 23: uint64(uint64(0xb800000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {

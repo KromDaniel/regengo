@@ -30,7 +30,7 @@ func (TDFAComplexURL) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x1000000000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0xe007000)), 14: uint64(uint64(0xc3c000)), 17: uint64(uint64(0xc0000)), 19: uint64(uint64(0xb80000)), 23: uint64(uint64(0xd000000)), 27: uint64(uint64(0x1863878000000)), 30: uint64(uint64(0x180000000)), 32: uint64(uint64(0x1863700000000)), 37: uint64(uint64(0x185c000000000)), 38: uint64(uint64(0x185c000000000)), 42: uint64(uint64(0x180000000000)), 44: uint64(uint64(0x1700000000000))}
+	epsilonClosures := [49]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0xe007000)), 14: uint64(uint64(0xc3c000)), 17: uint64(uint64(0xc0000)), 19: uint64(uint64(0xb80000)), 23: uint64(uint64(0xd000000)), 27: uint64(uint64(0x1863878000000)), 30: uint64(uint64(0x180000000)), 32: uint64(uint64(0x1863700000000)), 37: uint64(uint64(0x185c000000000)), 38: uint64(uint64(0x185c000000000)), 42: uint64(uint64(0x180000000000)), 44: uint64(uint64(0x1700000000000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -150,7 +150,7 @@ func (TDFAComplexURL) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x1000000000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0xe007000)), 14: uint64(uint64(0xc3c000)), 17: uint64(uint64(0xc0000)), 19: uint64(uint64(0xb80000)), 23: uint64(uint64(0xd000000)), 27: uint64(uint64(0x1863878000000)), 30: uint64(uint64(0x180000000)), 32: uint64(uint64(0x1863700000000)), 37: uint64(uint64(0x185c000000000)), 38: uint64(uint64(0x185c000000000)), 42: uint64(uint64(0x180000000000)), 44: uint64(uint64(0x1700000000000))}
+	epsilonClosures := [49]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0xe007000)), 14: uint64(uint64(0xc3c000)), 17: uint64(uint64(0xc0000)), 19: uint64(uint64(0xb80000)), 23: uint64(uint64(0xd000000)), 27: uint64(uint64(0x1863878000000)), 30: uint64(uint64(0x180000000)), 32: uint64(uint64(0x1863700000000)), 37: uint64(uint64(0x185c000000000)), 38: uint64(uint64(0x185c000000000)), 42: uint64(uint64(0x180000000000)), 44: uint64(uint64(0x1700000000000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {

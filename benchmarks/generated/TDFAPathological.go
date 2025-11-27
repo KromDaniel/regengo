@@ -30,7 +30,7 @@ func (TDFAPathological) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x200))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
+	epsilonClosures := [10]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -82,7 +82,7 @@ func (TDFAPathological) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x200))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
+	epsilonClosures := [10]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {

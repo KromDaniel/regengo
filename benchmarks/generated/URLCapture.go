@@ -25,7 +25,7 @@ func (URLCapture) MatchString(input string) bool {
 	acceptMask := uint64(uint64(0x10000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x3000)), 13: uint64(uint64(0x18e1e000)), 16: uint64(uint64(0x60000)), 18: uint64(uint64(0x18dc0000)), 23: uint64(uint64(0x17000000)), 24: uint64(uint64(0x17000000))}
+	epsilonClosures := [29]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x3000)), 13: uint64(uint64(0x18e1e000)), 16: uint64(uint64(0x60000)), 18: uint64(uint64(0x18dc0000)), 23: uint64(uint64(0x17000000)), 24: uint64(uint64(0x17000000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
@@ -121,7 +121,7 @@ func (URLCapture) MatchBytes(input []byte) bool {
 	acceptMask := uint64(uint64(0x10000000))
 
 	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := map[int]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x3000)), 13: uint64(uint64(0x18e1e000)), 16: uint64(uint64(0x60000)), 18: uint64(uint64(0x18dc0000)), 23: uint64(uint64(0x17000000)), 24: uint64(uint64(0x17000000))}
+	epsilonClosures := [29]uint64{2: uint64(uint64(0x8)), 3: uint64(uint64(0x10)), 4: uint64(uint64(0x20)), 5: uint64(uint64(0x3c0)), 6: uint64(uint64(0x300)), 9: uint64(uint64(0x400)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x3000)), 13: uint64(uint64(0x18e1e000)), 16: uint64(uint64(0x60000)), 18: uint64(uint64(0x18dc0000)), 23: uint64(uint64(0x17000000)), 24: uint64(uint64(0x17000000))}
 
 	// Unanchored pattern - try from each starting position
 	for searchStart := 0; searchStart <= l; searchStart++ {
