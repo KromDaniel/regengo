@@ -34,21 +34,22 @@ type Config struct {
 type Compiler struct {
 	config                     Config
 	file                       *jen.File
-	captureNames               []string           // Capture group names (empty string for unnamed groups)
-	hasRepeatingCaptures       bool               // True if any capture groups are in repeating context
-	needsBacktracking          bool               // True if the program contains alternation instructions
-	generatingCaptures         bool               // True when generating Find* functions (needs capture checkpoints)
-	isAnchored                 bool               // True if the pattern is anchored to the start of text
-	generatingBytes            bool               // True when generating Bytes functions (affects type generation)
-	useMemoization             bool               // True if complexity analysis suggests using memoization
-	logger                     *Logger            // Verbose logger for analysis decisions
-	complexity                 ComplexityAnalysis // Results of pattern complexity analysis
-	useThompsonForMatch        bool               // True if Thompson NFA should be used for Match functions
-	useTNFAForCaptures         bool               // True if TNFA/memoization should be used for Find functions
-	useTDFAForCaptures         bool               // True if Tagged DFA should be used for Find functions
-	altsNeedingCheckpoint      map[int]bool       // Alt instructions that need capture checkpointing
-	usePerCaptureCheckpointing bool               // True to use stdlib-style per-capture saves instead of array copying
-	hasWordBoundary            bool               // True if the pattern uses \b or \B word boundaries
+	captureNames               []string            // Capture group names (empty string for unnamed groups)
+	hasRepeatingCaptures       bool                // True if any capture groups are in repeating context
+	needsBacktracking          bool                // True if the program contains alternation instructions
+	generatingCaptures         bool                // True when generating Find* functions (needs capture checkpoints)
+	isAnchored                 bool                // True if the pattern is anchored to the start of text
+	generatingBytes            bool                // True when generating Bytes functions (affects type generation)
+	useMemoization             bool                // True if complexity analysis suggests using memoization
+	logger                     *Logger             // Verbose logger for analysis decisions
+	complexity                 ComplexityAnalysis  // Results of pattern complexity analysis
+	matchLength                MatchLengthAnalysis // Results of match length analysis (for streaming)
+	useThompsonForMatch        bool                // True if Thompson NFA should be used for Match functions
+	useTNFAForCaptures         bool                // True if TNFA/memoization should be used for Find functions
+	useTDFAForCaptures         bool                // True if Tagged DFA should be used for Find functions
+	altsNeedingCheckpoint      map[int]bool        // Alt instructions that need capture checkpointing
+	usePerCaptureCheckpointing bool                // True to use stdlib-style per-capture saves instead of array copying
+	hasWordBoundary            bool                // True if the pattern uses \b or \B word boundaries
 }
 
 // New creates a new compiler instance.
@@ -96,6 +97,17 @@ func (c *Compiler) analyzeAndLog() {
 
 	// Perform comprehensive analysis
 	c.complexity = analyzeComplexity(c.config.Program, c.config.RegexAST)
+
+	// Perform match length analysis for streaming API
+	if c.config.RegexAST != nil {
+		c.matchLength = AnalyzeMatchLength(c.config.RegexAST)
+		c.logger.Log("Min match length: %d bytes", c.matchLength.MinMatchLen)
+		if c.matchLength.MaxMatchLen == -1 {
+			c.logger.Log("Max match length: unbounded")
+		} else {
+			c.logger.Log("Max match length: %d bytes", c.matchLength.MaxMatchLen)
+		}
+	}
 
 	c.logger.Log("Has nested quantifiers: %v", c.complexity.HasCatastrophicRisk)
 	c.logger.Log("Has nested loops: %v", c.complexity.HasNestedLoops)
@@ -232,6 +244,9 @@ func (c *Compiler) Generate() error {
 	c.file.Var().Id(fmt.Sprintf("Compiled%s", c.config.Name)).Op("=").Id(c.config.Name).Values()
 	c.file.Line()
 
+	// Generate match length constants for streaming API
+	c.generateMatchLengthConstants()
+
 	// Generate Match functions - use Thompson NFA if recommended
 	var matchStringCode, matchBytesCode []jen.Code
 	var err error
@@ -300,6 +315,9 @@ func (c *Compiler) Generate() error {
 				return fmt.Errorf("failed to generate capture functions: %w", err)
 			}
 		}
+
+		// Generate streaming methods (FindReader, etc.)
+		c.generateStreamingMethods()
 	}
 
 	// Save to file
@@ -553,6 +571,33 @@ func (c *Compiler) generateIsWordCharHelper() {
 				Id("b").Op("==").Lit(byte('_')),
 		),
 	)
+	c.file.Line()
+}
+
+// generateMatchLengthConstants generates constants for match length analysis.
+// These are used by the streaming API to determine buffer sizes and leftover handling.
+func (c *Compiler) generateMatchLengthConstants() {
+	// Generate MinMatchLen constant
+	c.file.Comment("MinMatchLen is the minimum number of bytes any match can have.")
+	c.file.Const().Id(fmt.Sprintf("%sMinMatchLen", c.config.Name)).Op("=").Lit(c.matchLength.MinMatchLen)
+	c.file.Line()
+
+	// Generate MaxMatchLen constant (-1 means unbounded)
+	c.file.Comment("MaxMatchLen is the maximum number of bytes any match can have.")
+	c.file.Comment("-1 means unbounded (pattern contains * or + quantifiers).")
+	c.file.Const().Id(fmt.Sprintf("%sMaxMatchLen", c.config.Name)).Op("=").Lit(c.matchLength.MaxMatchLen)
+	c.file.Line()
+
+	// Generate helper method to get match length analysis
+	c.method("MatchLengthInfo").
+		Params().
+		Params(jen.Id("minLen"), jen.Id("maxLen").Int()).
+		Block(
+			jen.Return(
+				jen.Id(fmt.Sprintf("%sMinMatchLen", c.config.Name)),
+				jen.Id(fmt.Sprintf("%sMaxMatchLen", c.config.Name)),
+			),
+		)
 	c.file.Line()
 }
 

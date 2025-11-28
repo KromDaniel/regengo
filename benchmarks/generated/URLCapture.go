@@ -2,6 +2,8 @@ package generated
 
 import (
 	"bytes"
+	stream "github.com/KromDaniel/regengo/stream"
+	"io"
 	"strings"
 	"sync"
 )
@@ -17,6 +19,17 @@ var uRLCaptureStackPool = sync.Pool{New: func() interface{} {
 type URLCapture struct{}
 
 var CompiledURLCapture = URLCapture{}
+
+// MinMatchLen is the minimum number of bytes any match can have.
+const URLCaptureMinMatchLen = 8
+
+// MaxMatchLen is the maximum number of bytes any match can have.
+// -1 means unbounded (pattern contains * or + quantifiers).
+const URLCaptureMaxMatchLen = -1
+
+func (URLCapture) MatchLengthInfo() (minLen, maxLen int) {
+	return URLCaptureMinMatchLen, URLCaptureMaxMatchLen
+}
 
 func (URLCapture) MatchString(input string) bool {
 	l := len(input)
@@ -633,4 +646,178 @@ func (URLCapture) FindAllBytes(input []byte, n int) []*URLCaptureBytesResult {
 		}
 	}
 	return results
+}
+
+// DefaultMaxLeftover returns the recommended MaxLeftover value for streaming.
+// For bounded patterns, this is 10 * MaxMatchLen.
+// For unbounded patterns, this returns 1MB as a safety limit.
+func (URLCapture) DefaultMaxLeftover() int {
+	return 1048576
+}
+
+// FindReader streams matches from an io.Reader.
+//
+// The onMatch callback is called for each match found. Return false to stop
+// processing early. The StreamMatch.Result points into an internal buffer
+// and is only valid during the callback - copy if needed.
+//
+// Returns nil on success (including early termination via callback).
+// Returns error on read failure.
+func (URLCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*URLCaptureBytesResult]) bool) error {
+	if err := cfg.Validate(65536); err != nil {
+		return err
+	}
+	cfg = cfg.ApplyDefaults(65536, 1048576)
+
+	buf := make([]byte, cfg.BufferSize)
+	leftover := 0
+	streamOffset := int64(0)
+	chunkIndex := 0
+
+	for {
+		n, err := r.Read(buf[leftover:])
+		if n == 0 && err != nil {
+			if err == io.EOF {
+				// Process any remaining data in leftover
+				if leftover > 0 {
+					chunk := buf[:leftover]
+					searchPos := 0
+					for searchPos < len(chunk) {
+						result, ok := URLCapture{}.FindBytes(chunk[searchPos:])
+						if !ok {
+							break
+						}
+						matchIdx := bytes.Index(chunk[searchPos:], result.Match)
+						if matchIdx < 0 {
+							break
+						}
+						matchStart := searchPos + matchIdx
+
+						m := stream.Match[*URLCaptureBytesResult]{
+							ChunkIndex:   chunkIndex,
+							Result:       result,
+							StreamOffset: streamOffset + int64(matchStart),
+						}
+						if !onMatch(m) {
+							return nil
+						}
+						if len(result.Match) > 0 {
+							searchPos = matchStart + len(result.Match)
+						} else {
+							searchPos++
+						}
+					}
+				}
+				return nil
+			}
+			return err
+		}
+
+		dataLen := leftover + n
+		chunk := buf[:dataLen]
+		isFull := n == cfg.BufferSize-leftover
+
+		searchPos := 0
+		committed := 0
+		for searchPos < len(chunk) {
+			result, ok := URLCapture{}.FindBytes(chunk[searchPos:])
+			if !ok {
+				break
+			}
+			matchIdx := bytes.Index(chunk[searchPos:], result.Match)
+			if matchIdx < 0 {
+				break
+			}
+			matchStart := searchPos + matchIdx
+			matchEnd := matchStart + len(result.Match)
+
+			if isFull && matchEnd > dataLen-cfg.MaxLeftover {
+				// Match too close to boundary, defer to next chunk
+				break
+			}
+
+			m := stream.Match[*URLCaptureBytesResult]{
+				ChunkIndex:   chunkIndex,
+				Result:       result,
+				StreamOffset: streamOffset + int64(matchStart),
+			}
+			if !onMatch(m) {
+				return nil
+			}
+			committed = matchEnd
+			if len(result.Match) > 0 {
+				searchPos = matchEnd
+			} else {
+				searchPos++
+			}
+		}
+
+		// Prepare leftover for next iteration
+		if isFull {
+			// Buffer was full, need to keep leftover
+			keepFrom := dataLen - cfg.MaxLeftover
+			if keepFrom < committed {
+				keepFrom = committed
+			}
+			leftover = dataLen - keepFrom
+			streamOffset += int64(keepFrom)
+			copy(buf[:leftover], buf[keepFrom:dataLen])
+		} else {
+			// Reached EOF or short read, no more data
+			leftover = 0
+		}
+		chunkIndex++
+		if err == io.EOF {
+			return nil
+		}
+	}
+}
+
+// FindReaderCount counts matches without allocating result structs.
+// More efficient when you only need the count.
+func (URLCapture) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error) {
+	var count int64
+	err := URLCapture{}.FindReader(r, cfg, func(_ stream.Match[*URLCaptureBytesResult]) bool {
+		count++
+		return true
+	})
+	return count, err
+}
+
+// FindReaderFirst returns the first match, or nil if none found.
+// The returned result is a copy (safe to use after call returns).
+func (URLCapture) FindReaderFirst(r io.Reader, cfg stream.Config) (*URLCaptureBytesResult, int64, error) {
+	var result *URLCaptureBytesResult
+	var offset int64
+	err := URLCapture{}.FindReader(r, cfg, func(m stream.Match[*URLCaptureBytesResult]) bool {
+		// Copy the result since buffer will be reused
+		result = URLCapture{}.copyBytesResult(m.Result)
+		offset = m.StreamOffset
+		return false
+	})
+	return result, offset, err
+}
+
+// copyBytesResult creates a deep copy of a BytesResult.
+// This is needed because the original slices point into the stream buffer.
+func (URLCapture) copyBytesResult(src *URLCaptureBytesResult) *URLCaptureBytesResult {
+	if src == nil {
+		return nil
+	}
+	dst := &URLCaptureBytesResult{}
+	// Copy Match slice
+	dst.Match = append([]byte{}, src.Match...)
+	if src.Protocol != nil {
+		dst.Protocol = append([]byte{}, src.Protocol...)
+	}
+	if src.Host != nil {
+		dst.Host = append([]byte{}, src.Host...)
+	}
+	if src.Port != nil {
+		dst.Port = append([]byte{}, src.Port...)
+	}
+	if src.Path != nil {
+		dst.Path = append([]byte{}, src.Path...)
+	}
+	return dst
 }
