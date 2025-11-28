@@ -5,6 +5,40 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
+// isASCIIOnlyCharClass returns true if all runes in the character class are ASCII (< 128).
+// This is used at compile-time to determine whether to use bitmap (fast) or Unicode (decode) path.
+func isASCIIOnlyCharClass(runes []rune) bool {
+	for i := 0; i < len(runes); i += 2 {
+		// Check the high bound of each range
+		if runes[i+1] >= 128 {
+			return false
+		}
+	}
+	return true
+}
+
+// extractASCIIRanges extracts the ASCII portion (< 128) of the rune ranges.
+// This is used to create an ASCII fast-path bitmap for mixed Unicode/ASCII classes.
+func extractASCIIRanges(runes []rune) []rune {
+	var ascii []rune
+	for i := 0; i < len(runes); i += 2 {
+		lo, hi := runes[i], runes[i+1]
+		if lo < 128 {
+			asciiHi := hi
+			if asciiHi >= 128 {
+				asciiHi = 127
+			}
+			ascii = append(ascii, lo, asciiHi)
+		}
+	}
+	return ascii
+}
+
+// countRanges returns the number of ranges in the rune slice.
+func countRanges(runes []rune) int {
+	return len(runes) / 2
+}
+
 // createBitmap creates a 256-bit bitmap for the given runes.
 func createBitmap(runes []rune) [32]byte {
 	var bitmap [32]byte
@@ -177,4 +211,59 @@ func (c *Compiler) generateSmallSetCheck(runes []rune) *jen.Statement {
 	}
 
 	return stmt
+}
+
+// generateUnicodeInlineRangeCheck generates inline range comparisons for small Unicode range counts.
+// For small numbers of ranges (<=8), inline comparisons are faster than binary search.
+// The variable 'r' must already be defined as the decoded rune.
+func (c *Compiler) generateUnicodeInlineRangeCheck(runes []rune) *jen.Statement {
+	// Build: !(r >= lo1 && r <= hi1) && !(r >= lo2 && r <= hi2) && ...
+	// Returns true when rune is NOT in any range (failure condition)
+	var stmt *jen.Statement
+	for i := 0; i < len(runes); i += 2 {
+		lo, hi := runes[i], runes[i+1]
+		// NOT (r >= lo && r <= hi)
+		rangeCheck := jen.Op("!").Parens(
+			jen.Id("r").Op(">=").Lit(lo).Op("&&").Id("r").Op("<=").Lit(hi),
+		)
+		if stmt == nil {
+			stmt = rangeCheck
+		} else {
+			stmt = stmt.Op("&&").Add(rangeCheck)
+		}
+	}
+	return stmt
+}
+
+// generateUnicodeBinarySearchCheck generates a binary search for large Unicode range tables.
+// The variable 'r' must already be defined as the decoded rune.
+// Returns code that sets 'found' to true if r is in any range.
+func (c *Compiler) generateUnicodeBinarySearchCheck(runes []rune) []jen.Code {
+	// Generate the range table as a compile-time literal
+	var pairs []jen.Code
+	for i := 0; i < len(runes); i += 2 {
+		pairs = append(pairs, jen.Index(jen.Lit(2)).Rune().Values(
+			jen.Lit(runes[i]), jen.Lit(runes[i+1]),
+		))
+	}
+	rangeTable := jen.Index().Index(jen.Lit(2)).Rune().Values(pairs...)
+
+	return []jen.Code{
+		// ranges := [][2]rune{{lo1, hi1}, {lo2, hi2}, ...}
+		jen.Id("ranges").Op(":=").Add(rangeTable),
+		// Binary search
+		jen.Id("found").Op(":=").False(),
+		jen.Id("lo").Op(",").Id("hi").Op(":=").Lit(0).Op(",").Len(jen.Id("ranges")).Op("-").Lit(1),
+		jen.For(jen.Id("lo").Op("<=").Id("hi")).Block(
+			jen.Id("mid").Op(":=").Parens(jen.Id("lo").Op("+").Id("hi")).Op("/").Lit(2),
+			jen.If(jen.Id("r").Op("<").Id("ranges").Index(jen.Id("mid")).Index(jen.Lit(0))).Block(
+				jen.Id("hi").Op("=").Id("mid").Op("-").Lit(1),
+			).Else().If(jen.Id("r").Op(">").Id("ranges").Index(jen.Id("mid")).Index(jen.Lit(1))).Block(
+				jen.Id("lo").Op("=").Id("mid").Op("+").Lit(1),
+			).Else().Block(
+				jen.Id("found").Op("=").True(),
+				jen.Break(),
+			),
+		),
+	}
 }
