@@ -113,6 +113,10 @@ func (c *Compiler) generateFindReaderBody(minBuffer int, bytesStructName, stream
 		jen.Id("chunkIndex").Op(":=").Lit(0),
 		jen.Line(),
 
+		// Pre-allocate result struct for reuse (zero-allocation optimization)
+		jen.Id("reuseResult").Op(":=").Op("&").Id(bytesStructName).Values(),
+		jen.Line(),
+
 		// Main read loop
 		jen.For().Block(
 			// Read into buffer after leftover
@@ -128,8 +132,9 @@ func (c *Compiler) generateFindReaderBody(minBuffer int, bytesStructName, stream
 						jen.Id("chunk").Op(":=").Id("buf").Index(jen.Empty().Op(":").Id("leftover")),
 						jen.Id("searchPos").Op(":=").Lit(0),
 						jen.For(jen.Id("searchPos").Op("<").Len(jen.Id("chunk"))).Block(
-							jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytes").Call(
+							jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
 								jen.Id("chunk").Index(jen.Id("searchPos").Op(":")),
+								jen.Id("reuseResult"),
 							),
 							jen.If(jen.Op("!").Id("ok")).Block(
 								jen.Break(),
@@ -176,8 +181,9 @@ func (c *Compiler) generateFindReaderBody(minBuffer int, bytesStructName, stream
 			jen.Id("searchPos").Op(":=").Lit(0),
 			jen.Id("committed").Op(":=").Lit(0),
 			jen.For(jen.Id("searchPos").Op("<").Len(jen.Id("chunk"))).Block(
-				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytes").Call(
+				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
 					jen.Id("chunk").Index(jen.Id("searchPos").Op(":")),
+					jen.Id("reuseResult"),
 				),
 				jen.If(jen.Op("!").Id("ok")).Block(
 					jen.Break(),
