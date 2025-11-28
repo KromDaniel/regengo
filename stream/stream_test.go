@@ -81,7 +81,7 @@ func TestConfigApplyDefaults(t *testing.T) {
 			minBuffer:       100,
 			defaultLeftover: 1024,
 			wantBufferSize:  100,
-			wantMaxLeftover: 1024,
+			wantMaxLeftover: 50, // capped to BufferSize/2
 		},
 		{
 			name:            "explicit values preserved",
@@ -98,6 +98,22 @@ func TestConfigApplyDefaults(t *testing.T) {
 			defaultLeftover: 1024,
 			wantBufferSize:  64 * 1024,
 			wantMaxLeftover: -1,
+		},
+		{
+			name:            "MaxLeftover capped to BufferSize/2",
+			cfg:             Config{BufferSize: 1000, MaxLeftover: 900},
+			minBuffer:       100,
+			defaultLeftover: 1024,
+			wantBufferSize:  1000,
+			wantMaxLeftover: 500, // capped to BufferSize/2
+		},
+		{
+			name:            "default leftover capped to BufferSize/2",
+			cfg:             Config{BufferSize: 1000},
+			minBuffer:       100,
+			defaultLeftover: 2000, // larger than BufferSize
+			wantBufferSize:  1000,
+			wantMaxLeftover: 500, // capped to BufferSize/2
 		},
 	}
 

@@ -121,5 +121,14 @@ func (c Config) ApplyDefaults(minBuffer, defaultLeftover int) Config {
 		result.MaxLeftover = defaultLeftover
 	}
 
+	// CRITICAL: MaxLeftover must be < BufferSize to prevent infinite loop.
+	// If MaxLeftover >= BufferSize, the leftover would consume the entire buffer,
+	// leaving no room for new data from Read(), causing an infinite loop.
+	// Exception: -1 means unlimited (user explicitly accepts the risk).
+	maxAllowedLeftover := result.BufferSize / 2
+	if result.MaxLeftover != -1 && result.MaxLeftover > maxAllowedLeftover {
+		result.MaxLeftover = maxAllowedLeftover
+	}
+
 	return result
 }
