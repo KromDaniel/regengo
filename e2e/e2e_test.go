@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -139,6 +140,26 @@ func TestE2E(t *testing.T) {
 				t.Fatalf("Failed to initialize go module:\nOutput: %s\nError: %v", string(output), err)
 			}
 
+			// Add replace directive for the stream package (used by streaming tests)
+			// Get the absolute path to the regengo module
+			regengoPath, err := getRegengoModulePath()
+			if err != nil {
+				t.Fatalf("Failed to get regengo module path: %v", err)
+			}
+			editCmd := exec.Command("go", "mod", "edit", "-replace",
+				fmt.Sprintf("github.com/KromDaniel/regengo=%s", regengoPath))
+			editCmd.Dir = caseDir
+			if output, err := editCmd.CombinedOutput(); err != nil {
+				t.Fatalf("Failed to add replace directive:\nOutput: %s\nError: %v", string(output), err)
+			}
+
+			// Run go mod tidy to resolve dependencies
+			tidyCmd := exec.Command("go", "mod", "tidy")
+			tidyCmd.Dir = caseDir
+			if output, err := tidyCmd.CombinedOutput(); err != nil {
+				t.Fatalf("Failed to tidy go module:\nOutput: %s\nError: %v", string(output), err)
+			}
+
 			// Step 3: Run the generated tests
 			t.Logf("Running generated tests...")
 			cmd := exec.Command("go", "test", "-v")
@@ -193,4 +214,18 @@ func countTests(output string) int {
 		}
 	}
 	return count
+}
+
+// getRegengoModulePath returns the absolute path to the regengo module root.
+// This is needed for the replace directive so that generated tests can import
+// the stream package used by streaming tests.
+func getRegengoModulePath() (string, error) {
+	// The e2e tests are in the e2e directory, so go up one level
+	// Use runtime.Caller to get the current file's directory
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("failed to get current file path")
+	}
+	dir := filepath.Dir(file)
+	return filepath.Abs(filepath.Join(dir, ".."))
 }
