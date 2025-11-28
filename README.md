@@ -87,18 +87,25 @@ func (Date) MatchBytes(input []byte) bool
 
 // Finding (with captures)
 func (Date) FindString(input string) (*DateResult, bool)
-func (Date) FindBytes(input []byte) (*DateBytesResult, bool)
 func (Date) FindStringReuse(input string, reuse *DateResult) (*DateResult, bool)
+func (Date) FindBytes(input []byte) (*DateBytesResult, bool)
+func (Date) FindBytesReuse(input []byte, reuse *DateBytesResult) (*DateBytesResult, bool)
 
 // Finding all
 func (Date) FindAllString(input string, n int) []*DateResult
 func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult
-func (Date) FindAllStringReuse(input string, n int, reuse []*DateResult) []*DateResult
+func (Date) FindAllBytes(input []byte, n int) []*DateBytesResult
+func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*DateBytesResult
 
 // Streaming (for large files/network)
 func (Date) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*DateBytesResult]) bool) error
 func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
+func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, int64, error)
 ```
+
+### Generated Tests
+
+Regengo automatically generates a `_test.go` file with correctness tests and benchmarks. See [Testing Guide](docs/testing.md) for details.
 
 ## Capture Groups
 
@@ -132,10 +139,10 @@ for _, input := range inputs {
     }
 }
 
-// FindAll reuse
+// FindAll with append reuse
 var results []*DateResult
 for _, input := range inputs {
-    results = CompiledDate.FindAllStringReuse(input, -1, results[:0])
+    results = CompiledDate.FindAllStringAppend(input, -1, results[:0])
     for _, r := range results {
         process(r.Year, r.Month, r.Day)
     }
