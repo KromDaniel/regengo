@@ -60,3 +60,4 @@ e2e/generated/
 # Built binaries
 bin/
 regengo
+streaming
