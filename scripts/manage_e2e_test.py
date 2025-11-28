@@ -2,10 +2,39 @@
 """
 Manage e2e test cases for regengo.
 
+This script adds or updates test cases in e2e/testdata.json. It automatically
+analyzes patterns using `regengo -analyze` to derive feature and engine labels,
+which are used for test filtering and regression detection.
+
+How it works:
+  1. Analyzes the pattern using `regengo -analyze` to get labels
+  2. Loads existing testdata.json
+  3. Adds new test case or updates existing one (matched by pattern)
+  4. Sorts all test cases by md5(pattern) for stable ordering
+  5. Saves back to testdata.json
+
+Labels:
+  - feature_labels: Derived from pattern structure (Captures, CharClass, etc.)
+  - engine_labels: Derived from compilation analysis (TDFA, Thompson, etc.)
+
+The e2e tests use engine_labels to detect regressions - if the compiler's engine
+selection changes, tests will fail until labels are updated intentionally.
+
 Usage:
+  # Add a new test case with JSON array inputs
   ./scripts/manage_e2e_test.py -p '(?P<name>\\w+)@\\w+' -i '["test@example.com", "user@domain"]'
+
+  # Add a test case with a single input string
   ./scripts/manage_e2e_test.py -p 'hello' -i 'hello world'
-  ./scripts/manage_e2e_test.py -p 'hello'  # Update existing pattern (keeps inputs)
+
+  # Update existing pattern (re-analyzes labels, keeps existing inputs)
+  ./scripts/manage_e2e_test.py -p 'hello'
+
+  # Update labels after compiler changes (run on existing pattern)
+  ./scripts/manage_e2e_test.py -p '^\\d{4}-\\d{2}-\\d{2}$'
+
+Requirements:
+  - Requires bin/regengo to be built: go build -o bin/regengo ./cmd/regengo
 """
 
 import argparse

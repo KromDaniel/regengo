@@ -453,7 +453,7 @@ This is particularly useful when processing many inputs in a loop, as it avoids 
 ## CLI Reference
 
 ```
-Required:
+Required (for code generation):
   -pattern string    Regex pattern to compile
   -name string       Name for generated struct
   -output string     Output file path
@@ -463,6 +463,10 @@ Basic:
   -no-pool           Disable sync.Pool optimization
   -no-test           Disable test file generation
   -test-inputs       Comma-separated test inputs
+
+Analysis (no code generation):
+  -analyze           Analyze pattern and output labels as JSON
+                     Only requires -pattern flag
 
 Advanced (Engine Selection):
   -force-thompson    Force Thompson NFA for match functions
@@ -517,6 +521,30 @@ regengo -pattern "$USER_PATTERN" \
         -output user.go \
         -force-thompson
 ```
+
+### Analyze Pattern (No Code Generation)
+
+Use `-analyze` to inspect pattern characteristics without generating code:
+
+```bash
+regengo -analyze -pattern '(?P<user>\w+)@(?P<domain>\w+)'
+```
+
+Output:
+```json
+{
+  "feature_labels": ["Captures", "CharClass", "Quantifiers"],
+  "engine_labels": ["Backtracking"],
+  "has_captures": true,
+  "has_catastrophic_risk": false,
+  "has_end_anchor": false,
+  "nfa_states": 11
+}
+```
+
+The labels indicate:
+- **feature_labels**: Pattern characteristics (Anchored, Alternation, Captures, CharClass, Multibyte, NonCapturing, Quantifiers, Simple, WordBoundary)
+- **engine_labels**: Which engines will be used (Thompson, TDFA, TNFA, Memoization, Backtracking)
 
 ## Detailed Benchmarks
 
