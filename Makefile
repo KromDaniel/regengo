@@ -1,4 +1,4 @@
-.PHONY: all build test bench bench-gen clean fmt lint install help setup-hooks
+.PHONY: all build test bench bench-gen bench-chart clean fmt lint install help setup-hooks
 
 # Variables
 BINARY_NAME=regengo
@@ -51,6 +51,11 @@ bench-gen:
 	@mkdir -p ./benchmarks/generated
 	@go run ./scripts/generate_benchmarks.go
 	@gofmt -s -w ./benchmarks/generated
+
+## bench-chart: Generate performance comparison chart
+bench-chart: bench-gen
+	@echo "Generating performance chart..."
+	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | python3 scripts/benchmark_chart.py
 
 ## coverage: Generate and open coverage report
 coverage: test

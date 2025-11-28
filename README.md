@@ -13,21 +13,21 @@ Regengo is a **compile-time finite state machine generator** for regular express
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Performance](#performance)
-- [Smart Analysis](#smart-analysis)
-- [Complexity Guarantees](#complexity-guarantees)
-- [Advanced Options](#advanced-options)
-- [Generated Output](#generated-output)
-- [Generated Tests & Benchmarks](#generated-tests--benchmarks)
-- [Capture Groups](#capture-groups)
-- [Streaming API](#streaming-api)
-- [Unicode & Multibyte Support](#unicode--multibyte-support)
-- [API Comparison](#api-comparison)
-- [CLI Reference](#cli-reference)
-- [Detailed Benchmarks](#detailed-benchmarks)
-- [License](#license)
+- [Regengo](#regengo)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [CLI](#cli)
+    - [Library](#library)
+    - [Using Generated Code](#using-generated-code)
+  - [Generated Methods](#generated-methods)
+  - [Capture Groups](#capture-groups)
+  - [Performance](#performance)
+  - [Streaming API](#streaming-api)
+  - [CLI Reference](#cli-reference)
+  - [Documentation](#documentation)
+  - [API Comparison](#api-comparison)
+  - [License](#license)
 
 ## Installation
 
@@ -35,7 +35,7 @@ Regengo is a **compile-time finite state machine generator** for regular express
 go install github.com/KromDaniel/regengo/cmd/regengo@latest
 ```
 
-## Usage
+## Quick Start
 
 ### CLI
 
@@ -49,34 +49,76 @@ regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
 ### Library
 
 ```go
-package main
-
 import "github.com/KromDaniel/regengo/pkg/regengo"
 
-func main() {
-    err := regengo.Compile(regengo.Options{
-        Pattern:    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
-        Name:       "Date",
-        OutputFile: "date.go",
-        Package:    "main",
-    })
-    if err != nil {
-        panic(err)
-    }
+err := regengo.Compile(regengo.Options{
+    Pattern:    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+    Name:       "Date",
+    OutputFile: "date.go",
+    Package:    "main",
+})
+```
+
+### Using Generated Code
+
+```go
+// Match
+if CompiledDate.MatchString("2024-12-25") {
+    fmt.Println("Valid date!")
+}
+
+// Find with captures
+result, ok := CompiledDate.FindString("2024-12-25")
+if ok {
+    fmt.Printf("Year: %s, Month: %s, Day: %s\n", result.Year, result.Month, result.Day)
+}
+
+// Find all
+matches := CompiledDate.FindAllString("Dates: 2024-01-15 and 2024-12-25", -1)
+for _, m := range matches {
+    fmt.Println(m.Match)
 }
 ```
 
-### Options
+## Generated Methods
 
 ```go
-type Options struct {
-    Pattern          string   // Regex pattern to compile (required)
-    Name             string   // Name for generated struct (required)
-    OutputFile       string   // Output file path (required)
-    Package          string   // Package name (required)
-    NoPool           bool     // Disable sync.Pool optimization
-    GenerateTestFile bool     // Generate test file with benchmarks
-    TestFileInputs   []string // Test inputs for generated tests
+type Date struct{}
+var CompiledDate = Date{}
+
+// Matching
+func (Date) MatchString(input string) bool
+func (Date) MatchBytes(input []byte) bool
+
+// Finding (with captures)
+func (Date) FindString(input string) (*DateResult, bool)
+func (Date) FindBytes(input []byte) (*DateBytesResult, bool)
+func (Date) FindStringReuse(input string, reuse *DateResult) (*DateResult, bool)
+
+// Finding all
+func (Date) FindAllString(input string, n int) []*DateResult
+func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult
+
+// Streaming (for large files/network)
+func (Date) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*DateBytesResult]) bool) error
+func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
+```
+
+## Capture Groups
+
+Named capture groups become typed struct fields:
+
+```go
+// Pattern: (?P<user>\w+)@(?P<domain>\w+)
+type EmailResult struct {
+    Match  string
+    User   string  // from (?P<user>...)
+    Domain string  // from (?P<domain>...)
+}
+
+result, ok := CompiledEmail.FindString("user@example.com")
+if ok {
+    fmt.Println(result.User, result.Domain)  // "user" "example"
 }
 ```
 
@@ -84,853 +126,76 @@ type Options struct {
 
 Regengo consistently outperforms Go's standard `regexp` package:
 
-### Best Results
-
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
 | Date `\d{4}-\d{2}-\d{2}` | FindString | 105 ns | 7 ns | **14x faster** |
 | Multi-date extraction | FindAllString | 431 ns | 49 ns | **8.9x faster** |
-| Date capture | FindString | 105 ns | 20 ns | **5.3x faster** |
-
-### Typical Results
-
-| Pattern | Method | stdlib | regengo | Speedup |
-|---------|--------|--------|---------|---------|
 | Email validation | MatchString | 1554 ns | 507 ns | **3x faster** |
-| Email capture | FindString | 296 ns | 127 ns | **2.3x faster** |
-| Log parser (TDFA) | FindString | 399 ns | 121 ns | **3.3x faster** |
+| Log parser | FindString | 399 ns | 121 ns | **3.3x faster** |
 
-### Memory Efficiency
+<p align="center">
+  <img src="assets/benchmark_chart.png" alt="Performance comparison chart" width="700">
+</p>
 
-- **50-100% fewer allocations** per operation
-- **Zero allocations** with `Reuse` variants
-- Typed structs instead of `[]string` slices
+**Memory:** 50-100% fewer allocations. Zero allocations with `Reuse` variants.
 
-See [Detailed Benchmarks](#detailed-benchmarks) for complete results.
-
-## Smart Analysis
-
-Regengo automatically analyzes your pattern and selects the optimal matching engine:
-
-### Supported Algorithms
-
-| Algorithm | Use Case | Complexity | Status |
-|-----------|----------|------------|--------|
-| **Backtracking DFA** | Simple patterns | O(n) typical | ✅ Default |
-| **Thompson NFA** | Patterns at risk of catastrophic backtracking | O(n×m) guaranteed | ✅ Supported |
-| **Tagged DFA (TDFA)** | Capture groups with complex patterns | O(n) guaranteed | ✅ Supported |
-| **Bit-vector Memoization** | Nested quantifiers with captures | O(n×m) with caching | ✅ Supported |
-
-### Auto-Detection Examples
-
-```
-Pattern: [\w\.+-]+@[\w\.-]+
- → Backtracking DFA (simple, fast)
-
-Pattern: (a+)+b
- → Thompson NFA (prevents exponential backtracking)
-
-Pattern: (?P<user>\w+)@(?P<domain>\w+)
- → Tagged DFA (O(n) captures)
-
-Pattern: (?P<outer>(?P<inner>a+)+)b
- → TDFA + Memoization (complex nested captures)
-```
-
-### Verbose Mode
-
-See analysis decisions with `-verbose`:
-
-```bash
-regengo -pattern '(a+)+b' -name Test -output test.go -verbose
-```
-
-```
-=== Pattern Analysis ===
-Pattern: (a+)+b
-NFA states: 8
-Has nested quantifiers: true
-Has catastrophic risk: true
-→ Using Thompson NFA for MatchString
-→ Using Tagged DFA for FindString
-```
-
-## Complexity Guarantees
-
-### Runtime Complexity
-
-| Operation | Go stdlib | Regengo | Notes |
-|-----------|-----------|---------|-------|
-| Simple match | O(n) | O(n) | Both efficient |
-| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n×m)** guaranteed | Both use Thompson NFA construction |
-| Captures | O(n) typical | O(n) guaranteed | TDFA eliminates backtracking overhead |
-| Complex captures | **O(n×m)** guaranteed | **O(n×m)** with memoization | Both safe, Regengo uses bit-vector caching |
-
-### Memory Complexity
-
-| Aspect | Go stdlib | Regengo |
-|--------|-----------|---------|
-| Per-match allocation | 2 allocs (128-192 B) | 1 alloc (64-96 B) |
-| With reuse API | N/A | **0 allocs** |
-| Result storage | `[]string` slices | Typed structs |
-| Backtracking stack | Dynamic allocation | `sync.Pool` reuse |
-
-### Where Regengo May Be Slower
-
-| Scenario | Reason | Mitigation |
-|----------|--------|------------|
-| Patterns with many optional groups | TDFA state explosion | Increase `-tdfa-threshold` or pattern redesign |
-| Non-matching pathological inputs | Memoization overhead in nested capture groups (e.g., `(?P<outer>(?P<inner>a+)+)b` with input `"aaa...c"`) — up to **2.8x slower** | Use stdlib for patterns expected to frequently not match, or reduce capture nesting |
-| First cold call | No JIT, but consistent performance | Warm up in init() if needed |
-
-> **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
-
-## Advanced Options
-
-For fine-grained control over the compilation engine, use these advanced options:
-
-### Library API
-
-```go
-type Options struct {
-    // ... basic options ...
-
-    // Engine selection
-    ForceThompson bool // Force Thompson NFA for all match functions
-    ForceTNFA     bool // Force Tagged NFA for capture functions
-    ForceTDFA     bool // Force Tagged DFA for capture functions
-
-    // Tuning parameters
-    TDFAThreshold int  // Max DFA states before fallback (default: 500)
-    Verbose       bool // Print analysis decisions to stderr
-}
-```
-
-### When to Use Each Engine
-
-| Option | Use Case |
-|--------|----------|
-| `ForceThompson` | Guaranteed O(n×m) for untrusted patterns |
-| `ForceTNFA` | Debugging, or patterns with many optional groups |
-| `ForceTDFA` | Maximize capture performance, predictable patterns |
-| `TDFAThreshold` | Increase for complex patterns with known bounds |
-| `Verbose` | Debug engine selection, understand analysis decisions |
-
-### Example: Force TDFA for Trusted Patterns
-
-```go
-err := regengo.Compile(regengo.Options{
-    Pattern:    `(?P<key>\w+)=(?P<value>[^;]+)`,
-    Name:       "KeyValue",
-    OutputFile: "keyvalue.go",
-    Package:    "parser",
-    ForceTDFA:  true,  // Skip analysis, use O(n) TDFA directly
-})
-```
-
-### Example: Safe Mode for User Input
-
-```go
-err := regengo.Compile(regengo.Options{
-    Pattern:       userPattern,
-    Name:          "UserRegex",
-    OutputFile:    "user_regex.go",
-    Package:       "validator",
-    ForceThompson: true,  // Guaranteed O(n×m), prevents ReDoS
-})
-```
-
-## Generated Output
-
-The above generates:
-
-```go
-package main
-
-type Date struct{}
-
-var CompiledDate = Date{}
-
-type DateResult struct {
-    Match string
-    Year  string
-    Month string
-    Day   string
-}
-
-func (Date) MatchString(input string) bool { /* ... */ }
-func (Date) MatchBytes(input []byte) bool { /* ... */ }
-func (Date) FindString(input string) (*DateResult, bool) { /* ... */ }
-func (Date) FindBytes(input []byte) (*DateBytesResult, bool) { /* ... */ }
-func (Date) FindAllString(input string, n int) []*DateResult { /* ... */ }
-func (Date) FindAllBytes(input []byte, n int) []*DateBytesResult { /* ... */ }
-func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult { /* ... */ }
-func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*DateBytesResult { /* ... */ }
-```
-
-### Usage of Generated Code
-
-Both string and `[]byte` variants are auto-generated for each method.
-
-```go
-// String variant
-if CompiledDate.MatchString("2024-12-25") {
-    result, ok := CompiledDate.FindString("2024-12-25")
-    if ok {
-        fmt.Printf("Year: %s, Month: %s, Day: %s\n", result.Year, result.Month, result.Day)
-    }
-}
-
-// Bytes variant
-data := []byte("2024-12-25")
-if CompiledDate.MatchBytes(data) {
-    result, ok := CompiledDate.FindBytes(data)
-    if ok {
-        fmt.Printf("Year: %s, Month: %s, Day: %s\n", result.Year, result.Month, result.Day)
-    }
-}
-
-// Find all matches
-matches := CompiledDate.FindAllString("Dates: 2024-01-15 and 2024-12-25", -1)
-for _, m := range matches {
-    fmt.Println(m.Match)
-}
-```
-
-## Generated Tests & Benchmarks
-
-Regengo automatically generates a `_test.go` file alongside your output file (unless disabled). This file contains:
-
-1. **Correctness Tests**: Verifies that Regengo's output matches `regexp` stdlib exactly for provided inputs.
-   - `Test...MatchString`: Validates boolean matching.
-   - `Test...MatchBytes`: Validates byte-slice matching.
-   - `Test...FindString`: Validates capture groups (if present), checking both the full match and every individual captured group against stdlib's `FindStringSubmatch`.
-   - `Test...FindAllString`: Validates all matches and their captures against stdlib's `FindAllStringSubmatch`.
-
-2. **Benchmarks**: Comparison benchmarks to measure speedup vs stdlib.
-   - `Benchmark...MatchString`: Performance of simple matching.
-   - `Benchmark...FindString`: Performance of capture extraction (if applicable).
-
-### Customizing Tests
-
-You can provide specific test inputs to verify your pattern against real-world data:
-
-**CLI:**
-```bash
-# Generates date.go and date_test.go
-regengo -pattern '...' -name Date -output date.go -test-inputs "2024-01-01,2025-12-31"
-```
-
-**Library:**
-```go
-regengo.Options{
-    // ...
-    GenerateTestFile: true, // Required: Library defaults to false
-    TestFileInputs:   []string{"2024-01-01", "2025-12-31"},
-}
-```
-
-### Running Benchmarks
-
-Run the generated benchmarks using standard Go tooling:
-
-```bash
-go test -bench=. -benchmem
-```
-
-## Capture Groups
-
-Regengo generates dedicated structs for match groups, avoiding runtime slice allocations used by stdlib's `[]string` returns. Both string and `[]byte` variants are auto-generated.
-
-**Note:** Result strings and bytes are slices into the original input, not copies. This improves performance but means results are only valid while the input remains unchanged.
-
-### Named Groups
-
-Pattern: `(?P<user>\w+)@(?P<domain>\w+)`
-
-```go
-// For FindString
-type EmailResult struct {
-    Match  string
-    User   string  // from (?P<user>...)
-    Domain string  // from (?P<domain>...)
-}
-
-// For FindBytes
-type EmailBytesResult struct {
-    Match  []byte
-    User   []byte  // from (?P<user>...)
-    Domain []byte  // from (?P<domain>...)
-}
-```
-
-### Unnamed Groups
-
-Pattern: `(\d{4})-(\d{2})-(\d{2})`
-
-```go
-// For FindString
-type DateResult struct {
-    Match  string
-    Group1 string  // first capture
-    Group2 string  // second capture
-    Group3 string  // third capture
-}
-
-// For FindBytes
-type DateBytesResult struct {
-    Match  []byte
-    Group1 []byte  // first capture
-    Group2 []byte  // second capture
-    Group3 []byte  // third capture
-}
-```
-
-### Usage Example
-
-```go
-// String variant
-result, ok := CompiledEmail.FindString("user@example.com")
-if ok {
-    fmt.Println(result.User, result.Domain)  // "user" "example"
-}
-
-// Bytes variant - result fields are slices into original input
-data := []byte("user@example.com")
-result, ok := CompiledEmail.FindBytes(data)
-if ok {
-    fmt.Println(result.User, result.Domain)  // "user" "example"
-}
-```
-
-### Slice Reuse
-
-For high-performance scenarios, use the `Append` variants to reuse slices and reduce allocations:
-
-```go
-// Pre-allocate a slice with capacity
-results := make([]*EmailCaptureResult, 0, 100)
-
-for _, input := range inputs {
-    // Reuse the same backing array by resetting length to 0
-    results = CompiledEmail.FindAllStringAppend(input, -1, results[:0])
-
-    for _, match := range results {
-        // Process matches...
-        fmt.Println(match.User, match.Domain)
-    }
-}
-```
-
-The `Append` methods:
-- Reuse existing slice capacity when possible
-- Reset and reuse existing struct pointers within capacity
-- Only allocate new elements when capacity is exceeded
-
-This is particularly useful when processing many inputs in a loop, as it avoids repeated slice and struct allocations.
+See [Detailed Benchmarks](docs/benchmarks.md) for complete results.
 
 ## Streaming API
 
-Regengo supports streaming regex matching on `io.Reader` inputs, enabling efficient processing of arbitrarily large files and network streams with **constant memory usage**.
-
-### Generated Streaming Methods
-
-When you generate code with regengo, the following streaming methods are automatically generated:
+Process large files with constant memory:
 
 ```go
-// FindReader calls onMatch for each match found in the reader.
-// Returns error from the reader, or nil on success.
-// Matches are delivered via callback to avoid buffering.
-func (Date) FindReader(
-    r io.Reader,
-    cfg stream.Config,
-    onMatch func(m stream.Match[*DateBytesResult]) bool,
-) error
-
-// FindReaderCount returns the total number of matches in the reader.
-func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
-
-// FindReaderFirst returns the first match found, or nil if no match.
-func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, bool, error)
-
-// MatchLengthInfo returns the minimum and maximum match lengths for the pattern.
-// maxLen is -1 for unbounded patterns (e.g., `a+`).
-func (Date) MatchLengthInfo() (minLen, maxLen int)
-```
-
-### Basic Usage
-
-```go
-import (
-    "os"
-    stream "github.com/KromDaniel/regengo/stream"
-)
-
-// Process a large log file
 file, _ := os.Open("server.log")
 defer file.Close()
 
 err := CompiledDate.FindReader(file, stream.Config{}, func(m stream.Match[*DateBytesResult]) bool {
-    fmt.Printf("Found date at offset %d: %s\n", m.StreamOffset, m.Result.Match)
-    return true // continue processing
+    fmt.Printf("Found at offset %d: %s\n", m.StreamOffset, m.Result.Match)
+    return true // continue
 })
 ```
 
-### Configuration
-
-```go
-type Config struct {
-    // BufferSize is the chunk size for reading from the io.Reader.
-    // Default: 64KB. Larger values reduce syscall overhead.
-    BufferSize int
-
-    // MaxLeftover limits bytes kept between chunks when no match is found.
-    // Prevents unbounded memory growth on long non-matching sections.
-    // Default: computed from pattern analysis.
-    MaxLeftover int
-}
-```
-
-### Callback-Based Streaming
-
-The callback receives a `stream.Match` containing:
-
-```go
-type Match[T any] struct {
-    Result       T       // Pattern-specific result (*DateBytesResult, etc.)
-    StreamOffset int64   // Absolute byte position in stream
-    ChunkIndex   int     // Which chunk the match was found in
-}
-```
-
-**Important:** The callback's `Result` byte slices point into a reusable buffer. You **must copy** any data you need to retain after the callback returns:
-
-```go
-var savedMatches []string
-
-err := pattern.FindReader(reader, cfg, func(m stream.Match[*ResultType]) bool {
-    // WRONG: savedMatches = append(savedMatches, string(m.Result.Match))
-    // This works but creates a copy - which is what you need:
-    savedMatches = append(savedMatches, string(m.Result.Match))
-
-    // Or explicitly copy bytes:
-    matchCopy := append([]byte{}, m.Result.Match...)
-
-    return true
-})
-```
-
-### Early Termination
-
-Return `false` from the callback to stop processing early:
-
-```go
-var firstTen []string
-
-err := pattern.FindReader(reader, stream.Config{}, func(m stream.Match[*ResultType]) bool {
-    firstTen = append(firstTen, string(m.Result.Match))
-    return len(firstTen) < 10 // stop after 10 matches
-})
-```
-
-### Counting Matches
-
-For large files where you only need the count:
-
-```go
-count, err := CompiledDate.FindReaderCount(file, stream.Config{})
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Found %d dates in file\n", count)
-```
-
-### Memory Characteristics
-
-| Aspect | Behavior |
-|--------|----------|
-| Memory usage | Constant (~BufferSize) regardless of input size |
-| Allocations | One buffer allocation, results reused |
-| Large files | Process GB+ files without loading into memory |
-| Network streams | Works with any io.Reader |
-
-### Streaming vs In-Memory
-
-| Scenario | Use Streaming | Use In-Memory |
-|----------|---------------|---------------|
-| File > available RAM | ✅ | ❌ |
-| Network streams | ✅ | ❌ (must buffer) |
-| Small strings (<1MB) | ❌ (overhead) | ✅ |
-| Need all matches at once | ❌ | ✅ |
-| Processing one match at a time | ✅ | Either |
-
-## Unicode & Multibyte Support
-
-Regengo fully supports Unicode character classes and multibyte UTF-8 patterns.
-
-### Supported Patterns
-
-| Pattern | Description | Example Match |
-|---------|-------------|---------------|
-| `\p{L}` | Any Unicode letter | `café`, `日本語`, `שלום` |
-| `\p{Greek}` | Greek script | `αβγδ` |
-| `[α-ω]` | Unicode range | `αβγ` |
-| `[\p{L}\p{N}]` | Letters and numbers | `abc123日本` |
-
-### Performance Characteristics
-
-Regengo uses **compile-time detection** to choose the optimal path:
-
-| Pattern Type | Code Path | Performance |
-|--------------|-----------|-------------|
-| ASCII-only (`[a-z]`, `\d`, `\w`) | 256-bit bitmap, O(1) lookup | **Fastest** |
-| Unicode-only (`[α-ω]`, `\p{Greek}`) | UTF-8 decode + range check | ~5-10ns overhead per char |
-| Mixed (`[a-zα-ω]`, `\p{L}`) | ASCII fast-path + Unicode fallback | Best of both |
-
-
-### Example
-
-```bash
-regengo -pattern '\p{L}+' -name UnicodeWord -output unicode.go
-```
-
-```go
-// Matches any sequence of Unicode letters
-CompiledUnicodeWord.MatchString("hello")    // true
-CompiledUnicodeWord.MatchString("日本語")    // true
-CompiledUnicodeWord.MatchString("café")     // true
-CompiledUnicodeWord.MatchString("123")      // false
-```
-
-## API Comparison
-
-### API Stability
-❕ Regengo is still beta, API might change on minor versions ❕
-
-| stdlib `regexp` | regengo | Notes |
-|-----------------|---------|-------|
-| `MatchString(s string) bool` | `MatchString(s string) bool` | ✅ Identical |
-| `Match(b []byte) bool` | `MatchBytes(b []byte) bool` | ✅ Identical |
-| `FindStringSubmatch(s string) []string` | `FindString(s string) (*Result, bool)` | ✅ Returns typed struct instead of []string |
-| `FindSubmatch(b []byte) [][]byte` | `FindBytes(b []byte) (*BytesResult, bool)` | ✅ Returns typed struct instead of [][]byte |
-| `FindAllStringSubmatch(s string, n int) [][]string` | `FindAllString(s string, n int) []*Result` | ✅ Returns []*Result instead of [][]string |
-| `FindAllSubmatch(b []byte, n int) [][][]byte` | `FindAllBytes(b []byte, n int) []*BytesResult` | ✅ Returns []*BytesResult instead of [][][]byte |
-| - | `FindStringReuse(s string, r *Result) (*Result, bool)` | Zero-alloc reuse variant |
-| - | `FindBytesReuse(b []byte, r *BytesResult) (*BytesResult, bool)` | Zero-alloc reuse variant |
-| - | `FindAllStringAppend(s string, n int, slice []*Result) []*Result` | Append to existing slice |
-| - | `FindAllBytesAppend(b []byte, n int, slice []*BytesResult) []*BytesResult` | Append to existing slice |
-| - | `FindReader(r io.Reader, cfg Config, cb func(Match) bool) error` | Streaming match with callback |
-| - | `FindReaderCount(r io.Reader, cfg Config) (int64, error)` | Count matches in stream |
-| - | `FindReaderFirst(r io.Reader, cfg Config) (*BytesResult, bool, error)` | First match in stream |
-| - | `MatchLengthInfo() (min, max int)` | Pattern match length bounds |
-| `FindString(s string) string` | - | Use FindString().Match |
-| `Find(b []byte) []byte` | - | Use FindBytes().Match |
-| `ReplaceAllString(s, repl string) string` | - | Not implemented |
-| `Split(s string, n int) []string` | - | Not implemented |
-| `FindStringIndex(s string) []int` | - | Not implemented |
+See [Streaming API Guide](docs/streaming.md) for details.
 
 ## CLI Reference
 
 ```
-Required (for code generation):
+Required:
   -pattern string    Regex pattern to compile
   -name string       Name for generated struct
   -output string     Output file path
 
 Basic:
   -package string    Package name (default "main")
-  -no-pool           Disable sync.Pool optimization
-  -no-test           Disable test file generation
   -test-inputs       Comma-separated test inputs
+  -no-test           Disable test file generation
 
-Analysis (no code generation):
-  -analyze           Analyze pattern and output labels as JSON
-                     Only requires -pattern flag
+Analysis:
+  -analyze           Output pattern analysis as JSON (no code generation)
+  -verbose           Print analysis decisions
 
-Advanced (Engine Selection):
-  -force-thompson    Force Thompson NFA for match functions
-  -force-tnfa        Force Tagged NFA for capture functions
-  -force-tdfa        Force Tagged DFA for capture functions
-
-Tuning:
-  -tdfa-threshold int  Max DFA states before fallback (default 500)
-  -verbose             Print analysis decisions to stderr
+Advanced:
+  -force-thompson    Force Thompson NFA (prevents ReDoS)
+  -force-tdfa        Force Tagged DFA for captures
 ```
 
-### Basic Example
-
-```bash
-regengo -pattern '[\w\.+-]+@[\w\.-]+\.[\w\.-]+' \
-        -name Email \
-        -output email.go \
-        -package myapp
-```
-
-### Advanced Example: Verbose Analysis
-
-```bash
-regengo -pattern '(a+)+b' \
-        -name Dangerous \
-        -output dangerous.go \
-        -verbose
-```
-
-Output:
-```
-=== Pattern Analysis ===
-Pattern: (a+)+b
-NFA states: 8
-Has nested quantifiers: true
-→ Using Thompson NFA for MatchString (prevents ReDoS)
-→ Using Tagged DFA for FindString
-```
-
-### Advanced Example: Force Specific Engine
-
-```bash
-# Force TDFA for maximum capture performance
-regengo -pattern '(?P<k>\w+)=(?P<v>[^;]+)' \
-        -name KV \
-        -output kv.go \
-        -force-tdfa
-
-# Force Thompson NFA for untrusted patterns
-regengo -pattern "$USER_PATTERN" \
-        -name UserRegex \
-        -output user.go \
-        -force-thompson
-```
-
-### Analyze Pattern (No Code Generation)
-
-Use `-analyze` to inspect pattern characteristics without generating code:
-
-```bash
-regengo -analyze -pattern '(?P<user>\w+)@(?P<domain>\w+)'
-```
-
-Output:
-```json
-{
-  "feature_labels": ["Captures", "CharClass", "Quantifiers"],
-  "engine_labels": ["Backtracking"],
-  "has_captures": true,
-  "has_catastrophic_risk": false,
-  "has_end_anchor": false,
-  "nfa_states": 11
-}
-```
-
-The labels indicate:
-- **feature_labels**: Pattern characteristics (Anchored, Alternation, Captures, CharClass, Multibyte, NonCapturing, Quantifiers, Simple, UnicodeCharClass, WordBoundary)
-- **engine_labels**: Which engines will be used (Thompson, TDFA, TNFA, Memoization, Backtracking)
-
-## Detailed Benchmarks
-
-Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib vs regengo.
-
-### DateCaptureFindString
-
-**Pattern:**
-```regex
-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 105.3 | 128 | 2 | - |
-| regengo | 19.7 | 64 | 1 | **5.3x faster** |
-| regengo (reuse) | 7.3 | 0 | 0 | **14.4x faster** |
-
-### EmailCaptureFindString
-
-**Pattern:**
-```regex
-(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 295.9 | 128 | 2 | - |
-| regengo | 127.3 | 64 | 1 | **2.3x faster** |
-| regengo (reuse) | 115.1 | 0 | 0 | **2.6x faster** |
-
-### EmailMatchString
-
-**Pattern:**
-```regex
-[\w\.+-]+@[\w\.-]+\.[\w\.-]+
-```
-
-**Method:** `MatchString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 1554.0 | 0 | 0 | - |
-| regengo | 507.3 | 0 | 0 | **3.1x faster** |
-
-### GreedyMatchString
-
-**Pattern:**
-```regex
-(?:(?:a|b)|(?:k)+)*abcd
-```
-
-**Method:** `MatchString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 751.4 | 0 | 0 | - |
-| regengo | 475.3 | 0 | 0 | **1.6x faster** |
-
-### LazyMatchString
-
-**Pattern:**
-```regex
-(?:(?:a|b)|(?:k)+)+?abcd
-```
-
-**Method:** `MatchString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 1260.0 | 0 | 0 | - |
-| regengo | 478.0 | 0 | 0 | **2.6x faster** |
-
-### MultiDateFindAllString
-
-**Pattern:**
-```regex
-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})
-```
-
-**Method:** `FindAllString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 431.4 | 331 | 3 | - |
-| regengo | 82.2 | 106 | 2 | **5.2x faster** |
-| regengo (reuse) | 48.6 | 0 | 0 | **8.9x faster** |
-
-### MultiEmailFindAllString
-
-**Pattern:**
-```regex
-(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)
-```
-
-**Method:** `FindAllString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 978.1 | 374 | 4 | - |
-| regengo | 478.1 | 133 | 3 | **2.0x faster** |
-| regengo (reuse) | 438.5 | 0 | 0 | **2.2x faster** |
-
-### TDFAComplexURLFindString
-
-**Pattern:**
-```regex
-(?P<scheme>https?)://(?P<auth>(?P<user>[\w.-]+)(?::(?P<pass>[\w.-]+))?@)?(?P<host>[\w.-]+)(?::(?P<port>\d+))?(?P<path>/[\w./-]*)?(?:\?(?P<query>[\w=&.-]+))?
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 598.7 | 288 | 2 | - |
-| regengo | 285.4 | 421 | 2 | **2.1x faster** |
-| regengo (reuse) | 263.7 | 277 | 1 | **2.3x faster** |
-
-### TDFALogParserFindString
-
-**Pattern:**
-```regex
-(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?P<ms>\d{3}))?(?P<tz>Z|[+-]\d{2}:\d{2})?\s+\[(?P<level>\w+)\]\s+(?P<message>.+)
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 398.8 | 192 | 2 | - |
-| regengo | 120.9 | 96 | 1 | **3.3x faster** |
-| regengo (reuse) | 106.0 | 0 | 0 | **3.8x faster** |
-
-### TDFANestedWordFindString
-
-**Pattern:**
-```regex
-(?P<words>(?P<word>\w+\s*)+)end
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 654.9 | 112 | 2 | - |
-| regengo | 403.6 | 128 | 1 | **1.6x faster** |
-| regengo (reuse) | 394.6 | 80 | 0 | **1.7x faster** |
-
-### TDFAPathologicalFindString
-
-**Pattern:**
-```regex
-(?P<outer>(?P<inner>a+)+)b
-```
-
-**Method:** `FindString`
-
-This benchmark tests nested quantifier patterns with captures. Regengo wins on matching inputs but loses on non-matching pathological cases:
-
-| Input | Variant | ns/op | B/op | allocs/op | vs stdlib |
-|-------|---------|------:|-----:|----------:|----------:|
-| matching | stdlib | 210 | 112 | 2 | - |
-| matching | regengo | 119 | 48 | 1 | **1.8x faster** |
-| matching | regengo (reuse) | 110 | 0 | 0 | **1.9x faster** |
-| non-matching | stdlib | 1076 | 0 | 0 | - |
-| non-matching | regengo | 3007 | 0 | 0 | **2.8x slower** |
-| non-matching | regengo (reuse) | 3005 | 0 | 0 | **2.8x slower** |
-
-> **Note:** For pathological non-matching inputs like `"aaaaaaaaaaaaaaaaaaaac"`, the memoization overhead in capture groups causes regengo to be slower. See [Where Regengo May Be Slower](#where-regengo-may-be-slower).
-
-### TDFASemVerFindString
-
-**Pattern:**
-```regex
-(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(?:-(?P<prerelease>[\w.-]+))?(?:\+(?P<build>[\w.-]+))?
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 211.3 | 192 | 2 | - |
-| regengo | 72.6 | 96 | 1 | **2.9x faster** |
-| regengo (reuse) | 57.1 | 0 | 0 | **3.7x faster** |
-
-### URLCaptureFindString
-
-**Pattern:**
-```regex
-(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?
-```
-
-**Method:** `FindString`
-
-| Variant | ns/op | B/op | allocs/op | vs stdlib |
-|---------|------:|-----:|----------:|----------:|
-| stdlib | 293.8 | 160 | 2 | - |
-| regengo | 116.6 | 80 | 1 | **2.5x faster** |
-| regengo (reuse) | 112.7 | 0 | 0 | **2.6x faster** |
-
----
-
-To regenerate these benchmarks: `make bench-readme`
+## Documentation
+
+- [Streaming API](docs/streaming.md) - Processing large files and streams
+- [Analysis & Complexity](docs/analysis.md) - Engine selection and guarantees
+- [Unicode Support](docs/unicode.md) - Unicode character classes
+- [Detailed Benchmarks](docs/benchmarks.md) - Complete performance data
+- [Testing Guide](docs/testing.md) - Running and writing tests
+
+## API Comparison
+
+| stdlib `regexp` | regengo | Notes |
+|-----------------|---------|-------|
+| `MatchString(s)` | `MatchString(s)` | Identical |
+| `FindStringSubmatch(s)` | `FindString(s)` | Returns typed struct |
+| `FindAllStringSubmatch(s, n)` | `FindAllString(s, n)` | Returns `[]*Result` |
+| - | `FindStringReuse(s, r)` | Zero-alloc reuse |
+| - | `FindReader(r, cfg, cb)` | Streaming |
 
 ## License
 

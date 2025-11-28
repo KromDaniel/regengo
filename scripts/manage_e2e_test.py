@@ -2,7 +2,7 @@
 """
 Manage e2e test cases for regengo.
 
-This script adds or updates test cases in e2e/testdata.json. It automatically
+This script adds or updates test cases in testdata/testdata.json. It automatically
 analyzes patterns using `regengo -analyze` to derive feature and engine labels,
 which are used for test filtering and regression detection.
 
@@ -46,7 +46,7 @@ import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REGENGO_BIN = os.path.join(PROJECT_ROOT, "bin", "regengo")
-TESTDATA_PATH = os.path.join(PROJECT_ROOT, "e2e", "testdata.json")
+TESTDATA_PATH = os.path.join(PROJECT_ROOT, "testdata", "testdata.json")
 
 
 def md5_hash(s: str) -> str:

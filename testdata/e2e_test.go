@@ -1,4 +1,4 @@
-package e2e
+package testdata
 
 import (
 	"encoding/json"
@@ -26,9 +26,9 @@ type TestCase struct {
 // TestE2E runs end-to-end tests for regengo
 // Use -run flag to filter by labels, e.g.:
 //
-//	go test ./e2e/... -run "Multibyte"
-//	go test ./e2e/... -run "TDFA"
-//	go test ./e2e/... -run "Captures.*WordBoundary"
+//	go test ./testdata/... -run "Multibyte"
+//	go test ./testdata/... -run "TDFA"
+//	go test ./testdata/... -run "Captures.*WordBoundary"
 func TestE2E(t *testing.T) {
 	// Read test data
 	testDataPath := filepath.Join("testdata.json")
@@ -220,7 +220,7 @@ func countTests(output string) int {
 // This is needed for the replace directive so that generated tests can import
 // the stream package used by streaming tests.
 func getRegengoModulePath() (string, error) {
-	// The e2e tests are in the e2e directory, so go up one level
+	// The tests are in the testdata directory, so go up one level
 	// Use runtime.Caller to get the current file's directory
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {

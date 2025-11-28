@@ -54,11 +54,10 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run all tests with cross-package coverage to include e2e tests
-          # This ensures e2e tests contribute to compiler/pkg coverage metrics
+          # Run all tests with cross-package coverage
           go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-            -coverpkg=./internal/...,./pkg/...,./e2e/...,./benchmarks/... \
-            ./internal/... ./pkg/... ./e2e/... ./benchmarks/...
+            -coverpkg=./internal/...,./pkg/...,./testdata/...,./benchmarks/... \
+            ./internal/... ./pkg/... ./testdata/... ./benchmarks/...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
