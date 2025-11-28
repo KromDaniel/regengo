@@ -439,7 +439,6 @@ Regengo fully supports Unicode character classes and multibyte UTF-8 patterns.
 | `\p{L}` | Any Unicode letter | `café`, `日本語`, `שלום` |
 | `\p{Greek}` | Greek script | `αβγδ` |
 | `[α-ω]` | Unicode range | `αβγ` |
-| `[א-ת]` | Hebrew range | `שלום` |
 | `[\p{L}\p{N}]` | Letters and numbers | `abc123日本` |
 
 ### Performance Characteristics
@@ -452,7 +451,6 @@ Regengo uses **compile-time detection** to choose the optimal path:
 | Unicode-only (`[α-ω]`, `\p{Greek}`) | UTF-8 decode + range check | ~5-10ns overhead per char |
 | Mixed (`[a-zα-ω]`, `\p{L}`) | ASCII fast-path + Unicode fallback | Best of both |
 
-**Zero-regression guarantee**: Existing ASCII-only patterns continue to use the fast bitmap path with no performance impact.
 
 ### Example
 
