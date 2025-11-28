@@ -254,6 +254,9 @@ func (c *Compiler) generateTestFile() error {
 			),
 		)
 		testFile.Line()
+
+		// Add streaming tests
+		c.generateStreamingTests(testFile, regexpVarName)
 	}
 
 	// Determine test file path
@@ -270,4 +273,157 @@ func (c *Compiler) generateTestFile() error {
 	}
 
 	return nil
+}
+
+// generateStreamingTests generates streaming API tests for the test file.
+func (c *Compiler) generateStreamingTests(testFile *jen.File, regexpVarName string) {
+	streamPkg := "github.com/KromDaniel/regengo/stream"
+	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+
+	// TestFindReader - compare streaming results with stdlib FindAllStringSubmatch
+	testFile.Func().Id(fmt.Sprintf("Test%sFindReader", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+			jen.Comment("Get expected matches from stdlib"),
+			jen.Id("expectedAll").Op(":=").Id(regexpVarName).Dot("FindAllString").Call(jen.Id("input"), jen.Lit(-1)),
+			jen.Line(),
+			jen.Comment("Get matches from streaming API"),
+			jen.Var().Id("streamMatches").Index().String(),
+			jen.Id("err").Op(":=").Id(c.config.Name).Values().Dot("FindReader").Call(
+				jen.Qual("strings", "NewReader").Call(jen.Id("input")),
+				jen.Qual(streamPkg, "Config").Values(),
+				jen.Func().Params(jen.Id("m").Qual(streamPkg, "Match").Types(jen.Op("*").Id(bytesStructName))).Bool().Block(
+					jen.Id("streamMatches").Op("=").Append(jen.Id("streamMatches"), jen.String().Call(jen.Id("m").Dot("Result").Dot("Match"))),
+					jen.Return(jen.True()),
+				),
+			),
+			jen.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Id("t").Dot("Errorf").Call(
+					jen.Lit("FindReader(%q) error: %v"),
+					jen.Id("input"),
+					jen.Id("err"),
+				),
+				jen.Continue(),
+			),
+			jen.Line(),
+			jen.Comment("Compare results"),
+			jen.If(jen.Len(jen.Id("streamMatches")).Op("!=").Len(jen.Id("expectedAll"))).Block(
+				jen.Id("t").Dot("Errorf").Call(
+					jen.Lit("FindReader(%q) got %d matches, want %d"),
+					jen.Id("input"),
+					jen.Len(jen.Id("streamMatches")),
+					jen.Len(jen.Id("expectedAll")),
+				),
+				jen.Continue(),
+			),
+			jen.For(jen.Id("i").Op(":=").Range().Id("streamMatches")).Block(
+				jen.If(jen.Id("streamMatches").Index(jen.Id("i")).Op("!=").Id("expectedAll").Index(jen.Id("i"))).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("FindReader(%q)[%d] = %q, want %q"),
+						jen.Id("input"),
+						jen.Id("i"),
+						jen.Id("streamMatches").Index(jen.Id("i")),
+						jen.Id("expectedAll").Index(jen.Id("i")),
+					),
+				),
+			),
+		),
+	)
+	testFile.Line()
+
+	// TestFindReaderCount
+	testFile.Func().Id(fmt.Sprintf("Test%sFindReaderCount", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+			jen.Id("expectedAll").Op(":=").Id(regexpVarName).Dot("FindAllString").Call(jen.Id("input"), jen.Lit(-1)),
+			jen.Id("expected").Op(":=").Int64().Call(jen.Len(jen.Id("expectedAll"))),
+			jen.Line(),
+			jen.List(jen.Id("count"), jen.Id("err")).Op(":=").Id(c.config.Name).Values().Dot("FindReaderCount").Call(
+				jen.Qual("strings", "NewReader").Call(jen.Id("input")),
+				jen.Qual(streamPkg, "Config").Values(),
+			),
+			jen.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Id("t").Dot("Errorf").Call(
+					jen.Lit("FindReaderCount(%q) error: %v"),
+					jen.Id("input"),
+					jen.Id("err"),
+				),
+				jen.Continue(),
+			),
+			jen.If(jen.Id("count").Op("!=").Id("expected")).Block(
+				jen.Id("t").Dot("Errorf").Call(
+					jen.Lit("FindReaderCount(%q) = %d, want %d"),
+					jen.Id("input"),
+					jen.Id("count"),
+					jen.Id("expected"),
+				),
+			),
+		),
+	)
+	testFile.Line()
+
+	// TestFindReaderFirst
+	testFile.Func().Id(fmt.Sprintf("Test%sFindReaderFirst", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+			jen.Id("expected").Op(":=").Id(regexpVarName).Dot("FindString").Call(jen.Id("input")),
+			jen.Line(),
+			jen.List(jen.Id("result"), jen.Id("_"), jen.Id("err")).Op(":=").Id(c.config.Name).Values().Dot("FindReaderFirst").Call(
+				jen.Qual("strings", "NewReader").Call(jen.Id("input")),
+				jen.Qual(streamPkg, "Config").Values(),
+			),
+			jen.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Id("t").Dot("Errorf").Call(
+					jen.Lit("FindReaderFirst(%q) error: %v"),
+					jen.Id("input"),
+					jen.Id("err"),
+				),
+				jen.Continue(),
+			),
+			jen.Line(),
+			jen.If(jen.Id("expected").Op("==").Lit("")).Block(
+				jen.If(jen.Id("result").Op("!=").Nil()).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("FindReaderFirst(%q) = %q, want no match"),
+						jen.Id("input"),
+						jen.String().Call(jen.Id("result").Dot("Match")),
+					),
+				),
+			).Else().Block(
+				jen.If(jen.Id("result").Op("==").Nil()).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("FindReaderFirst(%q) = nil, want %q"),
+						jen.Id("input"),
+						jen.Id("expected"),
+					),
+				).Else().If(jen.String().Call(jen.Id("result").Dot("Match")).Op("!=").Id("expected")).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("FindReaderFirst(%q) = %q, want %q"),
+						jen.Id("input"),
+						jen.String().Call(jen.Id("result").Dot("Match")),
+						jen.Id("expected"),
+					),
+				),
+			),
+		),
+	)
+	testFile.Line()
+
+	// TestMatchLengthInfo
+	testFile.Func().Id(fmt.Sprintf("Test%sMatchLengthInfo", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.List(jen.Id("minLen"), jen.Id("maxLen")).Op(":=").Id(c.config.Name).Values().Dot("MatchLengthInfo").Call(),
+		jen.Comment("Just verify we get sensible values"),
+		jen.If(jen.Id("minLen").Op("<").Lit(0)).Block(
+			jen.Id("t").Dot("Errorf").Call(jen.Lit("MinMatchLen = %d, expected >= 0"), jen.Id("minLen")),
+		),
+		jen.If(jen.Id("maxLen").Op("!=").Lit(-1).Op("&&").Id("maxLen").Op("<").Id("minLen")).Block(
+			jen.Id("t").Dot("Errorf").Call(jen.Lit("MaxMatchLen = %d < MinMatchLen = %d"), jen.Id("maxLen"), jen.Id("minLen")),
+		),
+	)
+	testFile.Line()
 }
