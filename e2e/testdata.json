@@ -4218,5 +4218,118 @@
     "engine_labels": [
       "Backtracking"
     ]
+  },
+  {
+    "pattern": "[α-ω]+",
+    "inputs": [
+      "αβγ",
+      "αtest",
+      "hello",
+      "Ω",
+      "αωα",
+      "testαβγtest"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\p{L}+",
+    "inputs": [
+      "Hello",
+      "Привет",
+      "日本語",
+      "123",
+      "Hello世界",
+      "abc123def"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "[a-zα-ω]+",
+    "inputs": [
+      "hello",
+      "αβγ",
+      "helloαβγ",
+      "HELLO",
+      "123",
+      "mixedαβγabc"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\p{Greek}+",
+    "inputs": [
+      "αβγ",
+      "ΑΒΓ",
+      "abc",
+      "αΑβΒ",
+      "123"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "[\\p{L}\\p{N}]+",
+    "inputs": [
+      "Hello123",
+      "Привет456",
+      "日本語789",
+      "!!!",
+      "abc123def"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\p{Hebrew}+",
+    "inputs": [
+      "שלום",
+      "hello",
+      "שלוםworld",
+      "אבגדהוזחטי"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "[א-ת]+",
+    "inputs": [
+      "שלום",
+      "אבג",
+      "hello",
+      "test שלום test"
+    ],
+    "feature_labels": [
+      "UnicodeCharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
   }
 ]

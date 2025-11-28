@@ -108,6 +108,11 @@ func deriveFeatureLabels(pattern string, prog *syntax.Prog, ast *syntax.Regexp) 
 		labels = append(labels, "WordBoundary")
 	}
 
+	// UnicodeCharClass: pattern contains character classes with Unicode (non-ASCII) runes
+	if hasUnicodeCharClass(prog) {
+		labels = append(labels, "UnicodeCharClass")
+	}
+
 	// Simple: no special features
 	if len(labels) == 0 {
 		labels = append(labels, "Simple")

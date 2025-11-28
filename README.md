@@ -22,6 +22,7 @@ Regengo is a **compile-time finite state machine generator** for regular express
 - [Generated Output](#generated-output)
 - [Generated Tests & Benchmarks](#generated-tests--benchmarks)
 - [Capture Groups](#capture-groups)
+- [Unicode & Multibyte Support](#unicode--multibyte-support)
 - [API Comparison](#api-comparison)
 - [CLI Reference](#cli-reference)
 - [Detailed Benchmarks](#detailed-benchmarks)
@@ -427,6 +428,46 @@ The `Append` methods:
 
 This is particularly useful when processing many inputs in a loop, as it avoids repeated slice and struct allocations.
 
+## Unicode & Multibyte Support
+
+Regengo fully supports Unicode character classes and multibyte UTF-8 patterns.
+
+### Supported Patterns
+
+| Pattern | Description | Example Match |
+|---------|-------------|---------------|
+| `\p{L}` | Any Unicode letter | `café`, `日本語`, `שלום` |
+| `\p{Greek}` | Greek script | `αβγδ` |
+| `[α-ω]` | Unicode range | `αβγ` |
+| `[א-ת]` | Hebrew range | `שלום` |
+| `[\p{L}\p{N}]` | Letters and numbers | `abc123日本` |
+
+### Performance Characteristics
+
+Regengo uses **compile-time detection** to choose the optimal path:
+
+| Pattern Type | Code Path | Performance |
+|--------------|-----------|-------------|
+| ASCII-only (`[a-z]`, `\d`, `\w`) | 256-bit bitmap, O(1) lookup | **Fastest** |
+| Unicode-only (`[α-ω]`, `\p{Greek}`) | UTF-8 decode + range check | ~5-10ns overhead per char |
+| Mixed (`[a-zα-ω]`, `\p{L}`) | ASCII fast-path + Unicode fallback | Best of both |
+
+**Zero-regression guarantee**: Existing ASCII-only patterns continue to use the fast bitmap path with no performance impact.
+
+### Example
+
+```bash
+regengo -pattern '\p{L}+' -name UnicodeWord -output unicode.go
+```
+
+```go
+// Matches any sequence of Unicode letters
+CompiledUnicodeWord.MatchString("hello")    // true
+CompiledUnicodeWord.MatchString("日本語")    // true
+CompiledUnicodeWord.MatchString("café")     // true
+CompiledUnicodeWord.MatchString("123")      // false
+```
+
 ## API Comparison
 
 ### API Stability
@@ -543,7 +584,7 @@ Output:
 ```
 
 The labels indicate:
-- **feature_labels**: Pattern characteristics (Anchored, Alternation, Captures, CharClass, Multibyte, NonCapturing, Quantifiers, Simple, WordBoundary)
+- **feature_labels**: Pattern characteristics (Anchored, Alternation, Captures, CharClass, Multibyte, NonCapturing, Quantifiers, Simple, UnicodeCharClass, WordBoundary)
 - **engine_labels**: Which engines will be used (Thompson, TDFA, TNFA, Memoization, Backtracking)
 
 ## Detailed Benchmarks

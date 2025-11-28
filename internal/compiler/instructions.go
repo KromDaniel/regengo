@@ -176,21 +176,122 @@ func (c *Compiler) generateMultibyteRune1Inst(label *jen.Statement, inst *syntax
 
 // generateRuneInst generates code for InstRune (character class match).
 func (c *Compiler) generateRuneInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
-	return []jen.Code{
-		label,
-		jen.Block(
-			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
-				jen.Goto().Id(codegen.TryFallbackName),
+	// Check at compile-time if this is ASCII-only or Unicode
+	if isASCIIOnlyCharClass(inst.Rune) {
+		// ASCII-only path: use existing bitmap approach with offset++
+		return []jen.Code{
+			label,
+			jen.Block(
+				jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
+					jen.Goto().Id(codegen.TryFallbackName),
+				),
 			),
+			jen.Block(
+				jen.If(c.generateRuneCheck(inst.Rune)).Block(
+					jen.Goto().Id(codegen.TryFallbackName),
+				),
+				jen.Id(codegen.OffsetName).Op("++"),
+				jen.Goto().Id(codegen.InstructionName(inst.Out)),
+			),
+		}, nil
+	}
+
+	// Unicode path: decode rune and use width for increment
+	return c.generateUnicodeRuneInst(label, inst)
+}
+
+// generateUnicodeRuneInst generates code for Unicode character class matching.
+// This handles character classes that contain non-ASCII runes (>= 128).
+func (c *Compiler) generateUnicodeRuneInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	runes := inst.Rune
+	numRanges := countRanges(runes)
+	asciiRanges := extractASCIIRanges(runes)
+	hasASCII := len(asciiRanges) > 0
+
+	var code []jen.Code
+	code = append(code, label)
+
+	// Bounds check
+	code = append(code, jen.Block(
+		jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
+			jen.Goto().Id(codegen.TryFallbackName),
 		),
-		jen.Block(
-			jen.If(c.generateRuneCheck(inst.Rune)).Block(
+	))
+
+	// Build the main matching block
+	var matchBlock []jen.Code
+
+	if hasASCII {
+		// ASCII fast path: if input[offset] < 128, use bitmap
+		asciiBitmap := createBitmap(asciiRanges)
+		var bitmapValues []jen.Code
+		for _, b := range asciiBitmap {
+			bitmapValues = append(bitmapValues, jen.Lit(b))
+		}
+
+		asciiCheck := jen.If(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("<").Lit(byte(128))).Block(
+			// ASCII fast path using bitmap
+			jen.If(
+				jen.Index(jen.Lit(32)).Byte().Values(bitmapValues...).Index(
+					jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("/").Lit(8),
+				).Op("&").Parens(
+					jen.Lit(1).Op("<<").Parens(
+						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("%").Lit(8),
+					),
+				).Op("==").Lit(0),
+			).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
 			jen.Id(codegen.OffsetName).Op("++"),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
-		),
-	}, nil
+		)
+		matchBlock = append(matchBlock, asciiCheck)
+	}
+
+	// Unicode path: decode rune
+	// Use DecodeRuneInString for string input, DecodeRune for []byte input
+	var decodeCall *jen.Statement
+	if c.generatingBytes {
+		decodeCall = jen.Qual("unicode/utf8", "DecodeRune").Call(
+			jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+		)
+	} else {
+		decodeCall = jen.Qual("unicode/utf8", "DecodeRuneInString").Call(
+			jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+		)
+	}
+	matchBlock = append(matchBlock,
+		jen.List(jen.Id("r"), jen.Id("width")).Op(":=").Add(decodeCall),
+	)
+
+	// Generate the range check based on number of ranges
+	if numRanges <= 8 {
+		// Inline range check for small range counts
+		matchBlock = append(matchBlock,
+			jen.If(c.generateUnicodeInlineRangeCheck(runes)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	} else {
+		// Binary search for large range counts
+		searchCode := c.generateUnicodeBinarySearchCheck(runes)
+		matchBlock = append(matchBlock, searchCode...)
+		matchBlock = append(matchBlock,
+			jen.If(jen.Op("!").Id("found")).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		)
+	}
+
+	// Advance by width and continue
+	matchBlock = append(matchBlock,
+		jen.Id(codegen.OffsetName).Op("+=").Id("width"),
+		jen.Goto().Id(codegen.InstructionName(inst.Out)),
+	)
+
+	code = append(code, jen.Block(matchBlock...))
+
+	return code, nil
 }
 
 // generateRuneAnyInst generates code for InstRuneAny (match any character).

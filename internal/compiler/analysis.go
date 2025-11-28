@@ -141,6 +141,27 @@ func hasWordBoundary(prog *syntax.Prog) bool {
 	return false
 }
 
+// hasUnicodeCharClass checks if the compiled program contains character classes with Unicode (non-ASCII) runes.
+// This is detected by checking if any InstRune instruction has runes >= 128.
+func hasUnicodeCharClass(prog *syntax.Prog) bool {
+	if prog == nil {
+		return false
+	}
+
+	for i := range prog.Inst {
+		inst := &prog.Inst[i]
+		if inst.Op == syntax.InstRune || inst.Op == syntax.InstRune1 {
+			for _, r := range inst.Rune {
+				if r >= 128 {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 // detectComplexity analyzes the program for patterns that could cause catastrophic backtracking.
 // It returns true if the program contains nested loops or ambiguous alternations that warrant
 // using memoization to guarantee O(N) complexity.
