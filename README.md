@@ -9,25 +9,20 @@
   <img src="assets/logo.png" alt="Regengo - Go Gopher with Regex" width="400">
 </p>
 
-Regengo is a **compile-time finite state machine generator** for regular expressions. It converts regex patterns into optimized Go code, leveraging the Go compiler's optimizations to eliminate runtime interpretation overhead.
+Regengo is a **compile-time finite state machine generator** for regular expressions. It converts regex patterns into optimized Go code, leveraging the Go compiler's optimizations for type-safe, pattern-specific code generation.
 
 ## Table of Contents
 
-- [Regengo](#regengo)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-  - [Quick Start](#quick-start)
-    - [CLI](#cli)
-    - [Library](#library)
-    - [Using Generated Code](#using-generated-code)
-  - [Generated Methods](#generated-methods)
-  - [Capture Groups](#capture-groups)
-  - [Performance](#performance)
-  - [Streaming API](#streaming-api)
-  - [CLI Reference](#cli-reference)
-  - [Documentation](#documentation)
-  - [API Comparison](#api-comparison)
-  - [License](#license)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Generated Methods](#generated-methods)
+- [Capture Groups](#capture-groups)
+- [Performance](#performance)
+- [Streaming API](#streaming-api)
+- [CLI Reference](#cli-reference)
+- [Documentation](#documentation)
+- [API Comparison](#api-comparison)
+- [License](#license)
 
 ## Installation
 
