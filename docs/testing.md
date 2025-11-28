@@ -1,194 +1,155 @@
-# Testing Guide
+# Generated Tests
 
-## Generated Tests & Benchmarks
+Regengo automatically generates a `_test.go` file alongside your output file (unless disabled with `-no-test`). This file contains correctness tests and benchmarks that compare against Go's stdlib `regexp`.
 
-Regengo automatically generates a `_test.go` file alongside your output file (unless disabled). This file contains:
+## What's Generated
 
 ### Correctness Tests
 
-Verifies that Regengo's output matches `regexp` stdlib exactly for provided inputs:
+Verifies that regengo's output matches `regexp` stdlib exactly:
 
-- `Test...MatchString`: Validates boolean matching
-- `Test...MatchBytes`: Validates byte-slice matching
-- `Test...FindString`: Validates capture groups (if present), checking both the full match and every individual captured group against stdlib's `FindStringSubmatch`
-- `Test...FindAllString`: Validates all matches and their captures against stdlib's `FindAllStringSubmatch`
+- `Test...MatchString` - Validates boolean matching
+- `Test...MatchBytes` - Validates byte-slice matching
+- `Test...FindString` - Validates captures against `FindStringSubmatch`
+- `Test...FindAllString` - Validates all matches against `FindAllStringSubmatch`
 
 ### Benchmarks
 
 Comparison benchmarks to measure speedup vs stdlib:
 
-- `Benchmark...MatchString`: Performance of simple matching
-- `Benchmark...FindString`: Performance of capture extraction (if applicable)
+- `Benchmark...MatchString` - Performance of simple matching
+- `Benchmark...FindString` - Performance with capture extraction
+- `Benchmark...FindStringReuse` - Performance with zero-allocation reuse
 
-## Customizing Tests
-
-You can provide specific test inputs to verify your pattern against real-world data:
+## Generating Tests
 
 ### CLI
 
 ```bash
-# Generates date.go and date_test.go
-regengo -pattern '...' -name Date -output date.go -test-inputs "2024-01-01,2025-12-31"
+# Generate with default test inputs
+regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
+        -name Date -output date.go
+
+# Generate with custom test inputs
+regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
+        -name Date -output date.go \
+        -test-inputs "2024-01-01,2025-12-31,1999-06-15"
+
+# Disable test generation
+regengo -pattern '...' -name Date -output date.go -no-test
 ```
 
 ### Library
 
 ```go
-regengo.Options{
-    // ...
-    GenerateTestFile: true, // Required: Library defaults to false
+err := regengo.Compile(regengo.Options{
+    Pattern:          `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+    Name:             "Date",
+    OutputFile:       "date.go",
+    Package:          "main",
+    GenerateTestFile: true,  // Required: Library defaults to false
     TestFileInputs:   []string{"2024-01-01", "2025-12-31"},
-}
+})
 ```
 
-## Running Tests
-
-### Run All Tests
+## Running Generated Tests
 
 ```bash
-go test ./...
-```
+# Run tests
+go test -v
 
-### Run Specific Package Tests
-
-```bash
-go test ./internal/compiler/...
-go test ./pkg/regengo/...
-```
-
-### Run with Verbose Output
-
-```bash
-go test -v ./...
-```
-
-### Run with Race Detection
-
-```bash
-go test -race ./...
-```
-
-## Running Benchmarks
-
-### Generated Benchmarks
-
-Run the generated benchmarks using standard Go tooling:
-
-```bash
+# Run benchmarks
 go test -bench=. -benchmem
+
+# Run specific benchmark
+go test -bench=BenchmarkDateFindString -benchmem
 ```
 
-### Project Benchmarks
+## Example Generated Test File
 
-```bash
-# Generate and run curated benchmarks
-make bench
+For a date pattern with captures, regengo generates (see [full example](../benchmarks/generated/DateCapture_test.go)):
 
-# Run with analysis summary
-make bench-analyze
-```
+```go
+package main
 
-### Specific Benchmark
+import (
+    "regexp"
+    "testing"
+)
 
-```bash
-go test -bench=BenchmarkDate -benchmem ./benchmarks/generated/
-```
+func TestDateFindString(t *testing.T) {
+    pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+    stdReg := regexp.MustCompile(pattern)
 
-## Test Structure
+    t.Run("test input 0", func(t *testing.T) {
+        input := "2024-01-01"
+        stdMatch := stdReg.FindStringSubmatch(input)
+        regengoResult, found := CompiledDate.FindString(input)
 
-```
-regengo/
-├── internal/
-│   ├── compiler/
-│   │   └── *_test.go     # Unit tests for compiler
-│   └── codegen/
-│       └── *_test.go     # Unit tests for code generation
-├── pkg/regengo/
-│   └── *_test.go         # Public API tests
-├── stream/
-│   └── *_test.go         # Streaming API tests
-├── testdata/
-│   ├── e2e_test.go       # End-to-end pattern tests
-│   ├── testdata.json     # Test pattern definitions
-│   └── streaming/        # Streaming-specific tests
-└── benchmarks/
-    ├── generated/        # Generated benchmark patterns
-    └── findall_test.go   # FindAll comparison tests
-```
+        if (len(stdMatch) > 0) != found {
+            t.Fatalf("match mismatch: std=%v, regengo=%v", len(stdMatch) > 0, found)
+        }
 
-## Adding New Test Patterns
+        if found {
+            if stdMatch[0] != regengoResult.Match {
+                t.Errorf("Full match mismatch: std=%q regengo=%q",
+                    stdMatch[0], regengoResult.Match)
+            }
+        }
+    })
+}
 
-### Via testdata.json
+func BenchmarkDateFindString(b *testing.B) {
+    pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
+    stdReg := regexp.MustCompile(pattern)
 
-Edit `testdata/testdata.json` to add new patterns:
+    b.Run("golang std", func(b *testing.B) {
+        b.ReportAllocs()
+        input := "2024-01-01"
+        for b.Loop() {
+            stdReg.FindStringSubmatch(input)
+        }
+    })
 
-```json
-{
-  "patterns": [
-    {
-      "regex": "your-pattern-here",
-      "inputs": [
-        {"text": "matching-input", "shouldMatch": true},
-        {"text": "non-matching", "shouldMatch": false}
-      ]
-    }
-  ]
+    b.Run("regengo", func(b *testing.B) {
+        b.ReportAllocs()
+        input := "2024-01-01"
+        for b.Loop() {
+            CompiledDate.FindString(input)
+        }
+    })
+
+    b.Run("regengo reuse", func(b *testing.B) {
+        b.ReportAllocs()
+        input := "2024-01-01"
+        var result *DateResult
+        for b.Loop() {
+            result, _ = CompiledDate.FindStringReuse(input, result)
+        }
+    })
 }
 ```
 
-### Via Test Script
+## Benchmark Output Example
 
-```bash
-python scripts/manage_e2e_test.py add "your-pattern" "test-input-1" "test-input-2"
 ```
-
-## Coverage
-
-### Generate Coverage Report
-
-```bash
-make coverage
+BenchmarkDateFindString/golang_std     10748672    111.3 ns/op    128 B/op    2 allocs/op
+BenchmarkDateFindString/regengo        55888143     20.5 ns/op     64 B/op    1 allocs/op
+BenchmarkDateFindString/regengo_reuse 157400960      7.5 ns/op      0 B/op    0 allocs/op
 ```
-
-This generates and opens `coverage.html`.
-
-### Coverage in CI
-
-The CI pipeline runs with coverage and uploads to Codecov:
-
-```bash
-go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
-```
-
-## CI/CD Testing
-
-The GitHub Actions workflow runs:
-
-1. **Format check**: `gofmt -s -d .`
-2. **Vet**: `go vet ./...`
-3. **Lint**: `golangci-lint run`
-4. **Build**: `go build -v ./cmd/regengo`
-5. **CLI test**: Generate and verify a test pattern
-6. **Tests**: `go test -v -race -coverprofile=coverage.txt ./...`
 
 ## Debugging Test Failures
 
-### Verbose Analysis
-
-Use `-verbose` to see engine selection:
+If a generated test fails, it indicates a behavioral difference between regengo and stdlib:
 
 ```bash
+# See detailed engine analysis
 regengo -pattern 'your-pattern' -name Test -output test.go -verbose
-```
 
-### Analyze Mode
-
-Check pattern characteristics without generating code:
-
-```bash
+# Analyze pattern without generating code
 regengo -analyze -pattern 'your-pattern'
 ```
 
-### Compare with Stdlib
+## More Examples
 
-All generated tests compare against `regexp` stdlib. If a test fails, it indicates a behavioral difference between regengo and stdlib.
+See [benchmarks/generated/](../benchmarks/generated/) for more examples of generated test files.
