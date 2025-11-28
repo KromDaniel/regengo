@@ -20,7 +20,8 @@ func (Date) FindReader(
 func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
 
 // FindReaderFirst returns the first match found, or nil if no match.
-func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, bool, error)
+// The int64 return is the stream offset of the match (-1 if no match).
+func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, int64, error)
 
 // MatchLengthInfo returns the minimum and maximum match lengths for the pattern.
 // maxLen is -1 for unbounded patterns (e.g., `a+`).
@@ -64,8 +65,8 @@ type Config struct {
 
 | Setting | Default | Notes |
 |---------|---------|-------|
-| BufferSize | 64KB | Larger values reduce syscalls |
-| MaxLeftover | Pattern-dependent | Based on max match length |
+| BufferSize | 64KB | Minimum enforced: 64KB or 2*MaxMatchLength (whichever is larger) |
+| MaxLeftover | Pattern-dependent | Bounded: 10*MaxMatchLength (clamped to 1KB-1MB). Unbounded: 1MB |
 
 ### Buffer Size Guidelines
 
@@ -74,7 +75,7 @@ type Config struct {
 | Small files (<1MB) | 64KB (default) |
 | Large files (>100MB) | 1-4MB |
 | Network streams | 64KB-256KB |
-| Memory constrained | 16KB-32KB |
+| Memory constrained | 64KB (minimum enforced) |
 
 ## Callback-Based Streaming
 
@@ -134,12 +135,12 @@ fmt.Printf("Found %d dates in file\n", count)
 When you only need the first match:
 
 ```go
-result, found, err := CompiledDate.FindReaderFirst(file, stream.Config{})
+result, offset, err := CompiledDate.FindReaderFirst(file, stream.Config{})
 if err != nil {
     log.Fatal(err)
 }
-if found {
-    fmt.Printf("First date: %s\n", result.Match)
+if result != nil {
+    fmt.Printf("First date at offset %d: %s\n", offset, result.Match)
 }
 ```
 
