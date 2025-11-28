@@ -1,522 +1,74 @@
 [
   {
-    "pattern": "^[a-z]{3}$",
+    "pattern": "日本語",
     "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
+      "日本語",
+      "日本語テスト",
+      "Japanese",
+      "日本",
+      "本語",
+      "test日本語test"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "^\\d{4}$",
+    "pattern": "<(?P<element>(?P<name>[\\w-]+)(?:\\s+(?P<attr>[\\w-]+)=\"(?P<value>[^\"]*)\")*\\s*/?)>",
     "inputs": [
-      "2222",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
+      "<div class=\"test\">",
+      "<input type=\"text\" name=\"field\"/>",
+      "<br/>",
+      "not html",
+      "<a href=\"url\">"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
     ]
   },
   {
-    "pattern": "^[a-f0-9]{5}$",
+    "pattern": "(?P<words>(?P<word>\\w+\\s*){2})(?P<end>\\w+)",
     "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
+      "hello world foo",
+      "a b c",
+      "test data end",
+      "word",
+      "one two"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "^[a-z]{6}$",
+    "pattern": "café",
     "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "5555555",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{5}$",
-    "inputs": [
-      "88888",
-      "00000",
-      "1111a",
-      "222222",
-      "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "222",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "555555",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{3}$",
-    "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{4}$",
-    "inputs": [
-      "8888",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{5}$",
-    "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "2222222",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{5}$",
-    "inputs": [
-      "55555",
-      "00000",
-      "1111a",
-      "222222",
-      "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "888",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "222222",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{3}$",
-    "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{4}$",
-    "inputs": [
-      "5555",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{5}$",
-    "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "8888888",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{5}$",
-    "inputs": [
-      "22222",
-      "00000",
-      "1111a",
-      "222222",
-      "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "555",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "888888",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{3}$",
-    "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{4}$",
-    "inputs": [
-      "2222",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{5}$",
-    "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "5555555",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
+      "café",
+      "I love café",
+      "cafe",
+      "caféine",
+      "Café",
+      "cafés"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -527,146 +79,13 @@
       "1111a",
       "222222",
       "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "222",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "555555",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{3}$",
-    "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{4}$",
-    "inputs": [
-      "8888",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{5}$",
-    "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "2222222",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -677,146 +96,13 @@
       "1111a",
       "222222",
       "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "888",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "222222",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{3}$",
-    "inputs": [
-      "aaa",
-      "bcb",
-      "aa1",
-      "AAA",
-      "aaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{4}$",
-    "inputs": [
-      "5555",
-      "0000",
-      "111a",
-      "22222",
-      "33 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{5}$",
-    "inputs": [
-      "aaaaa",
-      "0f0f0",
-      "ggggg",
-      "ffffff",
-      "AAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "bcbcbc",
-      "aaaaa1",
-      "AAAAAA",
-      "aaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{7}$",
-    "inputs": [
-      "8888888",
-      "0000000",
-      "111111a",
-      "22222222",
-      "33333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{3}$",
-    "inputs": [
-      "aaa",
-      "0f0",
-      "ggg",
-      "ffff",
-      "AAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{4}$",
-    "inputs": [
-      "aaaa",
-      "bcbc",
-      "aaa1",
-      "AAAA",
-      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -827,801 +113,64 @@
       "1111a",
       "222222",
       "333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{6}$",
-    "inputs": [
-      "aaaaaa",
-      "0f0f0f",
-      "gggggg",
-      "fffffff",
-      "AAAAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "bcbcbcb",
-      "aaaaaa1",
-      "AAAAAAA",
-      "aaaaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{3}$",
-    "inputs": [
-      "555",
-      "000",
-      "11a",
-      "2222",
-      "3 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{4}$",
-    "inputs": [
-      "aaaa",
-      "0f0f",
-      "gggg",
-      "fffff",
-      "AAAA"
-    ]
-  },
-  {
-    "pattern": "^[a-z]{5}$",
-    "inputs": [
-      "aaaaa",
-      "bcbcb",
-      "aaaa1",
-      "AAAAA",
-      "aaaaaa"
-    ]
-  },
-  {
-    "pattern": "^\\d{6}$",
-    "inputs": [
-      "888888",
-      "000000",
-      "11111a",
-      "2222222",
-      "3333 "
-    ]
-  },
-  {
-    "pattern": "^[a-f0-9]{7}$",
-    "inputs": [
-      "aaaaaaa",
-      "0f0f0f0",
-      "ggggggg",
-      "ffffffff",
-      "AAAAAAA"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
-    "inputs": [
-      "foofoobaz77",
-      "barfoobaz33",
-      "foofoobaz9",
-      "foofooqux77",
-      "foofoobaz77extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "201-101-1001",
-      "555-123-9876 x888",
-      "101-201-301",
-      "12-3456-7890",
-      "401-501-6001 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
-    "inputs": [
-      "Golf Hotel India Juliet",
-      "Juliet India Hotel Golf",
-      "golf hotel india juliet",
-      "Golf Hotel India Juliet ",
-      "Golf Hotel India Juliet!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
-    "inputs": [
-      "foofoobaz77777",
-      "barfoobaz33333",
-      "foofoobaz9999",
-      "foofooqux77777",
-      "foofoobaz77777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "204-104-1004",
-      "555-123-9876 x888",
-      "104-204-304",
-      "12-3456-7890",
-      "404-504-6004 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
-    "inputs": [
-      "Papa Quebec Romeo",
-      "Romeo Quebec Papa",
-      "papa quebec romeo",
-      "Papa Quebec Romeo ",
-      "Papa Quebec Romeo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
-    "inputs": [
-      "foofoobaz7777",
-      "barfoobaz3333",
-      "foofoobaz999",
-      "foofooqux7777",
-      "foofoobaz7777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "207-107-1007",
-      "555-123-9876 x888",
-      "107-207-307",
-      "12-3456-7890",
-      "407-507-6007 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
-    "inputs": [
-      "Alpha Bravo",
-      "Bravo Alpha",
-      "alpha bravo",
-      "Alpha Bravo ",
-      "Alpha Bravo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
-    "inputs": [
-      "foofoobaz777",
-      "barfoobaz333",
-      "foofoobaz99",
-      "foofooqux777",
-      "foofoobaz777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "210-110-1010",
-      "555-123-9876 x888",
-      "110-210-310",
-      "12-3456-7890",
-      "410-510-6010 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
-    "inputs": [
-      "Mike November Oscar Papa Quebec",
-      "Quebec Papa Oscar November Mike",
-      "mike november oscar papa quebec",
-      "Mike November Oscar Papa Quebec ",
-      "Mike November Oscar Papa Quebec!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
-    "inputs": [
-      "foofoobaz77",
-      "barfoobaz33",
-      "foofoobaz9",
-      "foofooqux77",
-      "foofoobaz77extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "213-113-1013",
-      "555-123-9876 x888",
-      "113-213-313",
-      "12-3456-7890",
-      "413-513-6013 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
-    "inputs": [
-      "Uniform Victor Whiskey Xray",
-      "Xray Whiskey Victor Uniform",
-      "uniform victor whiskey xray",
-      "Uniform Victor Whiskey Xray ",
-      "Uniform Victor Whiskey Xray!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
-    "inputs": [
-      "foofoobaz77777",
-      "barfoobaz33333",
-      "foofoobaz9999",
-      "foofooqux77777",
-      "foofoobaz77777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "216-116-1016",
-      "555-123-9876 x888",
-      "116-216-316",
-      "12-3456-7890",
-      "416-516-6016 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
-    "inputs": [
-      "Foxtrot Golf Hotel",
-      "Hotel Golf Foxtrot",
-      "foxtrot golf hotel",
-      "Foxtrot Golf Hotel ",
-      "Foxtrot Golf Hotel!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
-    "inputs": [
-      "foofoobaz7777",
-      "barfoobaz3333",
-      "foofoobaz999",
-      "foofooqux7777",
-      "foofoobaz7777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "219-119-1019",
-      "555-123-9876 x888",
-      "119-219-319",
-      "12-3456-7890",
-      "419-519-6019 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
-    "inputs": [
-      "Mike November",
-      "November Mike",
-      "mike november",
-      "Mike November ",
-      "Mike November!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
-    "inputs": [
-      "foofoobaz777",
-      "barfoobaz333",
-      "foofoobaz99",
-      "foofooqux777",
-      "foofoobaz777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "222-122-1022",
-      "555-123-9876 x888",
-      "122-222-322",
-      "12-3456-7890",
-      "422-522-6022 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
-    "inputs": [
-      "Golf Hotel India Juliet Kilo",
-      "Kilo Juliet India Hotel Golf",
-      "golf hotel india juliet kilo",
-      "Golf Hotel India Juliet Kilo ",
-      "Golf Hotel India Juliet Kilo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
-    "inputs": [
-      "foofoobaz77",
-      "barfoobaz33",
-      "foofoobaz9",
-      "foofooqux77",
-      "foofoobaz77extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "225-125-1025",
-      "555-123-9876 x888",
-      "125-225-325",
-      "12-3456-7890",
-      "425-525-6025 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
-    "inputs": [
-      "Mike November Oscar Papa",
-      "Papa Oscar November Mike",
-      "mike november oscar papa",
-      "Mike November Oscar Papa ",
-      "Mike November Oscar Papa!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
-    "inputs": [
-      "foofoobaz77777",
-      "barfoobaz33333",
-      "foofoobaz9999",
-      "foofooqux77777",
-      "foofoobaz77777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "228-128-1028",
-      "555-123-9876 x888",
-      "128-228-328",
-      "12-3456-7890",
-      "428-528-6028 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
-    "inputs": [
-      "Sierra Tango Uniform",
-      "Uniform Tango Sierra",
-      "sierra tango uniform",
-      "Sierra Tango Uniform ",
-      "Sierra Tango Uniform!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
-    "inputs": [
-      "foofoobaz7777",
-      "barfoobaz3333",
-      "foofoobaz999",
-      "foofooqux7777",
-      "foofoobaz7777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "231-131-1031",
-      "555-123-9876 x888",
-      "131-231-331",
-      "12-3456-7890",
-      "431-531-6031 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
-    "inputs": [
-      "Alpha Bravo",
-      "Bravo Alpha",
-      "alpha bravo",
-      "Alpha Bravo ",
-      "Alpha Bravo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
-    "inputs": [
-      "foofoobaz777",
-      "barfoobaz333",
-      "foofoobaz99",
-      "foofooqux777",
-      "foofoobaz777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "234-134-1034",
-      "555-123-9876 x888",
-      "134-234-334",
-      "12-3456-7890",
-      "434-534-6034 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
-    "inputs": [
-      "Alpha Bravo Charlie Delta Echo",
-      "Echo Delta Charlie Bravo Alpha",
-      "alpha bravo charlie delta echo",
-      "Alpha Bravo Charlie Delta Echo ",
-      "Alpha Bravo Charlie Delta Echo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
-    "inputs": [
-      "foofoobaz77",
-      "barfoobaz33",
-      "foofoobaz9",
-      "foofooqux77",
-      "foofoobaz77extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "237-137-1037",
-      "555-123-9876 x888",
-      "137-237-337",
-      "12-3456-7890",
-      "437-537-6037 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
-    "inputs": [
-      "Echo Foxtrot Golf Hotel",
-      "Hotel Golf Foxtrot Echo",
-      "echo foxtrot golf hotel",
-      "Echo Foxtrot Golf Hotel ",
-      "Echo Foxtrot Golf Hotel!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
-    "inputs": [
-      "foofoobaz77777",
-      "barfoobaz33333",
-      "foofoobaz9999",
-      "foofooqux77777",
-      "foofoobaz77777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "240-140-1040",
-      "555-123-9876 x888",
-      "140-240-340",
-      "12-3456-7890",
-      "440-540-6040 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
-    "inputs": [
-      "India Juliet Kilo",
-      "Kilo Juliet India",
-      "india juliet kilo",
-      "India Juliet Kilo ",
-      "India Juliet Kilo!"
-    ]
-  },
-  {
-    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
-    "inputs": [
-      "foofoobaz7777",
-      "barfoobaz3333",
-      "foofoobaz999",
-      "foofooqux7777",
-      "foofoobaz7777extra"
-    ]
-  },
-  {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
-    "inputs": [
-      "243-143-1043",
-      "555-123-9876 x888",
-      "143-243-343",
-      "12-3456-7890",
-      "443-543-6043 ext555"
-    ]
-  },
-  {
-    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
-    "inputs": [
-      "Mike November",
-      "November Mike",
-      "mike november",
-      "Mike November ",
-      "Mike November!"
-    ]
-  },
-  {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
-    "inputs": [
-      "https://sub0.com/alpha/beta?id=0&ref",
-      "http://sub0.com/alpha/beta",
-      "sub0.com/alpha/beta",
-      "https://sub0_com/alpha/beta",
-      "https://sub0.com/alpha/beta?x",
-      "https://sub0.com/alpha/beta//"
-    ]
-  },
-  {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
-    "inputs": [
-      "2024-11-23T16:45:30Z",
-      "2023-01-02T03:04:05.77+02:00",
-      "2024-13-01T00:00:00Z",
-      "2024-11-23T24:00:00Z",
-      "2024-11-23 16:45:30Z",
-      "2024-11-23T16:45:30.123456Z"
-    ]
-  },
-  {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
-    "inputs": [
-      "ccc=06&ddd=07&eee=08&fff=09",
-      "fff=09&eee=08&ddd=07&ccc=06",
-      "ccc=06&ddd=07&eee=08&fff=09&",
-      "ccc:06&ddd=07&eee=08&fff=09",
-      "CCC=06&DDD=07&EEE=08&FFF=09",
-      "ccc=06&&ddd=07&eee=08&fff=09"
-    ]
-  },
-  {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
-    "inputs": [
-      "/api/v1/metrics/devices/profiles/1021?page=03",
-      "/api/v1/metrics/devices/profiles/1021",
-      "/API/v1/metrics/devices/profiles/1021?page=03",
-      "/api/v1/metrics/devices/profiles/ID1021?page=03",
-      "/api/v1/metrics/devices/profiles?page=03",
-      "/api/v1/metrics/devices/profiles/1021?page=03&extra=99"
-    ]
-  },
-  {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
-    "inputs": [
-      "https://sub4.sub5.com/epsilon/zeta?id=4&ref",
-      "http://sub4.sub5.com/epsilon/zeta",
-      "sub4.sub5.com/epsilon/zeta",
-      "https://sub4_sub5_com/epsilon/zeta",
-      "https://sub4.sub5.com/epsilon/zeta?x",
-      "https://sub4.sub5.com/epsilon/zeta//"
-    ]
-  },
-  {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
-    "inputs": [
-      "2024-11-23T16:45:30Z",
-      "2023-01-02T03:04:05.777+02:00",
-      "2024-13-01T00:00:00Z",
-      "2024-11-23T24:00:00Z",
-      "2024-11-23 16:45:30Z",
-      "2024-11-23T16:45:30.123456Z"
-    ]
-  },
-  {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
-    "inputs": [
-      "ggg=18&hhh=19",
-      "hhh=19&ggg=18",
-      "ggg=18&hhh=19&",
-      "ggg:18&hhh=19",
-      "GGG=18&HHH=19",
-      "ggg=18&&hhh=19"
-    ]
-  },
-  {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
-    "inputs": [
-      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts/1049",
-      "/API/v1/logs/audits/events/alerts/1049?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts/ID1049?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18&extra=99"
-    ]
-  },
-  {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){3}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
-    "inputs": [
-      "https://sub8.sub9.sub10.com/iota/kappa?id=8&ref",
-      "http://sub8.sub9.sub10.com/iota/kappa",
-      "sub8.sub9.sub10.com/iota/kappa",
-      "https://sub8_sub9_sub10_com/iota/kappa",
-      "https://sub8.sub9.sub10.com/iota/kappa?x",
-      "https://sub8.sub9.sub10.com/iota/kappa//"
-    ]
-  },
-  {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{1}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
-    "inputs": [
-      "2024-11-23T16:45:30Z",
-      "2023-01-02T03:04:05.7+02:00",
-      "2024-13-01T00:00:00Z",
-      "2024-11-23T24:00:00Z",
-      "2024-11-23 16:45:30Z",
-      "2024-11-23T16:45:30.123456Z"
-    ]
-  },
-  {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){2}[a-z]{3}=[0-9]{2}$",
-    "inputs": [
-      "kkk=30&lll=31&aaa=32",
-      "aaa=32&lll=31&kkk=30",
-      "kkk=30&lll=31&aaa=32&",
-      "kkk:30&lll=31&aaa=32",
-      "KKK=30&LLL=31&AAA=32",
-      "kkk=30&&lll=31&aaa=32"
-    ]
-  },
-  {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){5}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,2}))?$",
-    "inputs": [
-      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics/1077",
-      "/API/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics/ID1077?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16&extra=99"
-    ]
-  },
-  {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
-    "inputs": [
-      "https://sub12.com/gamma/delta?id=12&re",
-      "http://sub12.com/gamma/delta",
-      "sub12.com/gamma/delta",
-      "https://sub12_com/gamma/delta",
-      "https://sub12.com/gamma/delta?x",
-      "https://sub12.com/gamma/delta//"
-    ]
-  },
-  {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
-    "inputs": [
-      "2024-11-23T16:45:30Z",
-      "2023-01-02T03:04:05.77+02:00",
-      "2024-13-01T00:00:00Z",
-      "2024-11-23T24:00:00Z",
-      "2024-11-23 16:45:30Z",
-      "2024-11-23T16:45:30.123456Z"
-    ]
-  },
-  {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
-    "inputs": [
-      "ccc=42&ddd=43&eee=44&fff=45",
-      "fff=45&eee=44&ddd=43&ccc=42",
-      "ccc=42&ddd=43&eee=44&fff=45&",
-      "ccc:42&ddd=43&eee=44&fff=45",
-      "CCC=42&DDD=43&EEE=44&FFF=45",
-      "ccc=42&&ddd=43&eee=44&fff=45"
-    ]
-  },
-  {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
-    "inputs": [
-      "/api/v1/metrics/devices/profiles/1105?page=15",
-      "/api/v1/metrics/devices/profiles/1105",
-      "/API/v1/metrics/devices/profiles/1105?page=15",
-      "/api/v1/metrics/devices/profiles/ID1105?page=15",
-      "/api/v1/metrics/devices/profiles?page=15",
-      "/api/v1/metrics/devices/profiles/1105?page=15&extra=99"
-    ]
-  },
-  {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
-    "inputs": [
-      "https://sub16.sub17.com/eta/theta?id=16&re",
-      "http://sub16.sub17.com/eta/theta",
-      "sub16.sub17.com/eta/theta",
-      "https://sub16_sub17_com/eta/theta",
-      "https://sub16.sub17.com/eta/theta?x",
-      "https://sub16.sub17.com/eta/theta//"
-    ]
-  },
-  {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
-    "inputs": [
-      "2024-11-23T16:45:30Z",
-      "2023-01-02T03:04:05.777+02:00",
-      "2024-13-01T00:00:00Z",
-      "2024-11-23T24:00:00Z",
-      "2024-11-23 16:45:30Z",
-      "2024-11-23T16:45:30.123456Z"
-    ]
-  },
-  {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
-    "inputs": [
-      "ggg=54&hhh=55",
-      "hhh=55&ggg=54",
-      "ggg=54&hhh=55&",
-      "ggg:54&hhh=55",
-      "GGG=54&HHH=55",
-      "ggg=54&&hhh=55"
-    ]
-  },
-  {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
-    "inputs": [
-      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts/1133",
-      "/API/v1/logs/audits/events/alerts/1133?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts/ID1133?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30&extra=99"
-    ]
-  },
-  {
-    "pattern": "hello.*world",
-    "inputs": [
-      "hello world",
-      "hello beautiful world",
-      "hello123world",
-      "world hello",
-      "hello",
-      "helloworld!"
-    ]
-  },
-  {
-    "pattern": "test\\d+end",
-    "inputs": [
-      "test123end",
-      "test999end",
-      "test1end",
-      "testend",
-      "test123end!",
-      "start test123end"
-    ]
-  },
-  {
-    "pattern": "a.*b.*c",
-    "inputs": [
-      "abc",
-      "a123b456c",
-      "aXbYc",
-      "abcd",
-      "ab",
-      "a bc extra"
-    ]
-  },
-  {
-    "pattern": "foo|bar",
-    "inputs": [
-      "foo",
-      "bar",
-      "foobar",
-      "baz",
-      "food",
-      "bart"
-    ]
-  },
-  {
-    "pattern": "x+y",
-    "inputs": [
-      "xy",
-      "xxy",
-      "xxxy",
-      "y",
-      "x",
-      "prefix xxy suffix"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{5}$",
+    "inputs": [
+      "88888",
+      "00000",
+      "1111a",
+      "222222",
+      "333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{5}$",
+    "inputs": [
+      "55555",
+      "00000",
+      "1111a",
+      "222222",
+      "333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{5}$",
+    "inputs": [
+      "22222",
+      "00000",
+      "1111a",
+      "222222",
+      "333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -1633,6 +182,13 @@
       "catfisherman",
       "cat fish",
       "dogfishery"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -1644,477 +200,32 @@
       "start middle",
       "middle end",
       "start middle end extra"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "\\d{3}-\\d{3}-\\d{4}",
+    "pattern": "\\b[a-z]+\\b",
     "inputs": [
-      "123-456-7890",
-      "555-123-9876",
-      "000-000-0000",
-      "12-345-6789",
-      "123-456-789",
-      "phone: 123-456-7890 end"
-    ]
-  },
-  {
-    "pattern": "(?P<outer>(?P<inner>a+)+)b",
-    "inputs": [
-      "aaaaaaaaaab",
-      "aaaaaaaaaaaaaaaaab",
-      "aaaaaaaa",
-      "ab",
-      "b"
-    ]
-  },
-  {
-    "pattern": "(?P<match>(?:a|aa)+)end",
-    "inputs": [
-      "aaaaend",
-      "aaaaaaaaend",
-      "aaaaa",
-      "end",
-      "aend"
-    ]
-  },
-  {
-    "pattern": "(?P<g1>(?P<g2>b{2})+)(?P<g3>c+)",
-    "inputs": [
-      "bbbbcc",
-      "bbbbbbc",
-      "bbcc",
-      "cc",
-      "bb"
-    ]
-  },
-  {
-    "pattern": "(?P<result>(?:x+|y+|c+){2})z",
-    "inputs": [
-      "xxccz",
-      "yyyxxxz",
-      "xyzz",
-      "z",
-      "xxz"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<part>(?:d+)+){1})end",
-    "inputs": [
-      "dddend",
-      "ddddddend",
-      "ddd",
-      "end",
-      "dendend"
-    ]
-  },
-  {
-    "pattern": "(?P<words>(?P<word>\\w+\\s*){2})(?P<end>\\w+)",
-    "inputs": [
-      "hello world foo",
-      "a b c",
-      "test data end",
-      "word",
-      "one two"
-    ]
-  },
-  {
-    "pattern": "(?P<words>(?P<word>\\w+\\s+){3})(?P<end>\\w+)",
-    "inputs": [
-      "hello world foo bar",
-      "a b c d",
-      "one two three four",
-      "word",
-      "a b c"
-    ]
-  },
-  {
-    "pattern": "(?P<scheme>https?)://(?P<auth>(?P<user>[\\w.-]+)(?::(?P<pass>[\\w.-]+))?@)?(?P<host>[\\w.-]+)(?::(?P<port>\\d+))?(?P<path>/[\\w./-]*)?",
-    "inputs": [
-      "https://example.com",
-      "http://user:pass@api.example.com:8080/path",
-      "http://localhost:3000",
-      "not a url",
-      "https://test.com/api/v1"
-    ]
-  },
-  {
-    "pattern": "(?P<protocol>https?)://(?P<host>[\\w.-]+)(?::(?P<port>\\d{1,5}))?(?P<path>(?:/[\\w.-]+)*)(?:\\?(?P<query>[\\w=&.-]+))?",
-    "inputs": [
-      "https://example.com/path?key=value",
-      "http://api.test.com:8080/v1/users",
-      "https://localhost",
-      "invalid",
-      "http://test.com/a/b/c?x=1"
-    ]
-  },
-  {
-    "pattern": "(?P<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(?P<ms>\\d{3}))?(?P<tz>Z|[+-]\\d{2}:\\d{2})?\\s+\\[(?P<level>\\w+)\\]\\s+(?P<message>.+)",
-    "inputs": [
-      "2024-01-15T10:30:45.123Z [INFO] Server started",
-      "2024-01-15T10:30:45 [ERROR] Failed",
-      "invalid log",
-      "2024-01-15T10:30:45+00:00 [WARN] Warning",
-      "log entry"
-    ]
-  },
-  {
-    "pattern": "(?P<date>\\d{4}/\\d{2}/\\d{2})\\s+(?P<time>\\d{2}:\\d{2}:\\d{2})\\s+(?P<level>DEBUG|INFO|WARN|ERROR)\\s+(?P<component>[\\w.]+):\\s+(?P<msg>.*)",
-    "inputs": [
-      "2024/01/15 10:30:45 INFO app.server: Started",
-      "2024/01/15 10:30:45 ERROR db: Connection failed",
-      "invalid",
-      "2024/01/15 10:30:45 DEBUG test: Testing",
-      "not a log"
-    ]
-  },
-  {
-    "pattern": "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(?:-(?P<prerelease>[\\w.-]+))?(?:\\+(?P<build>[\\w.-]+))?",
-    "inputs": [
-      "1.0.0",
-      "2.1.3-alpha.1",
-      "3.0.0-beta.2+build.123",
-      "10.20.30",
-      "1.2.3-rc.1+20240115"
-    ]
-  },
-  {
-    "pattern": "v?(?P<version>(?P<major>\\d+)\\.(?P<minor>\\d+)(?:\\.(?P<patch>\\d+))?)(?P<suffix>-[\\w.]+)?",
-    "inputs": [
-      "v1.0.0",
-      "2.1",
-      "v3.0.0-alpha",
-      "1.2.3",
-      "v10.20-beta"
-    ]
-  },
-  {
-    "pattern": "(?P<email>(?P<local>[\\w.+-]+)@(?P<domain>[\\w.-]+)\\.(?P<tld>[a-z]{2,}))",
-    "inputs": [
-      "user@example.com",
-      "john.doe+tag@sub.example.co.uk",
-      "test@domain.org",
-      "invalid",
-      "a@b.com"
-    ]
-  },
-  {
-    "pattern": "(?P<user>[\\w.%+-]+)@(?P<subdomain>(?:[\\w-]+\\.)*)?(?P<domain>[\\w-]+)\\.(?P<tld>[a-z]{2,6})",
-    "inputs": [
-      "user@example.com",
-      "test@sub.domain.example.com",
-      "a@b.co",
-      "invalid email",
-      "user@test.org"
-    ]
-  },
-  {
-    "pattern": "(?P<ip>(?P<a>\\d{1,3})\\.(?P<b>\\d{1,3})\\.(?P<c>\\d{1,3})\\.(?P<d>\\d{1,3}))(?::(?P<port>\\d{1,5}))?",
-    "inputs": [
-      "192.168.1.1",
-      "10.0.0.1:8080",
-      "127.0.0.1",
-      "255.255.255.255:443",
-      "invalid"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<ip>(?:\\d{1,3}\\.){3}\\d{1,3})(?:/(?P<cidr>\\d{1,2}))?)",
-    "inputs": [
-      "192.168.0.0/24",
-      "10.0.0.0/8",
-      "172.16.0.1",
-      "192.168.1.1/32",
-      "invalid"
-    ]
-  },
-  {
-    "pattern": "(?P<uuid>(?P<time_low>[0-9a-f]{8})-(?P<time_mid>[0-9a-f]{4})-(?P<version>[0-9a-f]{4})-(?P<variant>[0-9a-f]{4})-(?P<node>[0-9a-f]{12}))",
-    "inputs": [
-      "550e8400-e29b-41d4-a716-446655440000",
-      "123e4567-e89b-12d3-a456-426614174000",
-      "invalid-uuid",
-      "00000000-0000-0000-0000-000000000000",
-      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    ]
-  },
-  {
-    "pattern": "(?P<number>(?P<prefix>\\d{4})[\\s-]?(?P<middle>\\d{4}[\\s-]?\\d{4})[\\s-]?(?P<suffix>\\d{4}))",
-    "inputs": [
-      "4111-1111-1111-1111",
-      "5500 0000 0000 0004",
-      "1234567890123456",
-      "invalid",
-      "1234-5678-9012-3456"
-    ]
-  },
-  {
-    "pattern": "<(?P<tag>[\\w-]+)(?:\\s+(?P<attrs>(?:[\\w-]+=\"[^\"]*\"\\s*)*))?(?P<close>/?)>",
-    "inputs": [
-      "<div class=\"container\">",
-      "<input/>",
-      "<a href=\"url\" target=\"_blank\">",
-      "not a tag",
-      "<span>"
-    ]
-  },
-  {
-    "pattern": "(?P<outer>(?P<inner>e+)+)f",
-    "inputs": [
-      "eeeeeeeeeef",
-      "eeeeeeeeeeeeeeeeef",
-      "eeeeeeee",
-      "ef",
-      "f"
-    ]
-  },
-  {
-    "pattern": "(?P<g1>(?P<g2>x{1})+)(?P<g3>y+)",
-    "inputs": [
-      "xxxyy",
-      "xxxxxyyy",
-      "xyy",
-      "yy",
-      "xx"
-    ]
-  },
-  {
-    "pattern": "(?P<result>(?:a+|b+|g+){3})h",
-    "inputs": [
-      "aaabbggh",
-      "abgh",
-      "aaah",
-      "h",
-      "aaabbbgggh"
-    ]
-  },
-  {
-    "pattern": "(?P<url>(?P<scheme>https?)://(?P<domain>(?:[\\w-]+\\.)+[\\w-]+)(?P<port>:\\d+)?(?P<path>/[^\\s?#]*)?(?P<query>\\?[^\\s#]*)?)",
-    "inputs": [
-      "https://api.example.com/path?query=1",
-      "http://test.domain.com:8080/",
-      "https://localhost",
-      "invalid",
-      "http://a.b.c.d/e?f=g"
-    ]
-  },
-  {
-    "pattern": "\\[(?P<level>\\w+)\\]\\s+(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+-\\s+(?P<logger>[\\w.]+)\\s+-\\s+(?P<message>.*)",
-    "inputs": [
-      "[INFO] 2024-01-15 10:30:45 - app.Service - Started",
-      "[ERROR] 2024-01-15 10:30:45 - db.Pool - Failed",
-      "invalid",
-      "[DEBUG] 2024-01-15 10:30:45 - test - Testing",
-      "not a log"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+))(?P<pre>-(?:alpha|beta|rc)\\.?\\d*)?(?P<meta>\\+[\\w.]+)?",
-    "inputs": [
-      "1.0.0",
-      "2.1.3-alpha.1",
-      "3.0.0-beta+build",
-      "10.20.30-rc1",
-      "1.2.3+meta.data"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<name>[\\w.+-]+)@(?P<host>[\\w.-]+))(?P<extra>\\s.*)?",
-    "inputs": [
-      "user@example.com",
-      "test@domain.org extra text",
-      "a@b.co",
-      "invalid",
-      "user@test.com more data"
-    ]
-  },
-  {
-    "pattern": "<(?P<element>(?P<name>[\\w-]+)(?:\\s+(?P<attr>[\\w-]+)=\"(?P<value>[^\"]*)\")*\\s*/?)>",
-    "inputs": [
-      "<div class=\"test\">",
-      "<input type=\"text\" name=\"field\"/>",
-      "<br/>",
-      "not html",
-      "<a href=\"url\">"
-    ]
-  },
-  {
-    "pattern": "(?P<match>(?:b|bb)+)stop",
-    "inputs": [
-      "bbbstop",
-      "bbbbbbbbstop",
-      "bbbbb",
-      "stop",
-      "bstop"
-    ]
-  },
-  {
-    "pattern": "(?P<g1>(?P<g2>c{3})+)(?P<g3>d+)",
-    "inputs": [
-      "ccccccddd",
-      "cccccccccddd",
-      "cccddd",
-      "ddd",
-      "ccc"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<proto>https?|ftp)://(?P<host>[\\w.-]+)(?P<port>:\\d+)?(?P<path>/[\\w./-]*)?)(?P<extra>.*)?",
-    "inputs": [
-      "https://example.com/path extra",
-      "ftp://files.server.com:21/pub",
-      "http://localhost",
-      "invalid",
-      "https://api.test.com/v1"
-    ]
-  },
-  {
-    "pattern": "(?P<ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s+-\\s+-\\s+\\[(?P<date>[^\\]]+)\\]\\s+\"(?P<method>\\w+)\\s+(?P<path>[^\\s]+)\\s+(?P<proto>[^\"]+)\"\\s+(?P<status>\\d+)\\s+(?P<size>\\d+)",
-    "inputs": [
-      "192.168.1.1 - - [15/Jan/2024:10:30:45 +0000] \"GET /api HTTP/1.1\" 200 1234",
-      "10.0.0.1 - - [01/Jan/2024:00:00:00 +0000] \"POST /data HTTP/2\" 201 567",
-      "invalid",
-      "127.0.0.1 - - [date] \"GET / HTTP/1.1\" 404 0",
-      "not a log"
-    ]
-  },
-  {
-    "pattern": "(?P<outer>(?P<inner>f+)+)g",
-    "inputs": [
-      "fffffffffffg",
-      "ffffffffffffffffffffffg",
-      "ffffffff",
-      "fg",
-      "g"
-    ]
-  },
-  {
-    "pattern": "(?P<words>(?P<word>\\w+\\s*){4})(?P<end>\\w+)",
-    "inputs": [
-      "one two three four five",
-      "a b c d e",
-      "hello world foo bar baz",
-      "word",
-      "x y z w v"
-    ]
-  },
-  {
-    "pattern": "(?P<words>(?P<word>\\w+\\s+){5})(?P<end>\\w+)",
-    "inputs": [
-      "a b c d e f",
-      "one two three four five six",
-      "hello world foo bar baz qux",
-      "word",
-      "x y z w v u"
-    ]
-  },
-  {
-    "pattern": "(?P<card>(?P<issuer>4\\d{3}|5[1-5]\\d{2}|3[47]\\d{2}|6(?:011|5\\d{2}))[\\s-]?(?P<digits>(?:\\d{4}[\\s-]?){3}|\\d{6}[\\s-]?\\d{5}))",
-    "inputs": [
-      "4111-1111-1111-1111",
-      "5500 0000 0000 0004",
-      "378282246310005",
-      "invalid",
-      "6011-0000-0000-0000"
-    ]
-  },
-  {
-    "pattern": "(?P<outer>(?P<inner>h+)+)i",
-    "inputs": [
-      "hhhhhhhi",
-      "hhhhhhhhhhhhhhi",
-      "hhhhhh",
-      "hi",
-      "i"
-    ]
-  },
-  {
-    "pattern": "(?P<g1>(?P<g2>y{2})+)(?P<g3>z+)",
-    "inputs": [
-      "yyyyzz",
-      "yyyyyyyyzzz",
-      "yyzz",
-      "zz",
-      "yy"
-    ]
-  },
-  {
-    "pattern": "(?P<result>(?:p+|q+|j+){1})k",
-    "inputs": [
-      "pppk",
-      "qqqk",
-      "jjjk",
-      "k",
-      "ppqk"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<part>(?:k+)+){2})end",
-    "inputs": [
-      "kkkkkkkkkend",
-      "kkkkend",
-      "kkk",
-      "end",
-      "kend"
-    ]
-  },
-  {
-    "pattern": "(?P<match>(?:l|ll)+)finish",
-    "inputs": [
-      "lllfinish",
-      "llllllllfinish",
-      "lllll",
-      "finish",
-      "lfinish"
-    ]
-  },
-  {
-    "pattern": "(?P<outer>(?P<inner>m+)+)n",
-    "inputs": [
-      "mmmmmmmmmn",
-      "mmmmmmmmmmmmmmmmn",
-      "mmmmmmmm",
-      "mn",
-      "n"
-    ]
-  },
-  {
-    "pattern": "(?P<g1>(?P<g2>o{1})+)(?P<g3>p+)",
-    "inputs": [
-      "ooopp",
-      "ooooooooppp",
-      "opp",
-      "pp",
-      "oo"
-    ]
-  },
-  {
-    "pattern": "(?P<result>(?:q+|r+|s+){2})t",
-    "inputs": [
-      "qqrrt",
-      "ssqqt",
-      "qqt",
-      "t",
-      "qqrrst"
-    ]
-  },
-  {
-    "pattern": "(?P<full>(?P<part>(?:u+)+){3})end",
-    "inputs": [
-      "uuuuuuuuuuuuend",
-      "uuuuuuend",
-      "uuu",
-      "end",
-      "uend"
-    ]
-  },
-  {
-    "pattern": "(?P<match>(?:v|vv)+)done",
-    "inputs": [
-      "vvvdone",
-      "vvvvvvvvdone",
-      "vvvvv",
-      "done",
-      "vdone"
+      "hello",
+      "hello world",
+      "123",
+      "test123",
+      "hello123world",
+      "a"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers",
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -2125,6 +236,1463 @@
       "wwwwwwww",
       "wx",
       "x"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<match>(?:a|aa)+)end",
+    "inputs": [
+      "aaaaend",
+      "aaaaaaaaend",
+      "aaaaa",
+      "end",
+      "aend"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<part>(?:u+)+){3})end",
+    "inputs": [
+      "uuuuuuuuuuuuend",
+      "uuuuuuend",
+      "uuu",
+      "end",
+      "uend"
+    ],
+    "feature_labels": [
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<outer>(?P<inner>e+)+)f",
+    "inputs": [
+      "eeeeeeeeeef",
+      "eeeeeeeeeeeeeeeeef",
+      "eeeeeeee",
+      "ef",
+      "f"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "v?(?P<version>(?P<major>\\d+)\\.(?P<minor>\\d+)(?:\\.(?P<patch>\\d+))?)(?P<suffix>-[\\w.]+)?",
+    "inputs": [
+      "v1.0.0",
+      "2.1",
+      "v3.0.0-alpha",
+      "1.2.3",
+      "v10.20-beta"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<protocol>https?)://(?P<host>[\\w.-]+)(?::(?P<port>\\d{1,5}))?(?P<path>(?:/[\\w.-]+)*)(?:\\?(?P<query>[\\w=&.-]+))?",
+    "inputs": [
+      "https://example.com/path?key=value",
+      "http://api.test.com:8080/v1/users",
+      "https://localhost",
+      "invalid",
+      "http://test.com/a/b/c?x=1"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<part>(?:d+)+){1})end",
+    "inputs": [
+      "dddend",
+      "ddddddend",
+      "ddd",
+      "end",
+      "dendend"
+    ],
+    "feature_labels": [
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\Btest\\B",
+    "inputs": [
+      "untested",
+      "protestation",
+      "test",
+      "testing",
+      "contest",
+      "attest"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<emoji>😀)$",
+    "inputs": [
+      "😀",
+      "😀😀",
+      ":)",
+      "smile",
+      " 😀",
+      "😀 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<outer>(?P<inner>a+)+)b",
+    "inputs": [
+      "aaaaaaaaaab",
+      "aaaaaaaaaaaaaaaaab",
+      "aaaaaaaa",
+      "ab",
+      "b"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
+    "inputs": [
+      "/api/v1/metrics/devices/profiles/1021?page=03",
+      "/api/v1/metrics/devices/profiles/1021",
+      "/API/v1/metrics/devices/profiles/1021?page=03",
+      "/api/v1/metrics/devices/profiles/ID1021?page=03",
+      "/api/v1/metrics/devices/profiles?page=03",
+      "/api/v1/metrics/devices/profiles/1021?page=03&extra=99"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
+    "inputs": [
+      "/api/v1/metrics/devices/profiles/1105?page=15",
+      "/api/v1/metrics/devices/profiles/1105",
+      "/API/v1/metrics/devices/profiles/1105?page=15",
+      "/api/v1/metrics/devices/profiles/ID1105?page=15",
+      "/api/v1/metrics/devices/profiles?page=15",
+      "/api/v1/metrics/devices/profiles/1105?page=15&extra=99"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
+    "inputs": [
+      "foofoobaz77777",
+      "barfoobaz33333",
+      "foofoobaz9999",
+      "foofooqux77777",
+      "foofoobaz77777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
+    "inputs": [
+      "foofoobaz77777",
+      "barfoobaz33333",
+      "foofoobaz9999",
+      "foofooqux77777",
+      "foofoobaz77777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
+    "inputs": [
+      "foofoobaz77777",
+      "barfoobaz33333",
+      "foofoobaz9999",
+      "foofooqux77777",
+      "foofoobaz77777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{5}$",
+    "inputs": [
+      "foofoobaz77777",
+      "barfoobaz33333",
+      "foofoobaz9999",
+      "foofooqux77777",
+      "foofoobaz77777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){3}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "inputs": [
+      "https://sub8.sub9.sub10.com/iota/kappa?id=8&ref",
+      "http://sub8.sub9.sub10.com/iota/kappa",
+      "sub8.sub9.sub10.com/iota/kappa",
+      "https://sub8_sub9_sub10_com/iota/kappa",
+      "https://sub8.sub9.sub10.com/iota/kappa?x",
+      "https://sub8.sub9.sub10.com/iota/kappa//"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "(?P<match>(?:l|ll)+)finish",
+    "inputs": [
+      "lllfinish",
+      "llllllllfinish",
+      "lllll",
+      "finish",
+      "lfinish"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<g1>(?P<g2>b{2})+)(?P<g3>c+)",
+    "inputs": [
+      "bbbbcc",
+      "bbbbbbc",
+      "bbcc",
+      "cc",
+      "bb"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<outer>(?P<inner>f+)+)g",
+    "inputs": [
+      "fffffffffffg",
+      "ffffffffffffffffffffffg",
+      "ffffffff",
+      "fg",
+      "g"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<word>café|thé)",
+    "inputs": [
+      "café",
+      "thé",
+      "café ou thé",
+      "coffee",
+      "tea",
+      "cafe"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
+    "inputs": [
+      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18",
+      "/api/v1/logs/audits/events/alerts/1049",
+      "/API/v1/logs/audits/events/alerts/1049?size=12&tag=18",
+      "/api/v1/logs/audits/events/alerts/ID1049?size=12&tag=18",
+      "/api/v1/logs/audits/events/alerts?size=12&tag=18",
+      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18&extra=99"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
+    "inputs": [
+      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30",
+      "/api/v1/logs/audits/events/alerts/1133",
+      "/API/v1/logs/audits/events/alerts/1133?size=24&tag=30",
+      "/api/v1/logs/audits/events/alerts/ID1133?size=24&tag=30",
+      "/api/v1/logs/audits/events/alerts?size=24&tag=30",
+      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30&extra=99"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "5555555",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "2222222",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "8888888",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "5555555",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "2222222",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{7}$",
+    "inputs": [
+      "8888888",
+      "0000000",
+      "111111a",
+      "22222222",
+      "33333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<part>(?:k+)+){2})end",
+    "inputs": [
+      "kkkkkkkkkend",
+      "kkkkend",
+      "kkk",
+      "end",
+      "kend"
+    ],
+    "feature_labels": [
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "漢字",
+    "inputs": [
+      "漢字",
+      "日本漢字",
+      "kanji",
+      "漢字test",
+      "test漢字",
+      "漢"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{4}$",
+    "inputs": [
+      "aaaa",
+      "0f0f",
+      "gggg",
+      "fffff",
+      "AAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
+    "inputs": [
+      "ggg=18&hhh=19",
+      "hhh=19&ggg=18",
+      "ggg=18&hhh=19&",
+      "ggg:18&hhh=19",
+      "GGG=18&HHH=19",
+      "ggg=18&&hhh=19"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
+    "inputs": [
+      "ggg=54&hhh=55",
+      "hhh=55&ggg=54",
+      "ggg=54&hhh=55&",
+      "ggg:54&hhh=55",
+      "GGG=54&HHH=55",
+      "ggg=54&&hhh=55"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<result>(?:p+|q+|j+){1})k",
+    "inputs": [
+      "pppk",
+      "qqqk",
+      "jjjk",
+      "k",
+      "ppqk"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<card>(?P<issuer>4\\d{3}|5[1-5]\\d{2}|3[47]\\d{2}|6(?:011|5\\d{2}))[\\s-]?(?P<digits>(?:\\d{4}[\\s-]?){3}|\\d{6}[\\s-]?\\d{5}))",
+    "inputs": [
+      "4111-1111-1111-1111",
+      "5500 0000 0000 0004",
+      "378282246310005",
+      "invalid",
+      "6011-0000-0000-0000"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "201-101-1001",
+      "555-123-9876 x888",
+      "101-201-301",
+      "12-3456-7890",
+      "401-501-6001 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "204-104-1004",
+      "555-123-9876 x888",
+      "104-204-304",
+      "12-3456-7890",
+      "404-504-6004 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "207-107-1007",
+      "555-123-9876 x888",
+      "107-207-307",
+      "12-3456-7890",
+      "407-507-6007 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "210-110-1010",
+      "555-123-9876 x888",
+      "110-210-310",
+      "12-3456-7890",
+      "410-510-6010 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "213-113-1013",
+      "555-123-9876 x888",
+      "113-213-313",
+      "12-3456-7890",
+      "413-513-6013 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "216-116-1016",
+      "555-123-9876 x888",
+      "116-216-316",
+      "12-3456-7890",
+      "416-516-6016 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "219-119-1019",
+      "555-123-9876 x888",
+      "119-219-319",
+      "12-3456-7890",
+      "419-519-6019 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "222-122-1022",
+      "555-123-9876 x888",
+      "122-222-322",
+      "12-3456-7890",
+      "422-522-6022 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "225-125-1025",
+      "555-123-9876 x888",
+      "125-225-325",
+      "12-3456-7890",
+      "425-525-6025 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "228-128-1028",
+      "555-123-9876 x888",
+      "128-228-328",
+      "12-3456-7890",
+      "428-528-6028 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "231-131-1031",
+      "555-123-9876 x888",
+      "131-231-331",
+      "12-3456-7890",
+      "431-531-6031 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "234-134-1034",
+      "555-123-9876 x888",
+      "134-234-334",
+      "12-3456-7890",
+      "434-534-6034 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "237-137-1037",
+      "555-123-9876 x888",
+      "137-237-337",
+      "12-3456-7890",
+      "437-537-6037 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "240-140-1040",
+      "555-123-9876 x888",
+      "140-240-340",
+      "12-3456-7890",
+      "440-540-6040 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "inputs": [
+      "243-143-1043",
+      "555-123-9876 x888",
+      "143-243-343",
+      "12-3456-7890",
+      "443-543-6043 ext555"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "inputs": [
+      "https://sub4.sub5.com/epsilon/zeta?id=4&ref",
+      "http://sub4.sub5.com/epsilon/zeta",
+      "sub4.sub5.com/epsilon/zeta",
+      "https://sub4_sub5_com/epsilon/zeta",
+      "https://sub4.sub5.com/epsilon/zeta?x",
+      "https://sub4.sub5.com/epsilon/zeta//"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "inputs": [
+      "https://sub16.sub17.com/eta/theta?id=16&re",
+      "http://sub16.sub17.com/eta/theta",
+      "sub16.sub17.com/eta/theta",
+      "https://sub16_sub17_com/eta/theta",
+      "https://sub16.sub17.com/eta/theta?x",
+      "https://sub16.sub17.com/eta/theta//"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "\\Bword",
+    "inputs": [
+      "password",
+      "sword",
+      "word",
+      "a word",
+      "keywords",
+      "crossword"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{3}$",
+    "inputs": [
+      "aaa",
+      "0f0",
+      "ggg",
+      "ffff",
+      "AAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "x+y",
+    "inputs": [
+      "xy",
+      "xxy",
+      "xxxy",
+      "y",
+      "x",
+      "prefix xxy suffix"
+    ],
+    "feature_labels": [
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "hello.*world",
+    "inputs": [
+      "hello world",
+      "hello beautiful world",
+      "hello123world",
+      "world hello",
+      "hello",
+      "helloworld!"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<result>(?:a+|b+|g+){3})h",
+    "inputs": [
+      "aaabbggh",
+      "abgh",
+      "aaah",
+      "h",
+      "aaabbbgggh"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "inputs": [
+      "2024-11-23T16:45:30Z",
+      "2023-01-02T03:04:05.777+02:00",
+      "2024-13-01T00:00:00Z",
+      "2024-11-23T24:00:00Z",
+      "2024-11-23 16:45:30Z",
+      "2024-11-23T16:45:30.123456Z"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "inputs": [
+      "2024-11-23T16:45:30Z",
+      "2023-01-02T03:04:05.777+02:00",
+      "2024-13-01T00:00:00Z",
+      "2024-11-23T24:00:00Z",
+      "2024-11-23 16:45:30Z",
+      "2024-11-23T16:45:30.123456Z"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "inputs": [
+      "2024-11-23T16:45:30Z",
+      "2023-01-02T03:04:05.77+02:00",
+      "2024-13-01T00:00:00Z",
+      "2024-11-23T24:00:00Z",
+      "2024-11-23 16:45:30Z",
+      "2024-11-23T16:45:30.123456Z"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "inputs": [
+      "2024-11-23T16:45:30Z",
+      "2023-01-02T03:04:05.77+02:00",
+      "2024-13-01T00:00:00Z",
+      "2024-11-23T24:00:00Z",
+      "2024-11-23 16:45:30Z",
+      "2024-11-23T16:45:30.123456Z"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "2222",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "8888",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "5555",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "2222",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "8888",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{4}$",
+    "inputs": [
+      "5555",
+      "0000",
+      "111a",
+      "22222",
+      "33 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -2138,28 +1706,248 @@
       "wordpress",
       "words",
       "sword"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "\\btest",
+    "pattern": "(?P<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(?P<ms>\\d{3}))?(?P<tz>Z|[+-]\\d{2}:\\d{2})?\\s+\\[(?P<level>\\w+)\\]\\s+(?P<message>.+)",
     "inputs": [
-      "test",
-      "testing",
-      "a test",
-      "contest",
-      "test123",
-      "pretest"
+      "2024-01-15T10:30:45.123Z [INFO] Server started",
+      "2024-01-15T10:30:45 [ERROR] Failed",
+      "invalid log",
+      "2024-01-15T10:30:45+00:00 [WARN] Warning",
+      "log entry"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "test\\b",
+    "pattern": "^[a-z]{4}$",
     "inputs": [
-      "test",
-      "a test",
-      "contest",
-      "testing",
-      "pretest",
-      "test123"
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{4}$",
+    "inputs": [
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{4}$",
+    "inputs": [
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{4}$",
+    "inputs": [
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{4}$",
+    "inputs": [
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{4}$",
+    "inputs": [
+      "aaaa",
+      "bcbc",
+      "aaa1",
+      "AAAA",
+      "aaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<email>(?P<local>[\\w.+-]+)@(?P<domain>[\\w.-]+)\\.(?P<tld>[a-z]{2,}))",
+    "inputs": [
+      "user@example.com",
+      "john.doe+tag@sub.example.co.uk",
+      "test@domain.org",
+      "invalid",
+      "a@b.com"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<scheme>https?)://(?P<auth>(?P<user>[\\w.-]+)(?::(?P<pass>[\\w.-]+))?@)?(?P<host>[\\w.-]+)(?::(?P<port>\\d+))?(?P<path>/[\\w./-]*)?",
+    "inputs": [
+      "https://example.com",
+      "http://user:pass@api.example.com:8080/path",
+      "http://localhost:3000",
+      "not a url",
+      "https://test.com/api/v1"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<user>[\\w.%+-]+)@(?P<subdomain>(?:[\\w-]+\\.)*)?(?P<domain>[\\w-]+)\\.(?P<tld>[a-z]{2,6})",
+    "inputs": [
+      "user@example.com",
+      "test@sub.domain.example.com",
+      "a@b.co",
+      "invalid email",
+      "user@test.org"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<match>(?:b|bb)+)stop",
+    "inputs": [
+      "bbbstop",
+      "bbbbbbbbstop",
+      "bbbbb",
+      "stop",
+      "bstop"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "<(?P<tag>[\\w-]+)(?:\\s+(?P<attrs>(?:[\\w-]+=\"[^\"]*\"\\s*)*))?(?P<close>/?)>",
+    "inputs": [
+      "<div class=\"container\">",
+      "<input/>",
+      "<a href=\"url\" target=\"_blank\">",
+      "not a tag",
+      "<span>"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<g1>(?P<g2>y{2})+)(?P<g3>z+)",
+    "inputs": [
+      "yyyyzz",
+      "yyyyyyyyzzz",
+      "yyzz",
+      "zz",
+      "yy"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -2171,127 +1959,14 @@
       "test123test",
       "12 34 56",
       "abc123"
-    ]
-  },
-  {
-    "pattern": "\\Bword",
-    "inputs": [
-      "password",
-      "sword",
-      "word",
-      "a word",
-      "keywords",
-      "crossword"
-    ]
-  },
-  {
-    "pattern": "word\\B",
-    "inputs": [
-      "wordpress",
-      "words",
-      "word",
-      "a word",
-      "swordfish",
-      "wordy"
-    ]
-  },
-  {
-    "pattern": "\\Btest\\B",
-    "inputs": [
-      "untested",
-      "protestation",
-      "test",
-      "testing",
-      "contest",
-      "attest"
-    ]
-  },
-  {
-    "pattern": "\\b[a-z]+\\b",
-    "inputs": [
-      "hello",
-      "hello world",
-      "123",
-      "test123",
-      "hello123world",
-      "a"
-    ]
-  },
-  {
-    "pattern": "(?P<word>\\b\\w+\\b)",
-    "inputs": [
-      "hello",
-      "hello world",
-      "  spaces  ",
-      "123",
-      "test_var",
-      "a1b2c3"
-    ]
-  },
-  {
-    "pattern": "\\bfoo\\b|\\bbar\\b",
-    "inputs": [
-      "foo",
-      "bar",
-      "foobar",
-      "foo bar",
-      "food",
-      "crowbar"
-    ]
-  },
-  {
-    "pattern": "€",
-    "inputs": [
-      "€100",
-      "Price: €50",
-      "No euro here",
-      "E100",
-      "€",
-      "100€"
-    ]
-  },
-  {
-    "pattern": "αβγ",
-    "inputs": [
-      "αβγ",
-      "αβγδ",
-      "abc",
-      "prefix αβγ suffix",
-      "αβ",
-      "βγ"
-    ]
-  },
-  {
-    "pattern": "漢字",
-    "inputs": [
-      "漢字",
-      "日本漢字",
-      "kanji",
-      "漢字test",
-      "test漢字",
-      "漢"
-    ]
-  },
-  {
-    "pattern": "hello€world",
-    "inputs": [
-      "hello€world",
-      "hello€worldfoo",
-      "foohello€world",
-      "helloworld",
-      "hello world",
-      "hello$world"
-    ]
-  },
-  {
-    "pattern": "café",
-    "inputs": [
-      "café",
-      "I love café",
-      "cafe",
-      "caféine",
-      "Café",
-      "cafés"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers",
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -2303,39 +1978,553 @@
       "naïvely",
       "naïveté",
       "NAÏVE"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "(?P<currency>€)(?P<amount>[0-9]+)",
+    "pattern": "test\\b",
     "inputs": [
-      "€100",
-      "€50",
-      "€1",
-      "Price €500",
-      "$100",
-      "100€"
+      "test",
+      "a test",
+      "contest",
+      "testing",
+      "pretest",
+      "test123"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "(?P<word>café|thé)",
+    "pattern": "hello€world",
     "inputs": [
-      "café",
-      "thé",
-      "café ou thé",
-      "coffee",
-      "tea",
-      "cafe"
+      "hello€world",
+      "hello€worldfoo",
+      "foohello€world",
+      "helloworld",
+      "hello world",
+      "hello$world"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "^(?P<emoji>😀)$",
+    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
     "inputs": [
-      "😀",
-      "😀😀",
-      ":)",
-      "smile",
-      " 😀",
-      "😀 "
+      "Alpha Bravo",
+      "Bravo Alpha",
+      "alpha bravo",
+      "Alpha Bravo ",
+      "Alpha Bravo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
+    "inputs": [
+      "Mike November",
+      "November Mike",
+      "mike november",
+      "Mike November ",
+      "Mike November!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
+    "inputs": [
+      "Alpha Bravo",
+      "Bravo Alpha",
+      "alpha bravo",
+      "Alpha Bravo ",
+      "Alpha Bravo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){1}[A-Z][a-z]+$",
+    "inputs": [
+      "Mike November",
+      "November Mike",
+      "mike november",
+      "Mike November ",
+      "Mike November!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\d{3}-\\d{3}-\\d{4}",
+    "inputs": [
+      "123-456-7890",
+      "555-123-9876",
+      "000-000-0000",
+      "12-345-6789",
+      "123-456-789",
+      "phone: 123-456-7890 end"
+    ],
+    "feature_labels": [
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\[(?P<level>\\w+)\\]\\s+(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+-\\s+(?P<logger>[\\w.]+)\\s+-\\s+(?P<message>.*)",
+    "inputs": [
+      "[INFO] 2024-01-15 10:30:45 - app.Service - Started",
+      "[ERROR] 2024-01-15 10:30:45 - db.Pool - Failed",
+      "invalid",
+      "[DEBUG] 2024-01-15 10:30:45 - test - Testing",
+      "not a log"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<result>(?:q+|r+|s+){2})t",
+    "inputs": [
+      "qqrrt",
+      "ssqqt",
+      "qqt",
+      "t",
+      "qqrrst"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
+    "inputs": [
+      "foofoobaz777",
+      "barfoobaz333",
+      "foofoobaz99",
+      "foofooqux777",
+      "foofoobaz777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
+    "inputs": [
+      "foofoobaz777",
+      "barfoobaz333",
+      "foofoobaz99",
+      "foofooqux777",
+      "foofoobaz777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{3}$",
+    "inputs": [
+      "foofoobaz777",
+      "barfoobaz333",
+      "foofoobaz99",
+      "foofooqux777",
+      "foofoobaz777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
+    "inputs": [
+      "Mike November Oscar Papa Quebec",
+      "Quebec Papa Oscar November Mike",
+      "mike november oscar papa quebec",
+      "Mike November Oscar Papa Quebec ",
+      "Mike November Oscar Papa Quebec!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
+    "inputs": [
+      "Golf Hotel India Juliet Kilo",
+      "Kilo Juliet India Hotel Golf",
+      "golf hotel india juliet kilo",
+      "Golf Hotel India Juliet Kilo ",
+      "Golf Hotel India Juliet Kilo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){4}[A-Z][a-z]+$",
+    "inputs": [
+      "Alpha Bravo Charlie Delta Echo",
+      "Echo Delta Charlie Bravo Alpha",
+      "alpha bravo charlie delta echo",
+      "Alpha Bravo Charlie Delta Echo ",
+      "Alpha Bravo Charlie Delta Echo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{5}$",
+    "inputs": [
+      "aaaaa",
+      "bcbcb",
+      "aaaa1",
+      "AAAAA",
+      "aaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(?:-(?P<prerelease>[\\w.-]+))?(?:\\+(?P<build>[\\w.-]+))?",
+    "inputs": [
+      "1.0.0",
+      "2.1.3-alpha.1",
+      "3.0.0-beta.2+build.123",
+      "10.20.30",
+      "1.2.3-rc.1+20240115"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "0f0f0f",
+      "gggggg",
+      "fffffff",
+      "AAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<g1>(?P<g2>c{3})+)(?P<g3>d+)",
+    "inputs": [
+      "ccccccddd",
+      "cccccccccddd",
+      "cccddd",
+      "ddd",
+      "ccc"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{1}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "inputs": [
+      "2024-11-23T16:45:30Z",
+      "2023-01-02T03:04:05.7+02:00",
+      "2024-13-01T00:00:00Z",
+      "2024-11-23T24:00:00Z",
+      "2024-11-23 16:45:30Z",
+      "2024-11-23T16:45:30.123456Z"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
@@ -2347,17 +2536,1687 @@
       "Über",
       "überall",
       "über cool"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   },
   {
-    "pattern": "日本語",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "日本語",
-      "日本語テスト",
-      "Japanese",
-      "日本",
-      "本語",
-      "test日本語test"
+      "ccc=06&ddd=07&eee=08&fff=09",
+      "fff=09&eee=08&ddd=07&ccc=06",
+      "ccc=06&ddd=07&eee=08&fff=09&",
+      "ccc:06&ddd=07&eee=08&fff=09",
+      "CCC=06&DDD=07&EEE=08&FFF=09",
+      "ccc=06&&ddd=07&eee=08&fff=09"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
+    "inputs": [
+      "ccc=42&ddd=43&eee=44&fff=45",
+      "fff=45&eee=44&ddd=43&ccc=42",
+      "ccc=42&ddd=43&eee=44&fff=45&",
+      "ccc:42&ddd=43&eee=44&fff=45",
+      "CCC=42&DDD=43&EEE=44&FFF=45",
+      "ccc=42&&ddd=43&eee=44&fff=45"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "555555",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "222222",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "888888",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "555555",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "222222",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{6}$",
+    "inputs": [
+      "888888",
+      "000000",
+      "11111a",
+      "2222222",
+      "3333 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){2}[a-z]{3}=[0-9]{2}$",
+    "inputs": [
+      "kkk=30&lll=31&aaa=32",
+      "aaa=32&lll=31&kkk=30",
+      "kkk=30&lll=31&aaa=32&",
+      "kkk:30&lll=31&aaa=32",
+      "KKK=30&LLL=31&AAA=32",
+      "kkk=30&&lll=31&aaa=32"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "0f0f0f0",
+      "ggggggg",
+      "ffffffff",
+      "AAAAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<name>[\\w.+-]+)@(?P<host>[\\w.-]+))(?P<extra>\\s.*)?",
+    "inputs": [
+      "user@example.com",
+      "test@domain.org extra text",
+      "a@b.co",
+      "invalid",
+      "user@test.com more data"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<ip>(?:\\d{1,3}\\.){3}\\d{1,3})(?:/(?P<cidr>\\d{1,2}))?)",
+    "inputs": [
+      "192.168.0.0/24",
+      "10.0.0.0/8",
+      "172.16.0.1",
+      "192.168.1.1/32",
+      "invalid"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<word>\\b\\w+\\b)",
+    "inputs": [
+      "hello",
+      "hello world",
+      "  spaces  ",
+      "123",
+      "test_var",
+      "a1b2c3"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers",
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<g1>(?P<g2>x{1})+)(?P<g3>y+)",
+    "inputs": [
+      "xxxyy",
+      "xxxxxyyy",
+      "xyy",
+      "yy",
+      "xx"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<g1>(?P<g2>o{1})+)(?P<g3>p+)",
+    "inputs": [
+      "ooopp",
+      "ooooooooppp",
+      "opp",
+      "pp",
+      "oo"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<match>(?:v|vv)+)done",
+    "inputs": [
+      "vvvdone",
+      "vvvvvvvvdone",
+      "vvvvv",
+      "done",
+      "vdone"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<proto>https?|ftp)://(?P<host>[\\w.-]+)(?P<port>:\\d+)?(?P<path>/[\\w./-]*)?)(?P<extra>.*)?",
+    "inputs": [
+      "https://example.com/path extra",
+      "ftp://files.server.com:21/pub",
+      "http://localhost",
+      "invalid",
+      "https://api.test.com/v1"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "inputs": [
+      "https://sub0.com/alpha/beta?id=0&ref",
+      "http://sub0.com/alpha/beta",
+      "sub0.com/alpha/beta",
+      "https://sub0_com/alpha/beta",
+      "https://sub0.com/alpha/beta?x",
+      "https://sub0.com/alpha/beta//"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TDFA"
+    ]
+  },
+  {
+    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "inputs": [
+      "https://sub12.com/gamma/delta?id=12&re",
+      "http://sub12.com/gamma/delta",
+      "sub12.com/gamma/delta",
+      "https://sub12_com/gamma/delta",
+      "https://sub12.com/gamma/delta?x",
+      "https://sub12.com/gamma/delta//"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TDFA"
+    ]
+  },
+  {
+    "pattern": "foo|bar",
+    "inputs": [
+      "foo",
+      "bar",
+      "foobar",
+      "baz",
+      "food",
+      "bart"
+    ],
+    "feature_labels": [
+      "Alternation"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<currency>€)(?P<amount>[0-9]+)",
+    "inputs": [
+      "€100",
+      "€50",
+      "€1",
+      "Price €500",
+      "$100",
+      "100€"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Multibyte",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<outer>(?P<inner>m+)+)n",
+    "inputs": [
+      "mmmmmmmmmn",
+      "mmmmmmmmmmmmmmmmn",
+      "mmmmmmmm",
+      "mn",
+      "n"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<words>(?P<word>\\w+\\s+){5})(?P<end>\\w+)",
+    "inputs": [
+      "a b c d e f",
+      "one two three four five six",
+      "hello world foo bar baz qux",
+      "word",
+      "x y z w v u"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "€",
+    "inputs": [
+      "€100",
+      "Price: €50",
+      "No euro here",
+      "E100",
+      "€",
+      "100€"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "αβγ",
+    "inputs": [
+      "αβγ",
+      "αβγδ",
+      "abc",
+      "prefix αβγ suffix",
+      "αβ",
+      "βγ"
+    ],
+    "feature_labels": [
+      "Multibyte"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{6}$",
+    "inputs": [
+      "aaaaaa",
+      "bcbcbc",
+      "aaaaa1",
+      "AAAAAA",
+      "aaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
+    "inputs": [
+      "Papa Quebec Romeo",
+      "Romeo Quebec Papa",
+      "papa quebec romeo",
+      "Papa Quebec Romeo ",
+      "Papa Quebec Romeo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
+    "inputs": [
+      "Foxtrot Golf Hotel",
+      "Hotel Golf Foxtrot",
+      "foxtrot golf hotel",
+      "Foxtrot Golf Hotel ",
+      "Foxtrot Golf Hotel!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
+    "inputs": [
+      "Sierra Tango Uniform",
+      "Uniform Tango Sierra",
+      "sierra tango uniform",
+      "Sierra Tango Uniform ",
+      "Sierra Tango Uniform!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){2}[A-Z][a-z]+$",
+    "inputs": [
+      "India Juliet Kilo",
+      "Kilo Juliet India",
+      "india juliet kilo",
+      "India Juliet Kilo ",
+      "India Juliet Kilo!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "\\btest",
+    "inputs": [
+      "test",
+      "testing",
+      "a test",
+      "contest",
+      "test123",
+      "pretest"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<full>(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+))(?P<pre>-(?:alpha|beta|rc)\\.?\\d*)?(?P<meta>\\+[\\w.]+)?",
+    "inputs": [
+      "1.0.0",
+      "2.1.3-alpha.1",
+      "3.0.0-beta+build",
+      "10.20.30-rc1",
+      "1.2.3+meta.data"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
+    "inputs": [
+      "foofoobaz7777",
+      "barfoobaz3333",
+      "foofoobaz999",
+      "foofooqux7777",
+      "foofoobaz7777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
+    "inputs": [
+      "foofoobaz7777",
+      "barfoobaz3333",
+      "foofoobaz999",
+      "foofooqux7777",
+      "foofoobaz7777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
+    "inputs": [
+      "foofoobaz7777",
+      "barfoobaz3333",
+      "foofoobaz999",
+      "foofooqux7777",
+      "foofoobaz7777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{4}$",
+    "inputs": [
+      "foofoobaz7777",
+      "barfoobaz3333",
+      "foofoobaz999",
+      "foofooqux7777",
+      "foofoobaz7777extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<result>(?:x+|y+|c+){2})z",
+    "inputs": [
+      "xxccz",
+      "yyyxxxz",
+      "xyzz",
+      "z",
+      "xxz"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<uuid>(?P<time_low>[0-9a-f]{8})-(?P<time_mid>[0-9a-f]{4})-(?P<version>[0-9a-f]{4})-(?P<variant>[0-9a-f]{4})-(?P<node>[0-9a-f]{12}))",
+    "inputs": [
+      "550e8400-e29b-41d4-a716-446655440000",
+      "123e4567-e89b-12d3-a456-426614174000",
+      "invalid-uuid",
+      "00000000-0000-0000-0000-000000000000",
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<words>(?P<word>\\w+\\s+){3})(?P<end>\\w+)",
+    "inputs": [
+      "hello world foo bar",
+      "a b c d",
+      "one two three four",
+      "word",
+      "a b c"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{7}$",
+    "inputs": [
+      "aaaaaaa",
+      "bcbcbcb",
+      "aaaaaa1",
+      "AAAAAAA",
+      "aaaaaaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<url>(?P<scheme>https?)://(?P<domain>(?:[\\w-]+\\.)+[\\w-]+)(?P<port>:\\d+)?(?P<path>/[^\\s?#]*)?(?P<query>\\?[^\\s#]*)?)",
+    "inputs": [
+      "https://api.example.com/path?query=1",
+      "http://test.domain.com:8080/",
+      "https://localhost",
+      "invalid",
+      "http://a.b.c.d/e?f=g"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "(?P<date>\\d{4}/\\d{2}/\\d{2})\\s+(?P<time>\\d{2}:\\d{2}:\\d{2})\\s+(?P<level>DEBUG|INFO|WARN|ERROR)\\s+(?P<component>[\\w.]+):\\s+(?P<msg>.*)",
+    "inputs": [
+      "2024/01/15 10:30:45 INFO app.server: Started",
+      "2024/01/15 10:30:45 ERROR db: Connection failed",
+      "invalid",
+      "2024/01/15 10:30:45 DEBUG test: Testing",
+      "not a log"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-z]{3}$",
+    "inputs": [
+      "aaa",
+      "bcb",
+      "aa1",
+      "AAA",
+      "aaaa"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<number>(?P<prefix>\\d{4})[\\s-]?(?P<middle>\\d{4}[\\s-]?\\d{4})[\\s-]?(?P<suffix>\\d{4}))",
+    "inputs": [
+      "4111-1111-1111-1111",
+      "5500 0000 0000 0004",
+      "1234567890123456",
+      "invalid",
+      "1234-5678-9012-3456"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "a.*b.*c",
+    "inputs": [
+      "abc",
+      "a123b456c",
+      "aXbYc",
+      "abcd",
+      "ab",
+      "a bc extra"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^[a-f0-9]{5}$",
+    "inputs": [
+      "aaaaa",
+      "0f0f0",
+      "ggggg",
+      "ffffff",
+      "AAAAA"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "222",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "888",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "555",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "222",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "888",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^\\d{3}$",
+    "inputs": [
+      "555",
+      "000",
+      "11a",
+      "2222",
+      "3 "
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<ip>(?P<a>\\d{1,3})\\.(?P<b>\\d{1,3})\\.(?P<c>\\d{1,3})\\.(?P<d>\\d{1,3}))(?::(?P<port>\\d{1,5}))?",
+    "inputs": [
+      "192.168.1.1",
+      "10.0.0.1:8080",
+      "127.0.0.1",
+      "255.255.255.255:443",
+      "invalid"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){5}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,2}))?$",
+    "inputs": [
+      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/1077",
+      "/API/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/ID1077?tag=22&page=11&size=16",
+      "/api/v1/widgets/users/orders/reports/metrics?tag=22&page=11&size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16&extra=99"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "Captures",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Memoization",
+      "TNFA"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
+    "inputs": [
+      "foofoobaz77",
+      "barfoobaz33",
+      "foofoobaz9",
+      "foofooqux77",
+      "foofoobaz77extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
+    "inputs": [
+      "foofoobaz77",
+      "barfoobaz33",
+      "foofoobaz9",
+      "foofooqux77",
+      "foofoobaz77extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
+    "inputs": [
+      "foofoobaz77",
+      "barfoobaz33",
+      "foofoobaz9",
+      "foofooqux77",
+      "foofoobaz77extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:foo|bar){2}baz\\d{2}$",
+    "inputs": [
+      "foofoobaz77",
+      "barfoobaz33",
+      "foofoobaz9",
+      "foofooqux77",
+      "foofoobaz77extra"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "Anchored",
+      "CharClass",
+      "NonCapturing"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s+-\\s+-\\s+\\[(?P<date>[^\\]]+)\\]\\s+\"(?P<method>\\w+)\\s+(?P<path>[^\\s]+)\\s+(?P<proto>[^\"]+)\"\\s+(?P<status>\\d+)\\s+(?P<size>\\d+)",
+    "inputs": [
+      "192.168.1.1 - - [15/Jan/2024:10:30:45 +0000] \"GET /api HTTP/1.1\" 200 1234",
+      "10.0.0.1 - - [01/Jan/2024:00:00:00 +0000] \"POST /data HTTP/2\" 201 567",
+      "invalid",
+      "127.0.0.1 - - [date] \"GET / HTTP/1.1\" 404 0",
+      "not a log"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TNFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "\\bfoo\\b|\\bbar\\b",
+    "inputs": [
+      "foo",
+      "bar",
+      "foobar",
+      "foo bar",
+      "food",
+      "crowbar"
+    ],
+    "feature_labels": [
+      "Alternation",
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "test\\d+end",
+    "inputs": [
+      "test123end",
+      "test999end",
+      "test1end",
+      "testend",
+      "test123end!",
+      "start test123end"
+    ],
+    "feature_labels": [
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<words>(?P<word>\\w+\\s*){4})(?P<end>\\w+)",
+    "inputs": [
+      "one two three four five",
+      "a b c d e",
+      "hello world foo bar baz",
+      "word",
+      "x y z w v"
+    ],
+    "feature_labels": [
+      "Captures",
+      "CharClass",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "(?P<outer>(?P<inner>h+)+)i",
+    "inputs": [
+      "hhhhhhhi",
+      "hhhhhhhhhhhhhhi",
+      "hhhhhh",
+      "hi",
+      "i"
+    ],
+    "feature_labels": [
+      "Captures",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "TDFA",
+      "Thompson"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
+    "inputs": [
+      "Golf Hotel India Juliet",
+      "Juliet India Hotel Golf",
+      "golf hotel india juliet",
+      "Golf Hotel India Juliet ",
+      "Golf Hotel India Juliet!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
+    "inputs": [
+      "Uniform Victor Whiskey Xray",
+      "Xray Whiskey Victor Uniform",
+      "uniform victor whiskey xray",
+      "Uniform Victor Whiskey Xray ",
+      "Uniform Victor Whiskey Xray!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
+    "inputs": [
+      "Mike November Oscar Papa",
+      "Papa Oscar November Mike",
+      "mike november oscar papa",
+      "Mike November Oscar Papa ",
+      "Mike November Oscar Papa!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "^(?:[A-Z][a-z]+\\s){3}[A-Z][a-z]+$",
+    "inputs": [
+      "Echo Foxtrot Golf Hotel",
+      "Hotel Golf Foxtrot Echo",
+      "echo foxtrot golf hotel",
+      "Echo Foxtrot Golf Hotel ",
+      "Echo Foxtrot Golf Hotel!"
+    ],
+    "feature_labels": [
+      "Anchored",
+      "CharClass",
+      "NonCapturing",
+      "Quantifiers"
+    ],
+    "engine_labels": [
+      "Backtracking"
+    ]
+  },
+  {
+    "pattern": "word\\B",
+    "inputs": [
+      "wordpress",
+      "words",
+      "word",
+      "a word",
+      "swordfish",
+      "wordy"
+    ],
+    "feature_labels": [
+      "WordBoundary"
+    ],
+    "engine_labels": [
+      "Backtracking"
     ]
   }
 ]
