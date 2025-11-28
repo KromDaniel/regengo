@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"regexp/syntax"
+	"unicode/utf8"
 
 	"github.com/KromDaniel/regengo/internal/codegen"
 	"github.com/dave/jennifer/jen"
@@ -103,6 +104,14 @@ func (c *Compiler) generateInstruction(id uint32, inst *syntax.Inst) ([]jen.Code
 
 // generateRune1Inst generates code for InstRune1 (single rune match).
 func (c *Compiler) generateRune1Inst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
+	r := inst.Rune[0]
+
+	// Check at compile-time if this is a multi-byte rune
+	if r > 127 {
+		return c.generateMultibyteRune1Inst(label, inst, r)
+	}
+
+	// ASCII path - single byte, unchanged behavior
 	return []jen.Code{
 		label,
 		jen.Block(
@@ -111,10 +120,55 @@ func (c *Compiler) generateRune1Inst(label *jen.Statement, inst *syntax.Inst) ([
 			),
 		),
 		jen.Block(
-			jen.If(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(byte(inst.Rune[0]))).Block(
+			jen.If(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(byte(r))).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
 			jen.Id(codegen.OffsetName).Op("++"),
+			jen.Goto().Id(codegen.InstructionName(inst.Out)),
+		),
+	}, nil
+}
+
+// generateMultibyteRune1Inst generates code for multi-byte UTF-8 rune matching.
+// Called at compile-time when the rune value > 127 (non-ASCII).
+func (c *Compiler) generateMultibyteRune1Inst(label *jen.Statement, inst *syntax.Inst, r rune) ([]jen.Code, error) {
+	// Encode the rune to UTF-8 bytes at compile time
+	var buf [utf8.UTFMax]byte
+	n := utf8.EncodeRune(buf[:], r)
+	bytes := buf[:n]
+
+	// Build the byte comparison condition: input[offset] == b0 && input[offset+1] == b1 && ...
+	var condition *jen.Statement
+	for i, b := range bytes {
+		var byteCheck *jen.Statement
+		if i == 0 {
+			byteCheck = jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("!=").Lit(b)
+		} else {
+			byteCheck = jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op("+").Lit(i)).Op("!=").Lit(b)
+		}
+
+		if condition == nil {
+			condition = byteCheck
+		} else {
+			condition = condition.Op("||").Add(byteCheck)
+		}
+	}
+
+	return []jen.Code{
+		label,
+		jen.Block(
+			// Bounds check: need n bytes available
+			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName).Op("+").Lit(n - 1)).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+		),
+		jen.Block(
+			// Check all bytes of the UTF-8 sequence
+			jen.If(condition).Block(
+				jen.Goto().Id(codegen.TryFallbackName),
+			),
+			// Advance by the full byte width
+			jen.Id(codegen.OffsetName).Op("+=").Lit(n),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
 	}, nil
