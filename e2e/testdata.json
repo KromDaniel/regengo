@@ -2238,5 +2238,126 @@
       "food",
       "crowbar"
     ]
+  },
+  {
+    "pattern": "€",
+    "inputs": [
+      "€100",
+      "Price: €50",
+      "No euro here",
+      "E100",
+      "€",
+      "100€"
+    ]
+  },
+  {
+    "pattern": "αβγ",
+    "inputs": [
+      "αβγ",
+      "αβγδ",
+      "abc",
+      "prefix αβγ suffix",
+      "αβ",
+      "βγ"
+    ]
+  },
+  {
+    "pattern": "漢字",
+    "inputs": [
+      "漢字",
+      "日本漢字",
+      "kanji",
+      "漢字test",
+      "test漢字",
+      "漢"
+    ]
+  },
+  {
+    "pattern": "hello€world",
+    "inputs": [
+      "hello€world",
+      "hello€worldfoo",
+      "foohello€world",
+      "helloworld",
+      "hello world",
+      "hello$world"
+    ]
+  },
+  {
+    "pattern": "café",
+    "inputs": [
+      "café",
+      "I love café",
+      "cafe",
+      "caféine",
+      "Café",
+      "cafés"
+    ]
+  },
+  {
+    "pattern": "naïve",
+    "inputs": [
+      "naïve",
+      "naïve approach",
+      "naive",
+      "naïvely",
+      "naïveté",
+      "NAÏVE"
+    ]
+  },
+  {
+    "pattern": "(?P<currency>€)(?P<amount>[0-9]+)",
+    "inputs": [
+      "€100",
+      "€50",
+      "€1",
+      "Price €500",
+      "$100",
+      "100€"
+    ]
+  },
+  {
+    "pattern": "(?P<word>café|thé)",
+    "inputs": [
+      "café",
+      "thé",
+      "café ou thé",
+      "coffee",
+      "tea",
+      "cafe"
+    ]
+  },
+  {
+    "pattern": "^(?P<emoji>😀)$",
+    "inputs": [
+      "😀",
+      "😀😀",
+      ":)",
+      "smile",
+      " 😀",
+      "😀 "
+    ]
+  },
+  {
+    "pattern": "über",
+    "inputs": [
+      "über",
+      "Übermensch",
+      "uber",
+      "Über",
+      "überall",
+      "über cool"
+    ]
+  },
+  {
+    "pattern": "日本語",
+    "inputs": [
+      "日本語",
+      "日本語テスト",
+      "Japanese",
+      "日本",
+      "本語",
+      "test日本語test"
+    ]
   }
 ]
