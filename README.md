@@ -438,11 +438,9 @@ Regengo fully supports Unicode character classes and multibyte UTF-8 patterns.
 |---------|-------------|---------------|
 | `\p{L}` | Any Unicode letter | `café`, `日本語`, `שלום` |
 | `\p{Greek}` | Greek script | `αβγδ` |
-| `\p{Hebrew}` | Hebrew script | `שלום` |
 | `[α-ω]` | Unicode range | `αβγ` |
 | `[א-ת]` | Hebrew range | `שלום` |
 | `[\p{L}\p{N}]` | Letters and numbers | `abc123日本` |
-| `[a-zא-ת]` | Mixed ASCII/Hebrew | `hello`, `שלום` |
 
 ### Performance Characteristics
 
@@ -469,12 +467,6 @@ CompiledUnicodeWord.MatchString("日本語")    // true
 CompiledUnicodeWord.MatchString("café")     // true
 CompiledUnicodeWord.MatchString("123")      // false
 ```
-
-### Implementation Details
-
-- **Small range tables (≤8 ranges)**: Inline comparisons for minimal overhead
-- **Large range tables (>8 ranges)**: Binary search O(log n) lookup
-- **Mixed patterns**: Runtime ASCII check (`byte < 128`) skips UTF-8 decoding when possible
 
 ## API Comparison
 
