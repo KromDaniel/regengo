@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -22,6 +23,7 @@ var (
 	forceTNFA     = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
 	forceTDFA     = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
 	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max DFA states before falling back to other engines")
+	analyze       = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
 	version       = flag.Bool("version", false, "Print version information")
 	helpFlag      = flag.Bool("help", false, "Show help message")
 )
@@ -41,6 +43,29 @@ func main() {
 
 	if *version {
 		fmt.Printf("%s version %s\n", appName, appVersion)
+		return
+	}
+
+	// Handle analyze mode
+	if *analyze {
+		if *pattern == "" {
+			fmt.Fprintf(os.Stderr, "Error: -pattern flag is required for -analyze\n")
+			os.Exit(1)
+		}
+
+		result, err := regengo.AnalyzeWithThreshold(*pattern, *tdfaThreshold)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		output, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(string(output))
 		return
 	}
 
@@ -144,6 +169,9 @@ Options:
   -tdfa-threshold int
       Max DFA states before falling back to other engines (default: 500)
       Higher values allow more complex patterns to use TDFA
+  -analyze
+      Analyze pattern and output labels as JSON (no code generation)
+      Only requires -pattern flag. Outputs feature_labels and engine_labels.
   -version
       Print version information
   -help

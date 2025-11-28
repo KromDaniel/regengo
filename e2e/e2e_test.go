@@ -6,19 +6,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/KromDaniel/regengo/pkg/regengo"
 )
 
-// TestCase represents a test case with a pattern and inputs
+// TestCase represents a test case with a pattern, inputs, and labels
 type TestCase struct {
-	Pattern string   `json:"pattern"`
-	Inputs  []string `json:"inputs"`
+	Pattern       string   `json:"pattern"`
+	Inputs        []string `json:"inputs"`
+	FeatureLabels []string `json:"feature_labels,omitempty"`
+	EngineLabels  []string `json:"engine_labels,omitempty"`
 }
 
 // TestE2E runs end-to-end tests for regengo
+// Use -run flag to filter by labels, e.g.:
+//
+//	go test ./e2e/... -run "Multibyte"
+//	go test ./e2e/... -run "TDFA"
+//	go test ./e2e/... -run "Captures.*WordBoundary"
 func TestE2E(t *testing.T) {
 	// Read test data
 	testDataPath := filepath.Join("testdata.json")
@@ -39,27 +48,66 @@ func TestE2E(t *testing.T) {
 	t.Logf("Running %d e2e test cases", len(testCases))
 
 	// Create a temporary directory for all test outputs
-	// This directory will be automatically cleaned up after the test
 	tempDir := t.TempDir()
 
 	for i, tc := range testCases {
 		tc := tc // capture range variable
-		testName := fmt.Sprintf("Pattern%02d", i+1)
+		idx := i + 1
+
+		// Build test name from labels
+		testName := buildTestName(tc, idx)
 
 		t.Run(testName, func(t *testing.T) {
+			t.Parallel() // Run subtests concurrently (limited by GOMAXPROCS)
+
+			// Step 0: Verify engine labels (regression detection)
+			// Every pattern must have engine labels defined
+			result, err := regengo.Analyze(tc.Pattern)
+			if err != nil {
+				t.Fatalf("Failed to analyze pattern: %v", err)
+			}
+
+			// Engine labels must be present in testdata.json
+			if len(tc.EngineLabels) == 0 {
+				t.Fatalf("Missing engine_labels in testdata.json:\n"+
+					"  Pattern: %s\n"+
+					"  Actual engine labels: %v\n"+
+					"Run './scripts/manage_e2e_test.py -p %q' to add labels",
+					tc.Pattern, result.EngineLabels, tc.Pattern)
+			}
+
+			// Compare expected vs actual engine labels
+			actualEngineLabels := result.EngineLabels
+			sort.Strings(actualEngineLabels)
+			expectedEngineLabels := make([]string, len(tc.EngineLabels))
+			copy(expectedEngineLabels, tc.EngineLabels)
+			sort.Strings(expectedEngineLabels)
+
+			if !reflect.DeepEqual(actualEngineLabels, expectedEngineLabels) {
+				t.Fatalf("Engine label mismatch (possible regression):\n"+
+					"  Pattern: %s\n"+
+					"  Expected: %v\n"+
+					"  Actual: %v\n"+
+					"Run './scripts/manage_e2e_test.py -p %q' to update if intentional",
+					tc.Pattern, expectedEngineLabels, actualEngineLabels, tc.Pattern)
+			}
+
+			// Create unique name for generated code
+			uniqueName := fmt.Sprintf("Pattern%03d", idx)
+
 			// Create a subdirectory for this test case
-			caseDir := filepath.Join(tempDir, testName)
+			caseDir := filepath.Join(tempDir, uniqueName)
 			if err := os.MkdirAll(caseDir, 0755); err != nil {
 				t.Fatalf("Failed to create test directory: %v", err)
 			}
 
 			// Step 1: Generate code using regengo
 			t.Logf("Generating code for pattern: %s", tc.Pattern)
-			outputFile := filepath.Join(caseDir, fmt.Sprintf("%s.go", testName))
+			outputFile := filepath.Join(caseDir, fmt.Sprintf("%s.go", uniqueName))
 
 			opts := regengo.Options{
 				Pattern:          tc.Pattern,
-				Name:             testName,
+				Name:             uniqueName,
 				OutputFile:       outputFile,
 				Package:          "generated",
 				GenerateTestFile: true,
@@ -76,7 +124,7 @@ func TestE2E(t *testing.T) {
 			}
 
 			// Verify the test file was generated
-			testFile := filepath.Join(caseDir, fmt.Sprintf("%s_test.go", testName))
+			testFile := filepath.Join(caseDir, fmt.Sprintf("%s_test.go", uniqueName))
 			if _, err := os.Stat(testFile); os.IsNotExist(err) {
 				t.Fatalf("Generated test file does not exist: %s", testFile)
 			}
@@ -107,11 +155,31 @@ func TestE2E(t *testing.T) {
 				t.Fatalf("No tests were executed! Output: %s", string(output))
 			}
 
-			t.Logf("✓ Ran %d generated tests", testCount)
+			t.Logf("Ran %d generated tests", testCount)
 		})
 	}
 
 	t.Logf("All %d e2e test cases passed successfully", len(testCases))
+}
+
+// buildTestName creates a test name from labels and index
+// Format: Labels_Joined/Pattern001 (e.g., "Captures_Multibyte_TDFA/Pattern001")
+func buildTestName(tc TestCase, idx int) string {
+	// Combine feature and engine labels
+	var allLabels []string
+	allLabels = append(allLabels, tc.FeatureLabels...)
+	allLabels = append(allLabels, tc.EngineLabels...)
+
+	// Sort for consistent ordering
+	sort.Strings(allLabels)
+
+	// Build label string
+	labelStr := "NoLabels"
+	if len(allLabels) > 0 {
+		labelStr = strings.Join(allLabels, "_")
+	}
+
+	return fmt.Sprintf("%s/Pattern%03d", labelStr, idx)
 }
 
 // countTests counts the number of tests that were executed by parsing the output
