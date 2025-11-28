@@ -1253,6 +1253,8 @@ func (TDFANestedWord) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &TDFANestedWordBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -1262,7 +1264,7 @@ func (TDFANestedWord) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := TDFANestedWord{}.FindBytes(chunk[searchPos:])
+						result, ok := TDFANestedWord{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -1299,7 +1301,7 @@ func (TDFANestedWord) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := TDFANestedWord{}.FindBytes(chunk[searchPos:])
+			result, ok := TDFANestedWord{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

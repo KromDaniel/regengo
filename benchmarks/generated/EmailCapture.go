@@ -1409,6 +1409,8 @@ func (EmailCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stre
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &EmailCaptureBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -1418,7 +1420,7 @@ func (EmailCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stre
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := EmailCapture{}.FindBytes(chunk[searchPos:])
+						result, ok := EmailCapture{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -1455,7 +1457,7 @@ func (EmailCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stre
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := EmailCapture{}.FindBytes(chunk[searchPos:])
+			result, ok := EmailCapture{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

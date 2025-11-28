@@ -3,11 +3,7 @@
 // This example demonstrates how to use the streaming API to process
 // large files or network streams with constant memory usage.
 //
-// To run this example:
-//  1. First generate the date pattern:
-//     go run ../../cmd/regengo/main.go -pattern '\d{4}-\d{2}-\d{2}' \
-//     -name DatePattern -output date_pattern.go -package main
-//  2. Then run: go run .
+// Run with: go generate && go run .
 package main
 
 import (
@@ -19,14 +15,13 @@ import (
 	stream "github.com/KromDaniel/regengo/stream"
 )
 
-// The following imports would be used with a generated pattern:
-// import "your/module/generated"
+//go:generate go run ../../cmd/regengo/main.go -pattern (\d{4}-\d{2}-\d{2}) -name DatePattern -output date_pattern.go -package main -no-test
 
 func main() {
 	fmt.Println("=== Streaming Regex Example ===")
 
 	// Example 1: Basic streaming match with callback
-	fmt.Println("1. Basic streaming match:")
+	fmt.Println("\n1. Basic streaming match:")
 	basicStreamingExample()
 
 	// Example 2: Counting matches in a stream
@@ -44,6 +39,62 @@ func main() {
 	// Example 5: Processing large data
 	fmt.Println("\n5. Processing large generated data:")
 	largeDataExample()
+}
+
+func basicStreamingExample() {
+	input := "Log entries: 2024-01-15 event, 2024-02-20 another, 2024-12-31 final"
+	fmt.Printf("  Input: %q\n", input)
+
+	err := DatePattern{}.FindReader(strings.NewReader(input), stream.Config{},
+		func(m stream.Match[*DatePatternBytesResult]) bool {
+			fmt.Printf("  Found: %s at offset %d\n", m.Result.Match, m.StreamOffset)
+			return true // continue
+		})
+	if err != nil {
+		fmt.Printf("  Error: %v\n", err)
+	}
+}
+
+func countingExample() {
+	input := "2024-01-01 2024-02-02 2024-03-03 2024-04-04 2024-05-05"
+	fmt.Printf("  Input: %q\n", input)
+
+	count, err := DatePattern{}.FindReaderCount(strings.NewReader(input), stream.Config{})
+	if err != nil {
+		fmt.Printf("  Error: %v\n", err)
+		return
+	}
+	fmt.Printf("  Found %d matches\n", count)
+}
+
+func firstMatchExample() {
+	input := "Some text before 2024-07-15 and more text"
+	fmt.Printf("  Input: %q\n", input)
+
+	result, offset, err := DatePattern{}.FindReaderFirst(strings.NewReader(input), stream.Config{})
+	if err != nil {
+		fmt.Printf("  Error: %v\n", err)
+		return
+	}
+	if result != nil {
+		fmt.Printf("  First match: %s at offset %d\n", result.Match, offset)
+	} else {
+		fmt.Println("  No match found")
+	}
+}
+
+func earlyTerminationExample() {
+	input := strings.Repeat("2024-01-01 ", 100) // Many dates
+	fmt.Println("  Input: 100 dates (showing first 3)")
+
+	var count int
+	DatePattern{}.FindReader(strings.NewReader(input), stream.Config{},
+		func(m stream.Match[*DatePatternBytesResult]) bool {
+			count++
+			fmt.Printf("  Match %d: %s\n", count, m.Result.Match)
+			return count < 3 // Stop after 3 matches
+		})
+	fmt.Printf("  Stopped after %d matches\n", count)
 }
 
 // PatternedReader generates test data with embedded date patterns
@@ -83,91 +134,17 @@ func (r *PatternedReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// For demonstration, we'll simulate what the generated API looks like.
-// In real usage, you would use the generated DatePattern struct.
-
-func basicStreamingExample() {
-	input := "Log entries: 2024-01-15 event, 2024-02-20 another, 2024-12-31 final"
-
-	// With a generated pattern, you would do:
-	// err := CompiledDatePattern.FindReader(strings.NewReader(input), stream.Config{},
-	//     func(m stream.Match[*DatePatternBytesResult]) bool {
-	//         fmt.Printf("  Found: %s at offset %d\n", m.Result.Match, m.StreamOffset)
-	//         return true // continue
-	//     })
-
-	fmt.Printf("  Input: %q\n", input)
-	fmt.Println("  (Use generated pattern to find matches)")
-	fmt.Println("  Expected matches: 2024-01-15, 2024-02-20, 2024-12-31")
-}
-
-func countingExample() {
-	input := "2024-01-01 2024-02-02 2024-03-03 2024-04-04 2024-05-05"
-
-	// With a generated pattern:
-	// count, err := CompiledDatePattern.FindReaderCount(
-	//     strings.NewReader(input),
-	//     stream.Config{},
-	// )
-	// fmt.Printf("  Found %d matches\n", count)
-
-	fmt.Printf("  Input: %q\n", input)
-	fmt.Println("  (Use FindReaderCount to count matches)")
-	fmt.Println("  Expected count: 5")
-}
-
-func firstMatchExample() {
-	input := "Some text before 2024-07-15 and more text"
-
-	// With a generated pattern:
-	// result, found, err := CompiledDatePattern.FindReaderFirst(
-	//     strings.NewReader(input),
-	//     stream.Config{},
-	// )
-	// if found {
-	//     fmt.Printf("  First match: %s\n", result.Match)
-	// }
-
-	fmt.Printf("  Input: %q\n", input)
-	fmt.Println("  (Use FindReaderFirst to get first match)")
-	fmt.Println("  Expected: 2024-07-15")
-}
-
-func earlyTerminationExample() {
-	input := strings.Repeat("2024-01-01 ", 100) // Many dates
-	_ = input                                   // Used by demonstration
-
-	// With a generated pattern:
-	// var count int
-	// CompiledDatePattern.FindReader(strings.NewReader(input), stream.Config{},
-	//     func(m stream.Match[*DatePatternBytesResult]) bool {
-	//         fmt.Printf("  Match %d: %s\n", count+1, m.Result.Match)
-	//         count++
-	//         return count < 3 // Stop after 3 matches
-	//     })
-
-	fmt.Printf("  Input: 100 dates (showing first 3)\n")
-	fmt.Println("  (Return false from callback to stop early)")
-	fmt.Println("  Expected: First 3 matches then stop")
-}
-
 func largeDataExample() {
 	// Generate 1MB of data with dates every 50 bytes
 	gen := NewPatternedReader("2024-01-15", 50, 1<<20)
-	_ = gen // Used by demonstration
-	expectedMatches := int64(1<<20) / 50
 
-	fmt.Printf("  Generated: 1MB of data (~%d expected matches)\n", expectedMatches)
+	fmt.Printf("  Processing: 1MB of generated data\n")
+	fmt.Printf("  Buffer size: %d bytes (constant memory)\n", stream.DefaultConfig().BufferSize)
 
-	// With a generated pattern:
-	// count, err := CompiledDatePattern.FindReaderCount(gen, stream.Config{
-	//     BufferSize: 64 * 1024, // 64KB buffer
-	// })
-	// fmt.Printf("  Found %d matches\n", count)
-
-	// Show stream.Config options
-	cfg := stream.DefaultConfig()
-	fmt.Printf("  Default buffer size: %d bytes\n", cfg.BufferSize)
-	fmt.Println("  Memory usage: Constant (~BufferSize) regardless of input")
-	fmt.Println("  (Use FindReaderCount on the PatternedReader)")
+	count, err := DatePattern{}.FindReaderCount(gen, stream.Config{})
+	if err != nil {
+		fmt.Printf("  Error: %v\n", err)
+		return
+	}
+	fmt.Printf("  Found %d matches in 1MB stream\n", count)
 }

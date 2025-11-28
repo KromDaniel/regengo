@@ -674,6 +674,8 @@ func (URLCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &URLCaptureBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -683,7 +685,7 @@ func (URLCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := URLCapture{}.FindBytes(chunk[searchPos:])
+						result, ok := URLCapture{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -720,7 +722,7 @@ func (URLCapture) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := URLCapture{}.FindBytes(chunk[searchPos:])
+			result, ok := URLCapture{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

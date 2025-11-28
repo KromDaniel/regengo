@@ -4559,6 +4559,8 @@ func (TDFALogParser) FindReader(r io.Reader, cfg stream.Config, onMatch func(str
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &TDFALogParserBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -4568,7 +4570,7 @@ func (TDFALogParser) FindReader(r io.Reader, cfg stream.Config, onMatch func(str
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := TDFALogParser{}.FindBytes(chunk[searchPos:])
+						result, ok := TDFALogParser{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -4605,7 +4607,7 @@ func (TDFALogParser) FindReader(r io.Reader, cfg stream.Config, onMatch func(str
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := TDFALogParser{}.FindBytes(chunk[searchPos:])
+			result, ok := TDFALogParser{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

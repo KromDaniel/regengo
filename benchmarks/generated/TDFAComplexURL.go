@@ -3205,6 +3205,8 @@ func (TDFAComplexURL) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &TDFAComplexURLBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -3214,7 +3216,7 @@ func (TDFAComplexURL) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := TDFAComplexURL{}.FindBytes(chunk[searchPos:])
+						result, ok := TDFAComplexURL{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -3251,7 +3253,7 @@ func (TDFAComplexURL) FindReader(r io.Reader, cfg stream.Config, onMatch func(st
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := TDFAComplexURL{}.FindBytes(chunk[searchPos:])
+			result, ok := TDFAComplexURL{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

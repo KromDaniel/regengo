@@ -993,6 +993,8 @@ func (TDFAPathological) FindReader(r io.Reader, cfg stream.Config, onMatch func(
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &TDFAPathologicalBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -1002,7 +1004,7 @@ func (TDFAPathological) FindReader(r io.Reader, cfg stream.Config, onMatch func(
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := TDFAPathological{}.FindBytes(chunk[searchPos:])
+						result, ok := TDFAPathological{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -1039,7 +1041,7 @@ func (TDFAPathological) FindReader(r io.Reader, cfg stream.Config, onMatch func(
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := TDFAPathological{}.FindBytes(chunk[searchPos:])
+			result, ok := TDFAPathological{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}

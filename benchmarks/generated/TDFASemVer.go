@@ -657,6 +657,8 @@ func (TDFASemVer) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 	streamOffset := int64(0)
 	chunkIndex := 0
 
+	reuseResult := &TDFASemVerBytesResult{}
+
 	for {
 		n, err := r.Read(buf[leftover:])
 		if n == 0 && err != nil {
@@ -666,7 +668,7 @@ func (TDFASemVer) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 					chunk := buf[:leftover]
 					searchPos := 0
 					for searchPos < len(chunk) {
-						result, ok := TDFASemVer{}.FindBytes(chunk[searchPos:])
+						result, ok := TDFASemVer{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 						if !ok {
 							break
 						}
@@ -703,7 +705,7 @@ func (TDFASemVer) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream
 		searchPos := 0
 		committed := 0
 		for searchPos < len(chunk) {
-			result, ok := TDFASemVer{}.FindBytes(chunk[searchPos:])
+			result, ok := TDFASemVer{}.FindBytesReuse(chunk[searchPos:], reuseResult)
 			if !ok {
 				break
 			}
