@@ -45,7 +45,7 @@ func TestStreamingChunkBoundaries(t *testing.T) {
 			reader := NewChunkedReader(strings.NewReader(input), chunkSize)
 
 			var results []string
-			err := testdata.DatePattern{}.FindReader(
+			err := testdata.CompiledDatePattern.FindReader(
 				reader,
 				stream.Config{},
 				func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
@@ -89,7 +89,7 @@ func TestStreamingLargeInput(t *testing.T) {
 	expected := int64(len(stdlibRe.FindAllString(input, -1)))
 
 	// Test without artificial chunking - uses default buffer
-	count, err := testdata.DatePattern{}.FindReaderCount(strings.NewReader(input), stream.Config{})
+	count, err := testdata.CompiledDatePattern.FindReaderCount(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		t.Fatalf("FindReaderCount error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestStreamingDigitsBoundary(t *testing.T) {
 			reader := NewChunkedReader(strings.NewReader(input), chunkSize)
 
 			var results []string
-			err := testdata.DigitsPattern{}.FindReader(
+			err := testdata.CompiledDigitsPattern.FindReader(
 				reader,
 				stream.Config{},
 				func(m stream.Match[*testdata.DigitsPatternBytesResult]) bool {

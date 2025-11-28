@@ -65,7 +65,7 @@ func TestMemoryBounded(t *testing.T) {
 
 	// Process stream with default config
 	var count int64
-	err := testdata.DatePattern{}.FindReader(gen, stream.Config{},
+	err := testdata.CompiledDatePattern.FindReader(gen, stream.Config{},
 		func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
 			count++
 			return true
@@ -122,7 +122,7 @@ func TestMemoryDoesNotGrow(t *testing.T) {
 		startAlloc := startMem.TotalAlloc
 
 		// Use default config
-		_, err := testdata.DatePattern{}.FindReaderCount(gen, stream.Config{})
+		_, err := testdata.CompiledDatePattern.FindReaderCount(gen, stream.Config{})
 		if err != nil {
 			t.Fatalf("FindReaderCount error for size %d: %v", size, err)
 		}

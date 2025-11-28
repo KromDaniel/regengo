@@ -45,7 +45,7 @@ func basicStreamingExample() {
 	input := "Log entries: 2024-01-15 event, 2024-02-20 another, 2024-12-31 final"
 	fmt.Printf("  Input: %q\n", input)
 
-	err := DatePattern{}.FindReader(strings.NewReader(input), stream.Config{},
+	err := CompiledDatePattern.FindReader(strings.NewReader(input), stream.Config{},
 		func(m stream.Match[*DatePatternBytesResult]) bool {
 			fmt.Printf("  Found: %s at offset %d\n", m.Result.Match, m.StreamOffset)
 			return true // continue
@@ -59,7 +59,7 @@ func countingExample() {
 	input := "2024-01-01 2024-02-02 2024-03-03 2024-04-04 2024-05-05"
 	fmt.Printf("  Input: %q\n", input)
 
-	count, err := DatePattern{}.FindReaderCount(strings.NewReader(input), stream.Config{})
+	count, err := CompiledDatePattern.FindReaderCount(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		fmt.Printf("  Error: %v\n", err)
 		return
@@ -71,7 +71,7 @@ func firstMatchExample() {
 	input := "Some text before 2024-07-15 and more text"
 	fmt.Printf("  Input: %q\n", input)
 
-	result, offset, err := DatePattern{}.FindReaderFirst(strings.NewReader(input), stream.Config{})
+	result, offset, err := CompiledDatePattern.FindReaderFirst(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		fmt.Printf("  Error: %v\n", err)
 		return
@@ -88,7 +88,7 @@ func earlyTerminationExample() {
 	fmt.Println("  Input: 100 dates (showing first 3)")
 
 	var count int
-	DatePattern{}.FindReader(strings.NewReader(input), stream.Config{},
+	CompiledDatePattern.FindReader(strings.NewReader(input), stream.Config{},
 		func(m stream.Match[*DatePatternBytesResult]) bool {
 			count++
 			fmt.Printf("  Match %d: %s\n", count, m.Result.Match)
@@ -141,7 +141,7 @@ func largeDataExample() {
 	fmt.Printf("  Processing: 1MB of generated data\n")
 	fmt.Printf("  Buffer size: %d bytes (constant memory)\n", stream.DefaultConfig().BufferSize)
 
-	count, err := DatePattern{}.FindReaderCount(gen, stream.Config{})
+	count, err := CompiledDatePattern.FindReaderCount(gen, stream.Config{})
 	if err != nil {
 		fmt.Printf("  Error: %v\n", err)
 		return

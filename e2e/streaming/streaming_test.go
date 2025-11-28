@@ -49,7 +49,7 @@ func TestStreamingVsStdlib(t *testing.T) {
 
 			switch tc.name {
 			case "Date":
-				err = testdata.DatePattern{}.FindReader(
+				err = testdata.CompiledDatePattern.FindReader(
 					strings.NewReader(tc.input),
 					stream.Config{},
 					func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
@@ -58,7 +58,7 @@ func TestStreamingVsStdlib(t *testing.T) {
 					},
 				)
 			case "Email":
-				err = testdata.EmailPattern{}.FindReader(
+				err = testdata.CompiledEmailPattern.FindReader(
 					strings.NewReader(tc.input),
 					stream.Config{},
 					func(m stream.Match[*testdata.EmailPatternBytesResult]) bool {
@@ -67,7 +67,7 @@ func TestStreamingVsStdlib(t *testing.T) {
 					},
 				)
 			case "IPv4":
-				err = testdata.IPv4Pattern{}.FindReader(
+				err = testdata.CompiledIPv4Pattern.FindReader(
 					strings.NewReader(tc.input),
 					stream.Config{},
 					func(m stream.Match[*testdata.IPv4PatternBytesResult]) bool {
@@ -76,7 +76,7 @@ func TestStreamingVsStdlib(t *testing.T) {
 					},
 				)
 			case "Digits":
-				err = testdata.DigitsPattern{}.FindReader(
+				err = testdata.CompiledDigitsPattern.FindReader(
 					strings.NewReader(tc.input),
 					stream.Config{},
 					func(m stream.Match[*testdata.DigitsPatternBytesResult]) bool {
@@ -110,7 +110,7 @@ func TestStreamingCount(t *testing.T) {
 	stdlibRe := regexp.MustCompile(`(\d{4}-\d{2}-\d{2})`)
 	expected := int64(len(stdlibRe.FindAllString(input, -1)))
 
-	count, err := testdata.DatePattern{}.FindReaderCount(strings.NewReader(input), stream.Config{})
+	count, err := testdata.CompiledDatePattern.FindReaderCount(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		t.Fatalf("FindReaderCount error: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestStreamingFirst(t *testing.T) {
 	input := "Some text before 2024-07-15 and more text 2024-08-20"
 	expected := "2024-07-15"
 
-	result, _, err := testdata.DatePattern{}.FindReaderFirst(strings.NewReader(input), stream.Config{})
+	result, _, err := testdata.CompiledDatePattern.FindReaderFirst(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		t.Fatalf("FindReaderFirst error: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestStreamingEarlyTermination(t *testing.T) {
 	input := strings.Repeat("2024-01-01 ", 100)
 
 	var count int
-	err := testdata.DatePattern{}.FindReader(
+	err := testdata.CompiledDatePattern.FindReader(
 		strings.NewReader(input),
 		stream.Config{},
 		func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
@@ -163,7 +163,7 @@ func TestStreamingEarlyTermination(t *testing.T) {
 
 // TestStreamingEmptyInput verifies handling of empty input.
 func TestStreamingEmptyInput(t *testing.T) {
-	count, err := testdata.DatePattern{}.FindReaderCount(strings.NewReader(""), stream.Config{})
+	count, err := testdata.CompiledDatePattern.FindReaderCount(strings.NewReader(""), stream.Config{})
 	if err != nil {
 		t.Fatalf("FindReaderCount error: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestStreamingEmptyInput(t *testing.T) {
 // TestStreamingNoMatches verifies handling of input with no matches.
 func TestStreamingNoMatches(t *testing.T) {
 	input := strings.Repeat("x", 10000)
-	count, err := testdata.DatePattern{}.FindReaderCount(strings.NewReader(input), stream.Config{})
+	count, err := testdata.CompiledDatePattern.FindReaderCount(strings.NewReader(input), stream.Config{})
 	if err != nil {
 		t.Fatalf("FindReaderCount error: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestStreamingOffsets(t *testing.T) {
 	stdlibIndices := stdlibRe.FindAllStringIndex(input, -1)
 
 	var streamOffsets [][2]int64
-	err := testdata.DatePattern{}.FindReader(
+	err := testdata.CompiledDatePattern.FindReader(
 		strings.NewReader(input),
 		stream.Config{},
 		func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
