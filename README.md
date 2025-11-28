@@ -93,6 +93,7 @@ func (Date) FindStringReuse(input string, reuse *DateResult) (*DateResult, bool)
 // Finding all
 func (Date) FindAllString(input string, n int) []*DateResult
 func (Date) FindAllStringAppend(input string, n int, s []*DateResult) []*DateResult
+func (Date) FindAllStringReuse(input string, n int, reuse []*DateResult) []*DateResult
 
 // Streaming (for large files/network)
 func (Date) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*DateBytesResult]) bool) error
@@ -114,6 +115,30 @@ type EmailResult struct {
 result, ok := CompiledEmail.FindString("user@example.com")
 if ok {
     fmt.Println(result.User, result.Domain)  // "user" "example"
+}
+```
+
+### Zero-Allocation Reuse
+
+For hot paths, reuse result structs to eliminate allocations:
+
+```go
+// Single match reuse
+var reuse EmailResult
+for _, input := range inputs {
+    result, ok := CompiledEmail.FindStringReuse(input, &reuse)
+    if ok {
+        process(result.User, result.Domain)
+    }
+}
+
+// FindAll reuse
+var results []*DateResult
+for _, input := range inputs {
+    results = CompiledDate.FindAllStringReuse(input, -1, results[:0])
+    for _, r := range results {
+        process(r.Year, r.Month, r.Day)
+    }
 }
 ```
 
