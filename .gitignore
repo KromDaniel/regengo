@@ -54,9 +54,10 @@ examples/*.go
 benchmarks/mass_generated
 
 # Test generated files
-testdata/generated/
+tests/e2e/generated/
+tests/integration/
 
 # Built binaries
 bin/
 regengo
-streaming
+/streaming

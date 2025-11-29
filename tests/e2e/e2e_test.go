@@ -1,4 +1,4 @@
-package testdata
+package e2e
 
 import (
 	"encoding/json"

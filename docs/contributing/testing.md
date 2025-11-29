@@ -44,10 +44,10 @@ regengo/
 │   └── *_test.go         # Public API tests
 ├── stream/
 │   └── *_test.go         # Streaming API tests
-├── testdata/
-│   ├── e2e_test.go       # End-to-end pattern tests
-│   ├── testdata.json     # Test pattern definitions
-│   └── streaming/        # Streaming-specific tests
+├── tests/
+│   └── e2e/
+│       ├── e2e_test.go   # End-to-end pattern tests
+│       └── testdata.json # Test pattern definitions
 └── benchmarks/
     ├── generated/        # Generated benchmark patterns
     └── findall_test.go   # FindAll comparison tests
@@ -55,7 +55,7 @@ regengo/
 
 ## End-to-End Tests
 
-The `testdata/` directory contains comprehensive e2e tests that:
+The `tests/e2e/` directory contains comprehensive e2e tests that:
 
 1. Generate code for each pattern in `testdata.json`
 2. Run the generated tests
@@ -65,11 +65,11 @@ The `testdata/` directory contains comprehensive e2e tests that:
 
 ```bash
 # Run all e2e tests
-go test ./testdata/...
+go test ./tests/e2e/...
 
 # Run with label filter
-go test ./testdata/... -run "TDFA"
-go test ./testdata/... -run "Captures.*WordBoundary"
+go test ./tests/e2e/... -run "TDFA"
+go test ./tests/e2e/... -run "Captures.*WordBoundary"
 ```
 
 ### Adding Test Patterns
@@ -86,7 +86,7 @@ python scripts/manage_e2e_test.py -p 'existing-pattern'
 
 #### Via testdata.json
 
-Edit `testdata/testdata.json`:
+Edit `tests/e2e/testdata.json`:
 
 ```json
 {
@@ -134,8 +134,8 @@ The CI pipeline runs with coverage and uploads to Codecov:
 
 ```bash
 go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-    -coverpkg=./internal/...,./pkg/...,./testdata/...,./benchmarks/... \
-    ./internal/... ./pkg/... ./testdata/... ./benchmarks/...
+    -coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
+    ./internal/... ./pkg/... ./tests/... ./benchmarks/...
 ```
 
 ## CI/CD Pipeline
