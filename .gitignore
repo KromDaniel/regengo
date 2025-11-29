@@ -61,3 +61,6 @@ tests/e2e/generated/
 bin/
 regengo
 /streaming
+
+# Design documents (internal only)
+docs/design/
