@@ -325,6 +325,11 @@ func (c *Compiler) Generate() error {
 
 		// Generate streaming methods (FindReader, etc.)
 		c.generateStreamingMethods()
+
+		// Generate Replace methods (ReplaceAllString, ReplaceAllBytes, etc.)
+		if err := c.generateReplaceMethods(); err != nil {
+			return fmt.Errorf("failed to generate replace methods: %w", err)
+		}
 	}
 
 	// Save to file

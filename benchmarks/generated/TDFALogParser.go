@@ -2,8 +2,10 @@ package generated
 
 import (
 	"bytes"
+	replace "github.com/KromDaniel/regengo/pkg/regengo/replace"
 	stream "github.com/KromDaniel/regengo/stream"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -4710,4 +4712,299 @@ func (TDFALogParser) copyBytesResult(src *TDFALogParserBytesResult) *TDFALogPars
 		dst.Message = append([]byte{}, src.Message...)
 	}
 	return dst
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *TDFALogParserResult) CaptureByIndex(idx int) string {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Timestamp
+	case 2:
+		return r.Ms
+	case 3:
+		return r.Tz
+	case 4:
+		return r.Level
+	case 5:
+		return r.Message
+	default:
+		return ""
+	}
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *TDFALogParserBytesResult) CaptureByIndex(idx int) []byte {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Timestamp
+	case 2:
+		return r.Ms
+	case 3:
+		return r.Tz
+	case 4:
+		return r.Level
+	case 5:
+		return r.Message
+	default:
+		return nil
+	}
+}
+
+// ReplaceAllString replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TDFALogParser) ReplaceAllString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return input
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+	var r TDFALogParserResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := TDFALogParser{}.FindStringReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := strings.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result.WriteString(input[lastEnd:matchStart])
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result.WriteString(seg.Literal)
+			case replace.SegmentFullMatch:
+				result.WriteString(match.Match)
+			case replace.SegmentCaptureIndex:
+				result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+			case replace.SegmentCaptureName:
+				switch seg.CaptureName {
+				case "timestamp":
+					result.WriteString(match.Timestamp)
+				case "ms":
+					result.WriteString(match.Ms)
+				case "tz":
+					result.WriteString(match.Tz)
+				case "level":
+					result.WriteString(match.Level)
+				case "message":
+					result.WriteString(match.Message)
+				}
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result.WriteString(input[lastEnd:])
+	return result.String()
+}
+
+// ReplaceAllBytes replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TDFALogParser) ReplaceAllBytes(input []byte, template string) []byte {
+	return TDFALogParser{}.ReplaceAllBytesAppend(input, template, nil)
+}
+
+// ReplaceAllBytesAppend replaces all matches and appends to buf.
+// If buf has sufficient capacity, no allocation occurs.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TDFALogParser) ReplaceAllBytesAppend(input []byte, template string, buf []byte) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return append(buf, input...)
+	}
+
+	result := buf
+	lastEnd := 0
+	var r TDFALogParserBytesResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := TDFALogParser{}.FindBytesReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := bytes.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result = append(result, input[lastEnd:matchStart]...)
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, match.Match...)
+			case replace.SegmentCaptureIndex:
+				result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+			case replace.SegmentCaptureName:
+				switch seg.CaptureName {
+				case "timestamp":
+					result = append(result, match.Timestamp...)
+				case "ms":
+					result = append(result, match.Ms...)
+				case "tz":
+					result = append(result, match.Tz...)
+				case "level":
+					result = append(result, match.Level...)
+				case "message":
+					result = append(result, match.Message...)
+				}
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result = append(result, input[lastEnd:]...)
+	return result
+}
+
+// ReplaceFirstString replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TDFALogParser) ReplaceFirstString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return input
+	}
+
+	var r TDFALogParserResult
+	match, ok := TDFALogParser{}.FindStringReuse(input, &r)
+	if !ok {
+		return input
+	}
+
+	matchIdx := strings.Index(input, match.Match)
+	if matchIdx < 0 {
+		return input
+	}
+
+	var result strings.Builder
+	result.WriteString(input[:matchIdx])
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result.WriteString(seg.Literal)
+		case replace.SegmentFullMatch:
+			result.WriteString(match.Match)
+		case replace.SegmentCaptureIndex:
+			result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+		case replace.SegmentCaptureName:
+			switch seg.CaptureName {
+			case "timestamp":
+				result.WriteString(match.Timestamp)
+			case "ms":
+				result.WriteString(match.Ms)
+			case "tz":
+				result.WriteString(match.Tz)
+			case "level":
+				result.WriteString(match.Level)
+			case "message":
+				result.WriteString(match.Message)
+			}
+		}
+	}
+
+	result.WriteString(input[matchIdx+len(match.Match):])
+	return result.String()
+}
+
+// ReplaceFirstBytes replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TDFALogParser) ReplaceFirstBytes(input []byte, template string) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return append([]byte{}, input...)
+	}
+
+	var r TDFALogParserBytesResult
+	match, ok := TDFALogParser{}.FindBytesReuse(input, &r)
+	if !ok {
+		return append([]byte{}, input...)
+	}
+
+	matchIdx := bytes.Index(input, match.Match)
+	if matchIdx < 0 {
+		return append([]byte{}, input...)
+	}
+
+	var result []byte
+	result = append(result, input[:matchIdx]...)
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result = append(result, seg.Literal...)
+		case replace.SegmentFullMatch:
+			result = append(result, match.Match...)
+		case replace.SegmentCaptureIndex:
+			result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+		case replace.SegmentCaptureName:
+			switch seg.CaptureName {
+			case "timestamp":
+				result = append(result, match.Timestamp...)
+			case "ms":
+				result = append(result, match.Ms...)
+			case "tz":
+				result = append(result, match.Tz...)
+			case "level":
+				result = append(result, match.Level...)
+			case "message":
+				result = append(result, match.Message...)
+			}
+		}
+	}
+
+	result = append(result, input[matchIdx+len(match.Match):]...)
+	return result
 }

@@ -2,8 +2,10 @@ package generated
 
 import (
 	"bytes"
+	replace "github.com/KromDaniel/regengo/pkg/regengo/replace"
 	stream "github.com/KromDaniel/regengo/stream"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -1135,4 +1137,263 @@ func (TNFAPathological) copyBytesResult(src *TNFAPathologicalBytesResult) *TNFAP
 		dst.Inner = append([]byte{}, src.Inner...)
 	}
 	return dst
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *TNFAPathologicalResult) CaptureByIndex(idx int) string {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Outer
+	case 2:
+		return r.Inner
+	default:
+		return ""
+	}
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *TNFAPathologicalBytesResult) CaptureByIndex(idx int) []byte {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Outer
+	case 2:
+		return r.Inner
+	default:
+		return nil
+	}
+}
+
+// ReplaceAllString replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TNFAPathological) ReplaceAllString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return input
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+	var r TNFAPathologicalResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := TNFAPathological{}.FindStringReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := strings.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result.WriteString(input[lastEnd:matchStart])
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result.WriteString(seg.Literal)
+			case replace.SegmentFullMatch:
+				result.WriteString(match.Match)
+			case replace.SegmentCaptureIndex:
+				result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+			case replace.SegmentCaptureName:
+				switch seg.CaptureName {
+				case "outer":
+					result.WriteString(match.Outer)
+				case "inner":
+					result.WriteString(match.Inner)
+				}
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result.WriteString(input[lastEnd:])
+	return result.String()
+}
+
+// ReplaceAllBytes replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TNFAPathological) ReplaceAllBytes(input []byte, template string) []byte {
+	return TNFAPathological{}.ReplaceAllBytesAppend(input, template, nil)
+}
+
+// ReplaceAllBytesAppend replaces all matches and appends to buf.
+// If buf has sufficient capacity, no allocation occurs.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TNFAPathological) ReplaceAllBytesAppend(input []byte, template string, buf []byte) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return append(buf, input...)
+	}
+
+	result := buf
+	lastEnd := 0
+	var r TNFAPathologicalBytesResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := TNFAPathological{}.FindBytesReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := bytes.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result = append(result, input[lastEnd:matchStart]...)
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, match.Match...)
+			case replace.SegmentCaptureIndex:
+				result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+			case replace.SegmentCaptureName:
+				switch seg.CaptureName {
+				case "outer":
+					result = append(result, match.Outer...)
+				case "inner":
+					result = append(result, match.Inner...)
+				}
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result = append(result, input[lastEnd:]...)
+	return result
+}
+
+// ReplaceFirstString replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TNFAPathological) ReplaceFirstString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return input
+	}
+
+	var r TNFAPathologicalResult
+	match, ok := TNFAPathological{}.FindStringReuse(input, &r)
+	if !ok {
+		return input
+	}
+
+	matchIdx := strings.Index(input, match.Match)
+	if matchIdx < 0 {
+		return input
+	}
+
+	var result strings.Builder
+	result.WriteString(input[:matchIdx])
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result.WriteString(seg.Literal)
+		case replace.SegmentFullMatch:
+			result.WriteString(match.Match)
+		case replace.SegmentCaptureIndex:
+			result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+		case replace.SegmentCaptureName:
+			switch seg.CaptureName {
+			case "outer":
+				result.WriteString(match.Outer)
+			case "inner":
+				result.WriteString(match.Inner)
+			}
+		}
+	}
+
+	result.WriteString(input[matchIdx+len(match.Match):])
+	return result.String()
+}
+
+// ReplaceFirstBytes replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (TNFAPathological) ReplaceFirstBytes(input []byte, template string) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return append([]byte{}, input...)
+	}
+
+	var r TNFAPathologicalBytesResult
+	match, ok := TNFAPathological{}.FindBytesReuse(input, &r)
+	if !ok {
+		return append([]byte{}, input...)
+	}
+
+	matchIdx := bytes.Index(input, match.Match)
+	if matchIdx < 0 {
+		return append([]byte{}, input...)
+	}
+
+	var result []byte
+	result = append(result, input[:matchIdx]...)
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result = append(result, seg.Literal...)
+		case replace.SegmentFullMatch:
+			result = append(result, match.Match...)
+		case replace.SegmentCaptureIndex:
+			result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+		case replace.SegmentCaptureName:
+			switch seg.CaptureName {
+			case "outer":
+				result = append(result, match.Outer...)
+			case "inner":
+				result = append(result, match.Inner...)
+			}
+		}
+	}
+
+	result = append(result, input[matchIdx+len(match.Match):]...)
+	return result
 }
