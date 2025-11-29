@@ -3,7 +3,6 @@
 # Variables
 BINARY_NAME=regengo
 CMD_PATH=./cmd/regengo
-PKG_LIST=$$(go list ./... | grep -v /vendor/ | grep -v /benchmarks/generated)
 
 # Default target
 all: fmt lint test build
@@ -24,10 +23,12 @@ install:
 	@echo "Installing $(BINARY_NAME)..."
 	@go install $(CMD_PATH)
 
-## test: Run all tests
+## test: Run all tests with cross-package coverage (same as CI)
 test:
-	@echo "Running tests..."
-	@go test -v -race -coverprofile=coverage.txt -covermode=atomic $(PKG_LIST)
+	@echo "Running tests with coverage..."
+	@go test -v -race -coverprofile=coverage.txt -covermode=atomic \
+		-coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
+		./internal/... ./pkg/... ./tests/... ./benchmarks/...
 
 ## bench: Run benchmarks
 bench: bench-gen
