@@ -23,12 +23,10 @@ install:
 	@echo "Installing $(BINARY_NAME)..."
 	@go install $(CMD_PATH)
 
-## test: Run all tests with cross-package coverage (same as CI)
+## test: Run all tests with coverage
 test:
 	@echo "Running tests with coverage..."
-	@go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-		-coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
-		./internal/... ./pkg/... ./tests/... ./benchmarks/...
+	@go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
 ## bench: Run benchmarks
 bench: bench-gen

@@ -54,10 +54,8 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run all tests with cross-package coverage
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-            -coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
-            ./internal/... ./pkg/... ./tests/... ./benchmarks/...
+          # Run all tests with coverage
+          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
