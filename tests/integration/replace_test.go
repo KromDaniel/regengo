@@ -474,6 +474,200 @@ func splitLines(s string) []string {
 	return lines
 }
 
+func TestReplaceEdgeCases(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "email.go")
+
+	// Generate a pattern with named captures
+	opts := regengo.Options{
+		Pattern:    `(?P<user>\w+)@(?P<domain>\w+)\.(?P<tld>\w+)`,
+		Name:       "Email",
+		OutputFile: outputFile,
+		Package:    "main",
+		Replacers:  []string{"$user@REDACTED.$tld"},
+	}
+
+	if err := regengo.Compile(opts); err != nil {
+		t.Fatalf("compilation failed: %v", err)
+	}
+
+	// Get project root
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+
+	// Create a test program that tests edge cases
+	testProgram := `package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	// Edge case: empty input
+	result := CompiledEmail.ReplaceAllString("", "$0")
+	if result == "" {
+		fmt.Println("EmptyInput: correct")
+	} else {
+		fmt.Printf("EmptyInput: wrong, got %q\n", result)
+	}
+
+	// Edge case: no match
+	result = CompiledEmail.ReplaceAllString("no emails here", "[$0]")
+	if result == "no emails here" {
+		fmt.Println("NoMatch: correct")
+	} else {
+		fmt.Printf("NoMatch: wrong, got %q\n", result)
+	}
+
+	// Edge case: match at start
+	result = CompiledEmail.ReplaceAllString("a@b.c rest of text", "X")
+	if result == "X rest of text" {
+		fmt.Println("MatchAtStart: correct")
+	} else {
+		fmt.Printf("MatchAtStart: wrong, got %q\n", result)
+	}
+
+	// Edge case: match at end
+	result = CompiledEmail.ReplaceAllString("rest of text a@b.c", "X")
+	if result == "rest of text X" {
+		fmt.Println("MatchAtEnd: correct")
+	} else {
+		fmt.Printf("MatchAtEnd: wrong, got %q\n", result)
+	}
+
+	// Edge case: adjacent matches
+	result = CompiledEmail.ReplaceAllString("a@b.c d@e.f", "X")
+	if result == "X X" {
+		fmt.Println("AdjacentMatches: correct")
+	} else {
+		fmt.Printf("AdjacentMatches: wrong, got %q\n", result)
+	}
+
+	// Edge case: only match (entire input is match)
+	result = CompiledEmail.ReplaceAllString("a@b.c", "X")
+	if result == "X" {
+		fmt.Println("OnlyMatch: correct")
+	} else {
+		fmt.Printf("OnlyMatch: wrong, got %q\n", result)
+	}
+
+	// Edge case: large input with many matches
+	largeInput := strings.Repeat("user@example.com ", 1000)
+	largeExpected := strings.Repeat("X ", 1000)
+	result = CompiledEmail.ReplaceAllString(largeInput, "X")
+	if result == largeExpected {
+		fmt.Println("LargeInput: correct")
+	} else {
+		fmt.Println("LargeInput: wrong")
+	}
+
+	// Edge case: ReplaceFirst with no match
+	result = CompiledEmail.ReplaceFirstString("no emails", "[FIRST]")
+	if result == "no emails" {
+		fmt.Println("FirstNoMatch: correct")
+	} else {
+		fmt.Printf("FirstNoMatch: wrong, got %q\n", result)
+	}
+
+	// Edge case: ReplaceFirst with single match
+	result = CompiledEmail.ReplaceFirstString("one@email.com", "[FIRST]")
+	if result == "[FIRST]" {
+		fmt.Println("FirstSingleMatch: correct")
+	} else {
+		fmt.Printf("FirstSingleMatch: wrong, got %q\n", result)
+	}
+
+	// Edge case: ReplaceFirst with multiple matches
+	result = CompiledEmail.ReplaceFirstString("a@b.c and d@e.f", "[FIRST]")
+	if result == "[FIRST] and d@e.f" {
+		fmt.Println("FirstMultipleMatches: correct")
+	} else {
+		fmt.Printf("FirstMultipleMatches: wrong, got %q\n", result)
+	}
+
+	// Edge case: pre-compiled with empty input
+	result = CompiledEmail.ReplaceAllString0("")
+	if result == "" {
+		fmt.Println("PrecompiledEmpty: correct")
+	} else {
+		fmt.Printf("PrecompiledEmpty: wrong, got %q\n", result)
+	}
+
+	// Edge case: bytes with empty input
+	resultBytes := CompiledEmail.ReplaceAllBytes([]byte{}, "$0")
+	if len(resultBytes) == 0 {
+		fmt.Println("BytesEmpty: correct")
+	} else {
+		fmt.Printf("BytesEmpty: wrong, got %q\n", string(resultBytes))
+	}
+}
+`
+
+	testFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+		t.Fatalf("failed to write test program: %v", err)
+	}
+
+	// Create go.mod
+	goMod := `module test
+
+go 1.21
+
+require github.com/KromDaniel/regengo v0.0.0
+
+replace github.com/KromDaniel/regengo => ` + projectRoot + `
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		t.Fatalf("failed to write go.mod: %v", err)
+	}
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
+	}
+
+	// Run the test program
+	cmd = exec.Command("go", "run", ".")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test program failed: %v\n%s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Verify results
+	expectedResults := []struct {
+		prefix string
+		want   string
+	}{
+		{"EmptyInput:", "EmptyInput: correct"},
+		{"NoMatch:", "NoMatch: correct"},
+		{"MatchAtStart:", "MatchAtStart: correct"},
+		{"MatchAtEnd:", "MatchAtEnd: correct"},
+		{"AdjacentMatches:", "AdjacentMatches: correct"},
+		{"OnlyMatch:", "OnlyMatch: correct"},
+		{"LargeInput:", "LargeInput: correct"},
+		{"FirstNoMatch:", "FirstNoMatch: correct"},
+		{"FirstSingleMatch:", "FirstSingleMatch: correct"},
+		{"FirstMultipleMatches:", "FirstMultipleMatches: correct"},
+		{"PrecompiledEmpty:", "PrecompiledEmpty: correct"},
+		{"BytesEmpty:", "BytesEmpty: correct"},
+	}
+
+	for _, exp := range expectedResults {
+		if !containsLine(outputStr, exp.want) {
+			t.Errorf("expected output to contain %q, got:\n%s", exp.want, outputStr)
+		}
+	}
+}
+
 func TestRuntimeReplaceEdgeCases(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "digit.go")

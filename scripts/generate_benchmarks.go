@@ -158,6 +158,51 @@ var tnfaCases = []CaptureCase{
 	},
 }
 
+var replaceCases = []ReplaceCase{
+	{
+		Name:    "ReplaceEmail",
+		Pattern: `(?P<user>[\w\.+-]+)@(?P<domain>[\w\.-]+)\.(?P<tld>[\w\.-]+)`,
+		Input: []string{
+			"Contact support@example.com for help",
+			"Multiple: a@b.com, c@d.org, e@f.net in one line",
+			strings.Repeat("user@example.com ", 50),
+		},
+		Replacers: []string{
+			"$user@REDACTED.$tld",
+			"[EMAIL]",
+			"$0",
+		},
+	},
+	{
+		Name:    "ReplaceDate",
+		Pattern: `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,
+		Input: []string{
+			"Event on 2024-01-15",
+			"Range: 2024-01-01 to 2024-12-31",
+			strings.Repeat("2024-06-15 ", 100),
+		},
+		Replacers: []string{
+			"$month/$day/$year",
+			"[DATE]",
+			"$year",
+		},
+	},
+	{
+		Name:    "ReplaceURL",
+		Pattern: `(?P<protocol>https?)://(?P<host>[\w\.-]+)(?::(?P<port>\d+))?(?P<path>/[\w\./]*)?`,
+		Input: []string{
+			"Visit https://example.com/page for info",
+			"API at http://localhost:8080/api/v1/users",
+			strings.Repeat("https://test.com/path ", 30),
+		},
+		Replacers: []string{
+			"$protocol://$host[REDACTED]",
+			"[URL]",
+			"$host",
+		},
+	},
+}
+
 var testTemplate = `
 package generated
 
@@ -368,6 +413,150 @@ func Benchmark{{ .Name }}FindAllString(b *testing.B) {
 }
 `
 
+var replaceTestTemplate = `
+package generated
+
+import (
+	"regexp"
+	"testing"
+)
+
+// convertToStdlibTemplate converts regengo template syntax to stdlib syntax.
+// regengo: $name, $1, $0 -> stdlib: ${name}, ${1}, ${0}
+func convertToStdlibTemplate{{ .Name }}(template string) string {
+	var result []byte
+	i := 0
+	for i < len(template) {
+		if template[i] != '$' {
+			result = append(result, template[i])
+			i++
+			continue
+		}
+		if i+1 >= len(template) {
+			result = append(result, '$')
+			i++
+			continue
+		}
+		next := template[i+1]
+		switch {
+		case next == '$':
+			result = append(result, '$', '$')
+			i += 2
+		case next == '{':
+			closeIdx := i + 2
+			for closeIdx < len(template) && template[closeIdx] != '}' {
+				closeIdx++
+			}
+			if closeIdx < len(template) {
+				result = append(result, template[i:closeIdx+1]...)
+				i = closeIdx + 1
+			} else {
+				result = append(result, '$')
+				i++
+			}
+		case next >= '0' && next <= '9':
+			j := i + 1
+			for j < len(template) && template[j] >= '0' && template[j] <= '9' {
+				j++
+			}
+			result = append(result, '$', '{')
+			result = append(result, template[i+1:j]...)
+			result = append(result, '}')
+			i = j
+		case next == '_' || (next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z'):
+			j := i + 1
+			for j < len(template) && (template[j] == '_' || (template[j] >= 'a' && template[j] <= 'z') || (template[j] >= 'A' && template[j] <= 'Z') || (template[j] >= '0' && template[j] <= '9')) {
+				j++
+			}
+			result = append(result, '$', '{')
+			result = append(result, template[i+1:j]...)
+			result = append(result, '}')
+			i = j
+		default:
+			result = append(result, '$')
+			i++
+		}
+	}
+	return string(result)
+}
+
+func Test{{ .Name }}ReplaceAllString(t *testing.T) {
+	pattern := {{ quote .Pattern }}
+	stdReg := regexp.MustCompile(pattern)
+	{{ $out := . }}
+	{{ range $rIdx, $replacer := .Replacers }}
+	{{ range $iIdx, $input := $out.Input }}
+	t.Run("replacer {{ $rIdx }} input {{ $iIdx }}", func(t *testing.T) {
+		input := {{ quote $input }}
+		replacer := {{ quote $replacer }}
+		stdlibTemplate := convertToStdlibTemplate{{ $out.Name }}(replacer)
+		expected := stdReg.ReplaceAllString(input, stdlibTemplate)
+		got := {{ $out.Name }}{}.ReplaceAllString(input, replacer)
+		if got != expected {
+			t.Errorf("ReplaceAllString mismatch:\n  input=%q\n  replacer=%q\n  got=%q\n  want=%q", input, replacer, got, expected)
+		}
+	})
+	{{ end }}
+	{{ end }}
+}
+
+func Benchmark{{ .Name }}ReplaceAllString(b *testing.B) {
+	pattern := {{ quote .Pattern }}
+	stdReg := regexp.MustCompile(pattern)
+	{{ $out := . }}
+	{{ range $rIdx, $replacer := .Replacers }}
+	{{ range $iIdx, $input := $out.Input }}
+
+	b.Run("stdlib r{{ $rIdx }}_i{{ $iIdx }}", func(b *testing.B) {
+		b.ReportAllocs()
+		input := {{ quote $input }}
+		stdlibTemplate := convertToStdlibTemplate{{ $out.Name }}({{ quote $replacer }})
+		for b.Loop() {
+			stdReg.ReplaceAllString(input, stdlibTemplate)
+		}
+	})
+
+	b.Run("regengo runtime r{{ $rIdx }}_i{{ $iIdx }}", func(b *testing.B) {
+		b.ReportAllocs()
+		input := {{ quote $input }}
+		replacer := {{ quote $replacer }}
+		for b.Loop() {
+			{{ $out.Name }}{}.ReplaceAllString(input, replacer)
+		}
+	})
+
+	b.Run("regengo precompiled{{ $rIdx }} i{{ $iIdx }}", func(b *testing.B) {
+		b.ReportAllocs()
+		input := {{ quote $input }}
+		for b.Loop() {
+			{{ $out.Name }}{}.ReplaceAllString{{ $rIdx }}(input)
+		}
+	})
+
+	{{ end }}
+	{{ end }}
+}
+
+func Benchmark{{ .Name }}ReplaceAllBytesAppend(b *testing.B) {
+	{{ $out := . }}
+	{{ range $rIdx, $replacer := .Replacers }}
+	{{ range $iIdx, $input := $out.Input }}
+
+	b.Run("precompiled{{ $rIdx }} i{{ $iIdx }}", func(b *testing.B) {
+		b.ReportAllocs()
+		input := []byte({{ quote $input }})
+		buf := make([]byte, 0, 4096)
+		for b.Loop() {
+			buf = {{ $out.Name }}{}.ReplaceAllBytesAppend{{ $rIdx }}(input, buf)
+			buf = buf[:0]
+		}
+	})
+
+	{{ end }}
+	{{ end }}
+}
+`
+
 var cwd string
 
 func init() {
@@ -388,6 +577,13 @@ type CaptureCase struct {
 	Name    string   `json:"name"`
 	Pattern string   `json:"pattern"`
 	Input   []string `json:"input"`
+}
+
+type ReplaceCase struct {
+	Name      string   `json:"name"`
+	Pattern   string   `json:"pattern"`
+	Input     []string `json:"input"`
+	Replacers []string `json:"replacers"`
 }
 
 func main() {
@@ -532,9 +728,42 @@ func main() {
 		}
 	}
 
+	// Generate Replace benchmark cases
+	replaceTemplate, err := template.New("auto_gen_replace_test").Funcs(map[string]interface{}{
+		"quote": func(v string) string { return strconv.Quote(v) },
+	}).Parse(replaceTestTemplate)
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, replaceCase := range replaceCases {
+		if err := regengo.Compile(regengo.Options{
+			Pattern:    replaceCase.Pattern,
+			Name:       replaceCase.Name,
+			OutputFile: filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s.go", replaceCase.Name)),
+			Package:    "generated",
+			Replacers:  replaceCase.Replacers,
+		}); err != nil {
+			panic(err)
+		}
+
+		testFile, err := os.Create(filepath.Join(cwd, "benchmarks", "generated", fmt.Sprintf("%s_test.go", replaceCase.Name)))
+		if err != nil {
+			panic(err)
+		}
+		if err := replaceTemplate.Execute(testFile, replaceCase); err != nil {
+			panic(err)
+		}
+		if err := testFile.Close(); err != nil {
+			panic(err)
+		}
+	}
+
 	fmt.Printf("✓ Generated %d regular matchers\n", len(testCases))
 	fmt.Printf("✓ Generated %d capture group matchers\n", len(captureCases))
 	fmt.Printf("✓ Generated %d FindAll matchers\n", len(findAllCases))
 	fmt.Printf("✓ Generated %d TDFA benchmark matchers\n", len(tdfaCases))
 	fmt.Printf("✓ Generated %d TNFA benchmark matchers\n", len(tnfaCases))
+	fmt.Printf("✓ Generated %d Replace benchmark matchers\n", len(replaceCases))
 }
