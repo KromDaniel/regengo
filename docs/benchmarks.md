@@ -217,17 +217,17 @@ This benchmark tests nested quantifier patterns with captures. Regengo wins on m
 To run benchmarks yourself:
 
 ```bash
-# Generate benchmark code
-make bench-gen
-
-# Run benchmarks
+# Run benchmarks (generates and runs curated benchmarks)
 make bench
 
-# Generate markdown output
-make bench-readme
-
-# Analyze benchmark results
+# Analyze benchmark results with comparison summary
 make bench-analyze
+
+# Generate markdown output
+make bench-format
+
+# Generate performance chart
+make bench-chart
 ```
 
 ## Regenerating Results
@@ -235,5 +235,5 @@ make bench-analyze
 To regenerate these benchmark tables:
 
 ```bash
-make bench-readme
+make bench-format
 ```

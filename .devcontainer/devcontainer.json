@@ -6,7 +6,7 @@
       "version": "1.21"
     }
   },
-  "postCreateCommand": "go mod download && make bench-gen",
+  "postCreateCommand": "go mod download && make bench",
   "customizations": {
     "vscode": {
       "extensions": [

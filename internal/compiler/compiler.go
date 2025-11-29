@@ -536,20 +536,23 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 	return nil
 }
 
-// generateFindAllStringTDFA generates FindAllString using TDFA-based FindString.
+// generateFindAllStringTDFA generates FindAllStringAppend and FindAllString using TDFA-based FindString.
 func (c *Compiler) generateFindAllStringTDFA() {
 	structName := fmt.Sprintf("%sResult", c.config.Name)
-	c.method("FindAllString").
+
+	// Generate FindAllStringAppend first (zero-alloc with slice reuse)
+	c.method("FindAllStringAppend").
 		Params(
 			jen.Id(codegen.InputName).String(),
 			jen.Id("n").Int(),
+			jen.Id("s").Index().Op("*").Id(structName),
 		).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(
 			jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-				jen.Return(jen.Nil()),
+				jen.Return(jen.Id("s")),
 			),
-			jen.Var().Id("results").Index().Op("*").Id(structName),
+			jen.Id("results").Op(":=").Id("s"),
 			jen.Id("offset").Op(":=").Lit(0),
 			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
 				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindString").Call(
@@ -572,22 +575,40 @@ func (c *Compiler) generateFindAllStringTDFA() {
 			),
 			jen.Return(jen.Id("results")),
 		)
+
+	// Generate FindAllString that calls FindAllStringAppend with nil
+	c.method("FindAllString").
+		Params(
+			jen.Id(codegen.InputName).String(),
+			jen.Id("n").Int(),
+		).
+		Params(jen.Index().Op("*").Id(structName)).
+		Block(
+			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllStringAppend").Call(
+				jen.Id(codegen.InputName),
+				jen.Id("n"),
+				jen.Nil(),
+			)),
+		)
 }
 
-// generateFindAllBytesTDFA generates FindAllBytes using TDFA-based FindBytes.
+// generateFindAllBytesTDFA generates FindAllBytesAppend and FindAllBytes using TDFA-based FindBytes.
 func (c *Compiler) generateFindAllBytesTDFA() {
 	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
-	c.method("FindAllBytes").
+
+	// Generate FindAllBytesAppend first (zero-alloc with slice reuse)
+	c.method("FindAllBytesAppend").
 		Params(
 			jen.Id(codegen.InputName).Index().Byte(),
 			jen.Id("n").Int(),
+			jen.Id("s").Index().Op("*").Id(bytesStructName),
 		).
 		Params(jen.Index().Op("*").Id(bytesStructName)).
 		Block(
 			jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-				jen.Return(jen.Nil()),
+				jen.Return(jen.Id("s")),
 			),
-			jen.Var().Id("results").Index().Op("*").Id(bytesStructName),
+			jen.Id("results").Op(":=").Id("s"),
 			jen.Id("offset").Op(":=").Lit(0),
 			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
 				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytes").Call(
@@ -609,6 +630,21 @@ func (c *Compiler) generateFindAllBytesTDFA() {
 				),
 			),
 			jen.Return(jen.Id("results")),
+		)
+
+	// Generate FindAllBytes that calls FindAllBytesAppend with nil
+	c.method("FindAllBytes").
+		Params(
+			jen.Id(codegen.InputName).Index().Byte(),
+			jen.Id("n").Int(),
+		).
+		Params(jen.Index().Op("*").Id(bytesStructName)).
+		Block(
+			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllBytesAppend").Call(
+				jen.Id(codegen.InputName),
+				jen.Id("n"),
+				jen.Nil(),
+			)),
 		)
 }
 

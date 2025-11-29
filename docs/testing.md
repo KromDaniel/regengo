@@ -12,14 +12,27 @@ Verifies that regengo's output matches `regexp` stdlib exactly:
 - `Test...MatchBytes` - Validates byte-slice matching
 - `Test...FindString` - Validates captures against `FindStringSubmatch`
 - `Test...FindAllString` - Validates all matches against `FindAllStringSubmatch`
+- `Test...FindReader` - Validates streaming API (matches found via callback)
+- `Test...FindReaderCount` - Validates streaming match count
+- `Test...FindReaderFirst` - Validates streaming first match
+- `Test...MatchLengthInfo` - Validates min/max match length info
+- `Test...ReplaceAllString` - Validates Replace vs stdlib (if replacers defined)
+- `Test...ReplaceFirstString` - Validates ReplaceFirst vs stdlib (if replacers defined)
+- `Test...ReplaceAllStringN` - Validates precompiled vs runtime replacement (if replacers defined)
 
 ### Benchmarks
 
 Comparison benchmarks to measure speedup vs stdlib:
 
-- `Benchmark...MatchString` - Performance of simple matching
-- `Benchmark...FindString` - Performance with capture extraction
-- `Benchmark...FindStringReuse` - Performance with zero-allocation reuse
+- `Benchmark...MatchString` - regengo MatchString performance
+- `BenchmarkStdlib...MatchString` - stdlib comparison
+- `Benchmark...FindString` - regengo FindString performance
+- `BenchmarkStdlib...FindStringSubmatch` - stdlib comparison
+- `Benchmark...FindStringReuse` - Zero-allocation single match
+- `Benchmark...FindAllStringAppend` - Zero-allocation multi-match
+- `Benchmark...ReplaceAllString` - Replace comparison (if replacers defined)
+- `Benchmark...ReplaceAllStringN` - Precompiled replace (if replacers defined)
+- `Benchmark...ReplaceAllBytesAppendN` - Zero-allocation replace (if replacers defined)
 
 ## Generating Tests
 
@@ -70,7 +83,7 @@ go test -bench=BenchmarkDateFindString -benchmem
 
 ## Example Generated Test File
 
-For a date pattern with captures, regengo generates (see [full example](../benchmarks/generated/DateCapture_test.go)):
+For a date pattern with captures, regengo generates (see [full example](../benchmarks/curated/DateCapture_test.go)):
 
 ```go
 package main
@@ -155,4 +168,4 @@ regengo -analyze -pattern 'your-pattern'
 
 ## More Examples
 
-See [benchmarks/generated/](../benchmarks/generated/) for more examples of generated test files.
+See [benchmarks/curated/](../benchmarks/curated/) for more examples of generated test files.

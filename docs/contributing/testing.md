@@ -49,8 +49,7 @@ regengo/
 │       ├── e2e_test.go   # End-to-end pattern tests
 │       └── testdata.json # Test pattern definitions
 └── benchmarks/
-    ├── generated/        # Generated benchmark patterns
-    └── findall_test.go   # FindAll comparison tests
+    └── curated/          # Generated curated benchmark patterns
 ```
 
 ## End-to-End Tests
@@ -109,13 +108,13 @@ make bench
 make bench-analyze
 
 # Generate markdown output
-make bench-readme
+make bench-format
 ```
 
 ### Specific Benchmark
 
 ```bash
-go test -bench=BenchmarkDate -benchmem ./benchmarks/generated/
+go test -bench=BenchmarkDate -benchmem ./benchmarks/curated/
 ```
 
 ## Coverage
@@ -134,8 +133,8 @@ The CI pipeline runs with coverage and uploads to Codecov:
 
 ```bash
 go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-    -coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
-    ./internal/... ./pkg/... ./tests/... ./benchmarks/...
+    -coverpkg=./internal/...,./pkg/...,./tests/... \
+    ./internal/... ./pkg/... ./tests/...
 ```
 
 ## CI/CD Pipeline
