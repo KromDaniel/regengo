@@ -257,6 +257,11 @@ func (c *Compiler) generateTestFile() error {
 
 		// Add streaming tests
 		c.generateStreamingTests(testFile, regexpVarName)
+
+		// Add replace tests if replacers are configured
+		if len(c.config.TestFileReplacers) > 0 {
+			c.generateReplaceTests(testFile, regexpVarName)
+		}
 	}
 
 	// Determine test file path
@@ -426,4 +431,186 @@ func (c *Compiler) generateStreamingTests(testFile *jen.File, regexpVarName stri
 		),
 	)
 	testFile.Line()
+}
+
+// generateReplaceTests generates Replace API tests for the test file.
+// Tests compare regengo's ReplaceAllString with stdlib's ReplaceAllString.
+func (c *Compiler) generateReplaceTests(testFile *jen.File, regexpVarName string) {
+	replacers := c.config.TestFileReplacers
+
+	// Generate test replacers variable
+	testFile.Var().Id("testReplacers").Op("=").Index().String().Values(
+		jen.ListFunc(func(g *jen.Group) {
+			for _, r := range replacers {
+				g.Lit(r)
+			}
+		}),
+	)
+	testFile.Line()
+
+	// Generate helper function to convert regengo template to stdlib format
+	// regengo uses $name, stdlib uses ${name}
+	testFile.Comment("convertToStdlibTemplate converts regengo template syntax to stdlib syntax.")
+	testFile.Comment("regengo: $name, $1, $0 -> stdlib: ${name}, ${1}, ${0}")
+	testFile.Func().Id("convertToStdlibTemplate").Params(jen.Id("template").String()).String().Block(
+		jen.Var().Id("result").Qual("strings", "Builder"),
+		jen.Id("i").Op(":=").Lit(0),
+		jen.For(jen.Id("i").Op("<").Len(jen.Id("template"))).Block(
+			jen.If(jen.Id("template").Index(jen.Id("i")).Op("!=").LitRune('$')).Block(
+				jen.Id("result").Dot("WriteByte").Call(jen.Id("template").Index(jen.Id("i"))),
+				jen.Id("i").Op("++"),
+				jen.Continue(),
+			),
+			jen.Comment("Found $"),
+			jen.If(jen.Id("i").Op("+").Lit(1).Op(">=").Len(jen.Id("template"))).Block(
+				jen.Id("result").Dot("WriteByte").Call(jen.LitRune('$')),
+				jen.Id("i").Op("++"),
+				jen.Continue(),
+			),
+			jen.Id("next").Op(":=").Id("template").Index(jen.Id("i").Op("+").Lit(1)),
+			jen.Switch(jen.Empty()).Block(
+				jen.Case(jen.Id("next").Op("==").LitRune('$')).Block(
+					jen.Comment("$$ -> $"),
+					jen.Id("result").Dot("WriteString").Call(jen.Lit("$$")),
+					jen.Id("i").Op("+=").Lit(2),
+				),
+				jen.Case(jen.Id("next").Op("==").LitRune('{')).Block(
+					jen.Comment("${...} -> ${...} (already in stdlib format)"),
+					jen.Id("closeIdx").Op(":=").Qual("strings", "Index").Call(jen.Id("template").Index(jen.Id("i").Op(":")), jen.Lit("}")),
+					jen.If(jen.Id("closeIdx").Op("==").Lit(-1)).Block(
+						jen.Id("result").Dot("WriteByte").Call(jen.LitRune('$')),
+						jen.Id("i").Op("++"),
+					).Else().Block(
+						jen.Id("result").Dot("WriteString").Call(jen.Id("template").Index(jen.Id("i").Op(":").Id("i").Op("+").Id("closeIdx").Op("+").Lit(1))),
+						jen.Id("i").Op("+=").Id("closeIdx").Op("+").Lit(1),
+					),
+				),
+				jen.Case(jen.Id("next").Op(">=").LitRune('0').Op("&&").Id("next").Op("<=").LitRune('9')).Block(
+					jen.Comment("$0, $1, etc -> ${0}, ${1}, etc"),
+					jen.Id("j").Op(":=").Id("i").Op("+").Lit(1),
+					jen.For(jen.Id("j").Op("<").Len(jen.Id("template")).Op("&&").Id("template").Index(jen.Id("j")).Op(">=").LitRune('0').Op("&&").Id("template").Index(jen.Id("j")).Op("<=").LitRune('9')).Block(
+						jen.Id("j").Op("++"),
+					),
+					jen.Id("result").Dot("WriteString").Call(jen.Lit("${")),
+					jen.Id("result").Dot("WriteString").Call(jen.Id("template").Index(jen.Id("i").Op("+").Lit(1).Op(":").Id("j"))),
+					jen.Id("result").Dot("WriteByte").Call(jen.LitRune('}')),
+					jen.Id("i").Op("=").Id("j"),
+				),
+				jen.Case(
+					jen.Id("next").Op("==").LitRune('_').Op("||").
+						Parens(jen.Id("next").Op(">=").LitRune('a').Op("&&").Id("next").Op("<=").LitRune('z')).Op("||").
+						Parens(jen.Id("next").Op(">=").LitRune('A').Op("&&").Id("next").Op("<=").LitRune('Z')),
+				).Block(
+					jen.Comment("$name -> ${name}"),
+					jen.Id("j").Op(":=").Id("i").Op("+").Lit(1),
+					jen.For(jen.Id("j").Op("<").Len(jen.Id("template")).Op("&&").Parens(
+						jen.Id("template").Index(jen.Id("j")).Op("==").LitRune('_').Op("||").
+							Parens(jen.Id("template").Index(jen.Id("j")).Op(">=").LitRune('a').Op("&&").Id("template").Index(jen.Id("j")).Op("<=").LitRune('z')).Op("||").
+							Parens(jen.Id("template").Index(jen.Id("j")).Op(">=").LitRune('A').Op("&&").Id("template").Index(jen.Id("j")).Op("<=").LitRune('Z')).Op("||").
+							Parens(jen.Id("template").Index(jen.Id("j")).Op(">=").LitRune('0').Op("&&").Id("template").Index(jen.Id("j")).Op("<=").LitRune('9')),
+					)).Block(
+						jen.Id("j").Op("++"),
+					),
+					jen.Id("result").Dot("WriteString").Call(jen.Lit("${")),
+					jen.Id("result").Dot("WriteString").Call(jen.Id("template").Index(jen.Id("i").Op("+").Lit(1).Op(":").Id("j"))),
+					jen.Id("result").Dot("WriteByte").Call(jen.LitRune('}')),
+					jen.Id("i").Op("=").Id("j"),
+				),
+				jen.Default().Block(
+					jen.Comment("Lone $ followed by something else"),
+					jen.Id("result").Dot("WriteByte").Call(jen.LitRune('$')),
+					jen.Id("i").Op("++"),
+				),
+			),
+		),
+		jen.Return(jen.Id("result").Dot("String").Call()),
+	)
+	testFile.Line()
+
+	// TestReplaceAllString - compare runtime Replace with stdlib
+	testFile.Func().Id(fmt.Sprintf("Test%sReplaceAllString", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+			jen.For(jen.List(jen.Id("_"), jen.Id("replacer")).Op(":=").Range().Id("testReplacers")).Block(
+				jen.Id("stdlibTemplate").Op(":=").Id("convertToStdlibTemplate").Call(jen.Id("replacer")),
+				jen.Id("expected").Op(":=").Id(regexpVarName).Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("stdlibTemplate")),
+				jen.Id("got").Op(":=").Id(c.config.Name).Values().Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("replacer")),
+				jen.If(jen.Id("got").Op("!=").Id("expected")).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("ReplaceAllString(%q, %q) = %q, want %q"),
+						jen.Id("input"),
+						jen.Id("replacer"),
+						jen.Id("got"),
+						jen.Id("expected"),
+					),
+				),
+			),
+		),
+	)
+	testFile.Line()
+
+	// TestReplaceFirstString - compare runtime ReplaceFirst with stdlib (using Func to only replace first)
+	testFile.Func().Id(fmt.Sprintf("Test%sReplaceFirstString", c.config.Name)).Params(
+		jen.Id("t").Op("*").Qual("testing", "T"),
+	).Block(
+		jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+			jen.For(jen.List(jen.Id("_"), jen.Id("replacer")).Op(":=").Range().Id("testReplacers")).Block(
+				jen.Comment("Simulate ReplaceFirst using ReplaceAllStringFunc with a once flag"),
+				jen.Id("stdlibTemplate").Op(":=").Id("convertToStdlibTemplate").Call(jen.Id("replacer")),
+				jen.Id("replaced").Op(":=").False(),
+				jen.Id("expected").Op(":=").Id(regexpVarName).Dot("ReplaceAllStringFunc").Call(
+					jen.Id("input"),
+					jen.Func().Params(jen.Id("match").String()).String().Block(
+						jen.If(jen.Id("replaced")).Block(
+							jen.Return(jen.Id("match")),
+						),
+						jen.Id("replaced").Op("=").True(),
+						jen.Comment("Use Expand to apply template to single match"),
+						jen.Id("submatch").Op(":=").Id(regexpVarName).Dot("FindStringSubmatchIndex").Call(jen.Id("match")),
+						jen.If(jen.Id("submatch").Op("==").Nil()).Block(
+							jen.Return(jen.Id("match")),
+						),
+						jen.Var().Id("dst").Index().Byte(),
+						jen.Id("dst").Op("=").Id(regexpVarName).Dot("ExpandString").Call(jen.Id("dst"), jen.Id("stdlibTemplate"), jen.Id("match"), jen.Id("submatch")),
+						jen.Return(jen.String().Call(jen.Id("dst"))),
+					),
+				),
+				jen.Id("got").Op(":=").Id(c.config.Name).Values().Dot("ReplaceFirstString").Call(jen.Id("input"), jen.Id("replacer")),
+				jen.If(jen.Id("got").Op("!=").Id("expected")).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit("ReplaceFirstString(%q, %q) = %q, want %q"),
+						jen.Id("input"),
+						jen.Id("replacer"),
+						jen.Id("got"),
+						jen.Id("expected"),
+					),
+				),
+			),
+		),
+	)
+	testFile.Line()
+
+	// Generate tests for pre-compiled replacers
+	for i, replacer := range replacers {
+		// TestReplaceAllStringN - compare pre-compiled with runtime
+		testFile.Func().Id(fmt.Sprintf("Test%sReplaceAllString%d", c.config.Name, i)).Params(
+			jen.Id("t").Op("*").Qual("testing", "T"),
+		).Block(
+			jen.Id("replacer").Op(":=").Lit(replacer),
+			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id("testInputs")).Block(
+				jen.Id("runtime").Op(":=").Id(c.config.Name).Values().Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("replacer")),
+				jen.Id("precompiled").Op(":=").Id(c.config.Name).Values().Dot(fmt.Sprintf("ReplaceAllString%d", i)).Call(jen.Id("input")),
+				jen.If(jen.Id("precompiled").Op("!=").Id("runtime")).Block(
+					jen.Id("t").Dot("Errorf").Call(
+						jen.Lit(fmt.Sprintf("ReplaceAllString%d(%%q) = %%q, want %%q (runtime)", i)),
+						jen.Id("input"),
+						jen.Id("precompiled"),
+						jen.Id("runtime"),
+					),
+				),
+			),
+		)
+		testFile.Line()
+	}
 }

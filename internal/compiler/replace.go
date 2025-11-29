@@ -43,12 +43,7 @@ func (c *Compiler) generateCaptureByIndexHelper() {
 	}
 
 	for i := 1; i < len(c.captureNames); i++ {
-		fieldName := c.captureNames[i]
-		if fieldName == "" {
-			fieldName = fmt.Sprintf("Group%d", i)
-		} else {
-			fieldName = codegen.UpperFirst(fieldName)
-		}
+		fieldName := c.getCaptureFieldName(i)
 		cases = append(cases, jen.Case(jen.Lit(i)).Block(jen.Return(jen.Id("r").Dot(fieldName))))
 	}
 
@@ -70,12 +65,7 @@ func (c *Compiler) generateCaptureByIndexHelper() {
 	}
 
 	for i := 1; i < len(c.captureNames); i++ {
-		fieldName := c.captureNames[i]
-		if fieldName == "" {
-			fieldName = fmt.Sprintf("Group%d", i)
-		} else {
-			fieldName = codegen.UpperFirst(fieldName)
-		}
+		fieldName := c.getCaptureFieldName(i)
 		bytesCases = append(bytesCases, jen.Case(jen.Lit(i)).Block(jen.Return(jen.Id("r").Dot(fieldName))))
 	}
 
@@ -427,7 +417,7 @@ func (c *Compiler) generateNamedCaptureLookupString(matchVar *jen.Statement) jen
 	for i := 1; i < len(c.captureNames); i++ {
 		name := c.captureNames[i]
 		if name != "" {
-			fieldName := codegen.UpperFirst(name)
+			fieldName := c.getCaptureFieldNameByName(name)
 			cases = append(cases, jen.Case(jen.Lit(name)).Block(
 				jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot(fieldName)),
 			))
@@ -449,7 +439,7 @@ func (c *Compiler) generateNamedCaptureLookupBytes(matchVar *jen.Statement) jen.
 	for i := 1; i < len(c.captureNames); i++ {
 		name := c.captureNames[i]
 		if name != "" {
-			fieldName := codegen.UpperFirst(name)
+			fieldName := c.getCaptureFieldNameByName(name)
 			cases = append(cases, jen.Case(jen.Lit(name)).Block(
 				jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot(fieldName).Op("...")),
 			))
@@ -756,7 +746,7 @@ func (c *Compiler) generateInlinedTemplateExpansionString(tmpl *ParsedTemplate, 
 		case SegmentCaptureName:
 			// Named captures were resolved to indices in parseAndValidateReplacers
 			// This shouldn't happen, but handle it anyway
-			fieldName := codegen.UpperFirst(seg.CaptureName)
+			fieldName := c.getCaptureFieldNameByName(seg.CaptureName)
 			stmts = append(stmts, jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot(fieldName)))
 		}
 	}
@@ -803,7 +793,7 @@ func (c *Compiler) generateInlinedTemplateExpansionBytes(tmpl *ParsedTemplate, m
 			fieldName := c.getCaptureFieldName(seg.CaptureIndex)
 			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot(fieldName).Op("...")))
 		case SegmentCaptureName:
-			fieldName := codegen.UpperFirst(seg.CaptureName)
+			fieldName := c.getCaptureFieldNameByName(seg.CaptureName)
 			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot(fieldName).Op("...")))
 		}
 	}
@@ -816,15 +806,64 @@ func (c *Compiler) generateInlinedTemplateExpansionBytes(tmpl *ParsedTemplate, m
 }
 
 // getCaptureFieldName returns the struct field name for a capture group by index.
+// This uses the same collision resolution logic as struct generation in find.go.
 func (c *Compiler) getCaptureFieldName(captureIndex int) string {
 	if captureIndex == 0 {
 		return "Match"
 	}
-	if captureIndex < len(c.captureNames) {
-		name := c.captureNames[captureIndex]
-		if name != "" {
-			return codegen.UpperFirst(name)
+
+	// Need to compute field names with collision resolution
+	usedNames := make(map[string]bool)
+	usedNames["Match"] = true // Reserved for full match
+
+	for i := 1; i < len(c.captureNames); i++ {
+		fieldName := c.captureNames[i]
+		if fieldName == "" {
+			fieldName = fmt.Sprintf("Group%d", i)
+		} else {
+			fieldName = codegen.UpperFirst(fieldName)
+		}
+		// Handle collisions by adding group number suffix
+		if usedNames[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNames[fieldName] = true
+
+		if i == captureIndex {
+			return fieldName
 		}
 	}
+
 	return fmt.Sprintf("Group%d", captureIndex)
+}
+
+// getCaptureFieldNameByName returns the struct field name for a named capture group.
+// This uses the same collision resolution logic as struct generation in find.go.
+func (c *Compiler) getCaptureFieldNameByName(captureName string) string {
+	// Need to compute field names with collision resolution
+	usedNames := make(map[string]bool)
+	usedNames["Match"] = true // Reserved for full match
+
+	for i := 1; i < len(c.captureNames); i++ {
+		name := c.captureNames[i]
+		if name == "" {
+			fieldName := fmt.Sprintf("Group%d", i)
+			usedNames[fieldName] = true
+			continue
+		}
+
+		fieldName := codegen.UpperFirst(name)
+		// Handle collisions by adding group number suffix
+		if usedNames[fieldName] {
+			fieldName = fmt.Sprintf("%s%d", fieldName, i)
+		}
+		usedNames[fieldName] = true
+
+		if name == captureName {
+			return fieldName
+		}
+	}
+
+	// Fallback: just uppercase the name (shouldn't happen if validation is correct)
+	return codegen.UpperFirst(captureName)
 }

@@ -19,6 +19,7 @@ import (
 type TestCase struct {
 	Pattern       string   `json:"pattern"`
 	Inputs        []string `json:"inputs"`
+	Replacers     []string `json:"replacers,omitempty"`
 	FeatureLabels []string `json:"feature_labels,omitempty"`
 	EngineLabels  []string `json:"engine_labels,omitempty"`
 }
@@ -107,12 +108,14 @@ func TestE2E(t *testing.T) {
 			outputFile := filepath.Join(caseDir, fmt.Sprintf("%s.go", uniqueName))
 
 			opts := regengo.Options{
-				Pattern:          tc.Pattern,
-				Name:             uniqueName,
-				OutputFile:       outputFile,
-				Package:          "generated",
-				GenerateTestFile: true,
-				TestFileInputs:   tc.Inputs,
+				Pattern:           tc.Pattern,
+				Name:              uniqueName,
+				OutputFile:        outputFile,
+				Package:           "generated",
+				GenerateTestFile:  true,
+				TestFileInputs:    tc.Inputs,
+				TestFileReplacers: tc.Replacers,
+				Replacers:         tc.Replacers,
 			}
 
 			if err := regengo.Compile(opts); err != nil {

@@ -13,22 +13,23 @@ import (
 
 // Config holds the configuration for code generation.
 type Config struct {
-	Pattern          string
-	Name             string
-	OutputFile       string
-	Package          string
-	Program          *syntax.Prog
-	RegexAST         *syntax.Regexp // For extracting capture group names
-	UsePool          bool           // Enable sync.Pool for stack reuse
-	WithCaptures     bool           // Generate capture group functions
-	GenerateTestFile bool           // Generate test file with tests and benchmarks
-	TestFileInputs   []string       // Test inputs for generated test file
-	ForceThompson    bool           // Force Thompson NFA for MatchString/MatchBytes
-	ForceTNFA        bool           // Force Tagged NFA for FindString with captures
-	ForceTDFA        bool           // Force Tagged DFA for FindString with captures
-	TDFAThreshold    int            // Max DFA states before falling back (0 = use default 500)
-	Verbose          bool           // Enable verbose logging of analysis decisions
-	Replacers        []string       // Raw replacement template strings for pre-compiled replacers
+	Pattern           string
+	Name              string
+	OutputFile        string
+	Package           string
+	Program           *syntax.Prog
+	RegexAST          *syntax.Regexp // For extracting capture group names
+	UsePool           bool           // Enable sync.Pool for stack reuse
+	WithCaptures      bool           // Generate capture group functions
+	GenerateTestFile  bool           // Generate test file with tests and benchmarks
+	TestFileInputs    []string       // Test inputs for generated test file
+	ForceThompson     bool           // Force Thompson NFA for MatchString/MatchBytes
+	ForceTNFA         bool           // Force Tagged NFA for FindString with captures
+	ForceTDFA         bool           // Force Tagged DFA for FindString with captures
+	TDFAThreshold     int            // Max DFA states before falling back (0 = use default 500)
+	Verbose           bool           // Enable verbose logging of analysis decisions
+	Replacers         []string       // Raw replacement template strings for pre-compiled replacers
+	TestFileReplacers []string       // Replacement templates to test in generated test file
 }
 
 // Compiler generates optimized Go code from regex patterns.

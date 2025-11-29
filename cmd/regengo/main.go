@@ -117,19 +117,20 @@ func main() {
 	}
 
 	opts := regengo.Options{
-		Pattern:          *pattern,
-		Name:             *name,
-		OutputFile:       *output,
-		Package:          *pkg,
-		NoPool:           *noPool,
-		GenerateTestFile: !*noTest,
-		TestFileInputs:   testInputsList,
-		Verbose:          *verbose,
-		ForceThompson:    *forceThompson,
-		ForceTNFA:        *forceTNFA,
-		ForceTDFA:        *forceTDFA,
-		TDFAThreshold:    *tdfaThreshold,
-		Replacers:        replacers,
+		Pattern:           *pattern,
+		Name:              *name,
+		OutputFile:        *output,
+		Package:           *pkg,
+		NoPool:            *noPool,
+		GenerateTestFile:  !*noTest,
+		TestFileInputs:    testInputsList,
+		Verbose:           *verbose,
+		ForceThompson:     *forceThompson,
+		ForceTNFA:         *forceTNFA,
+		ForceTDFA:         *forceTDFA,
+		TDFAThreshold:     *tdfaThreshold,
+		Replacers:         replacers,
+		TestFileReplacers: replacers, // Also test replacers in generated test file
 	}
 
 	if err := regengo.Compile(opts); err != nil {

@@ -58,6 +58,10 @@ type Options struct {
 	// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
 	// Templates are validated at compile time against the pattern's capture groups.
 	Replacers []string
+
+	// TestFileReplacers is a list of replacement templates to test in the generated test file.
+	// If provided, the test file will include tests comparing ReplaceAllString results with stdlib.
+	TestFileReplacers []string
 }
 
 // Validate checks if the options are valid.
@@ -123,21 +127,22 @@ func Compile(opts Options) error {
 
 	// Generate Go code
 	config := compiler.Config{
-		Pattern:          opts.Pattern,
-		Program:          prog,
-		Name:             opts.Name,
-		Package:          opts.Package,
-		UsePool:          !opts.NoPool, // Invert: NoPool flag disables pool
-		WithCaptures:     hasCaptures,
-		RegexAST:         regexAST,
-		GenerateTestFile: generateTestFile,
-		TestFileInputs:   testInputs,
-		ForceThompson:    opts.ForceThompson,
-		ForceTNFA:        opts.ForceTNFA,
-		ForceTDFA:        opts.ForceTDFA,
-		TDFAThreshold:    opts.TDFAThreshold,
-		Verbose:          opts.Verbose,
-		Replacers:        opts.Replacers,
+		Pattern:           opts.Pattern,
+		Program:           prog,
+		Name:              opts.Name,
+		Package:           opts.Package,
+		UsePool:           !opts.NoPool, // Invert: NoPool flag disables pool
+		WithCaptures:      hasCaptures,
+		RegexAST:          regexAST,
+		GenerateTestFile:  generateTestFile,
+		TestFileInputs:    testInputs,
+		ForceThompson:     opts.ForceThompson,
+		ForceTNFA:         opts.ForceTNFA,
+		ForceTDFA:         opts.ForceTDFA,
+		TDFAThreshold:     opts.TDFAThreshold,
+		Verbose:           opts.Verbose,
+		Replacers:         opts.Replacers,
+		TestFileReplacers: opts.TestFileReplacers,
 	}
 
 	c := compiler.NewCompiler(config)
