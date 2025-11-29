@@ -1,11 +1,8 @@
-.PHONY: all build test bench bench-gen clean fmt lint install help mass-gen mass-bench mass-delete mass-build mass-workflow setup-hooks
+.PHONY: all build test bench bench-gen bench-chart clean fmt lint install help setup-hooks
 
 # Variables
 BINARY_NAME=regengo
 CMD_PATH=./cmd/regengo
-MASS_GEN_BINARY=bin/mass_generator
-MASS_GEN_SOURCE=./cmd/mass_generator
-PKG_LIST=$$(go list ./... | grep -v /vendor/ | grep -v /benchmarks/generated)
 
 # Default target
 all: fmt lint test build
@@ -26,10 +23,13 @@ install:
 	@echo "Installing $(BINARY_NAME)..."
 	@go install $(CMD_PATH)
 
-## test: Run all tests
+## test: Run all tests with coverage
 test:
-	@echo "Running tests..."
-	@go test -v -race -coverprofile=coverage.txt -covermode=atomic $(PKG_LIST)
+	@echo "Running tests with coverage..."
+	@go test -v -race -covermode=atomic \
+		-coverpkg=github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/pkg/regengo,github.com/KromDaniel/regengo/stream \
+		-coverprofile=coverage.txt \
+		./...
 
 ## bench: Run benchmarks
 bench: bench-gen
@@ -39,15 +39,25 @@ bench: bench-gen
 ## bench-readme: Generate benchmark markdown for README
 bench-readme: bench-gen
 	@echo "Generating benchmark markdown..."
-	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./cmd/bench_to_readme
+	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./scripts/format_benchmarks.go
+
+## bench-analyze: Analyze benchmark results with comparison summary
+bench-analyze: bench-gen
+	@echo "Running benchmarks with analysis..."
+	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./scripts/analyze_benchmarks.go
 
 ## bench-gen: Generate benchmark code
 bench-gen:
 	@echo "Generating benchmark code..."
 	@rm -rf ./benchmarks/generated
 	@mkdir -p ./benchmarks/generated
-	@go run ./cmd/curated_generator
+	@go run ./scripts/generate_benchmarks.go
 	@gofmt -s -w ./benchmarks/generated
+
+## bench-chart: Generate performance comparison chart
+bench-chart: bench-gen
+	@echo "Generating performance chart..."
+	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | python3 scripts/benchmark_chart.py
 
 ## coverage: Generate and open coverage report
 coverage: test
@@ -71,7 +81,6 @@ clean:
 	@echo "Cleaning..."
 	@rm -rf bin/
 	@rm -rf benchmarks/generated/
-	@rm -rf benchmarks/mass_generated/
 	@rm -rf output/
 	@rm -f coverage.txt coverage.html
 	@go clean
@@ -109,40 +118,3 @@ setup-hooks:
 ## version: Display Go version
 version:
 	@go version
-
-## mass-build: Build the mass_generator binary
-mass-build:
-	@echo "Building mass_generator..."
-	@mkdir -p bin
-	@go build -o $(MASS_GEN_BINARY) $(MASS_GEN_SOURCE)
-
-## mass-gen: Generate mass test files (compiles binary if needed)
-mass-gen: 
-	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
-		echo "mass_generator binary not found, building..."; \
-		$(MAKE) mass-build; \
-	fi
-	@echo "Generating mass tests..."
-	@$(MASS_GEN_BINARY) -command=generate
-
-## mass-bench: Run mass benchmarks (compiles binary if needed)
-mass-bench:
-	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
-		echo "mass_generator binary not found, building..."; \
-		$(MAKE) mass-build; \
-	fi
-	@echo "Running mass benchmarks..."
-	@$(MASS_GEN_BINARY) -command=benchmark
-
-## mass-delete: Delete generated mass tests (compiles binary if needed)
-mass-delete:
-	@if [ ! -f $(MASS_GEN_BINARY) ]; then \
-		echo "mass_generator binary not found, building..."; \
-		$(MAKE) mass-build; \
-	fi
-	@echo "Deleting mass tests..."
-	@$(MASS_GEN_BINARY) -command=delete
-
-## mass-workflow: Run complete mass test workflow (generate -> benchmark -> delete)
-mass-workflow: mass-gen mass-bench mass-delete
-	@echo "Mass test workflow completed!"

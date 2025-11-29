@@ -14,6 +14,17 @@ type Email struct{}
 
 var CompiledEmail = Email{}
 
+// MinMatchLen is the minimum number of bytes any match can have.
+const EmailMinMatchLen = 5
+
+// MaxMatchLen is the maximum number of bytes any match can have.
+// -1 means unbounded (pattern contains * or + quantifiers).
+const EmailMaxMatchLen = -1
+
+func (Email) MatchLengthInfo() (minLen, maxLen int) {
+	return EmailMinMatchLen, EmailMaxMatchLen
+}
+
 func (Email) MatchString(input string) bool {
 	l := len(input)
 	offset := 0

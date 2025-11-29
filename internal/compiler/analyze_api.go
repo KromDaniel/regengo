@@ -19,6 +19,10 @@ type AnalysisResult struct {
 	HasCatastrophicRisk bool `json:"has_catastrophic_risk"`
 	HasEndAnchor        bool `json:"has_end_anchor"`
 	NFAStates           int  `json:"nfa_states"`
+
+	// Match length analysis for streaming
+	MinMatchLength int `json:"min_match_length"`
+	MaxMatchLength int `json:"max_match_length"` // -1 means unbounded
 }
 
 // AnalyzePattern performs pattern analysis and returns labels without generating code.
@@ -51,6 +55,9 @@ func AnalyzePattern(pattern string, tdfaThreshold int) (*AnalysisResult, error) 
 	// Derive engine labels using the same logic as the compiler
 	engineLabels := deriveEngineLabels(prog, regexAST, complexity, hasCaptures, tdfaThreshold)
 
+	// Compute match length analysis for streaming
+	matchLenAnalysis := AnalyzeMatchLength(regexAST)
+
 	result := &AnalysisResult{
 		FeatureLabels:       featureLabels,
 		EngineLabels:        engineLabels,
@@ -58,6 +65,8 @@ func AnalyzePattern(pattern string, tdfaThreshold int) (*AnalysisResult, error) 
 		HasCatastrophicRisk: complexity.HasCatastrophicRisk,
 		HasEndAnchor:        complexity.HasEndAnchor,
 		NFAStates:           complexity.EstimatedNFAStates,
+		MinMatchLength:      matchLenAnalysis.MinMatchLen,
+		MaxMatchLength:      matchLenAnalysis.MaxMatchLen,
 	}
 
 	return result, nil

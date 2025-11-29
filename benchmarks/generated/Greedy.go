@@ -7,6 +7,17 @@ type Greedy struct{}
 
 var CompiledGreedy = Greedy{}
 
+// MinMatchLen is the minimum number of bytes any match can have.
+const GreedyMinMatchLen = 4
+
+// MaxMatchLen is the maximum number of bytes any match can have.
+// -1 means unbounded (pattern contains * or + quantifiers).
+const GreedyMaxMatchLen = -1
+
+func (Greedy) MatchLengthInfo() (minLen, maxLen int) {
+	return GreedyMinMatchLen, GreedyMaxMatchLen
+}
+
 func (Greedy) MatchString(input string) bool {
 	l := len(input)
 	// Thompson NFA state sets (bitset representation)

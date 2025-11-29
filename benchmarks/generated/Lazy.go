@@ -7,6 +7,17 @@ type Lazy struct{}
 
 var CompiledLazy = Lazy{}
 
+// MinMatchLen is the minimum number of bytes any match can have.
+const LazyMinMatchLen = 5
+
+// MaxMatchLen is the maximum number of bytes any match can have.
+// -1 means unbounded (pattern contains * or + quantifiers).
+const LazyMaxMatchLen = -1
+
+func (Lazy) MatchLengthInfo() (minLen, maxLen int) {
+	return LazyMinMatchLen, LazyMaxMatchLen
+}
+
 func (Lazy) MatchString(input string) bool {
 	l := len(input)
 	// Thompson NFA state sets (bitset representation)
