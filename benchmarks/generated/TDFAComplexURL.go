@@ -3517,7 +3517,7 @@ func (TDFAComplexURL) ReplaceAllBytesAppend(input []byte, template string, buf [
 		return append(buf, input...)
 	}
 
-	result := buf
+	result := buf[:0]
 	lastEnd := 0
 	var r TDFAComplexURLBytesResult
 

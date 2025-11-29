@@ -220,8 +220,8 @@ func (c *Compiler) generateReplaceAllBytesAppend() {
 			),
 			jen.Line(),
 
-			// Initialize
-			jen.Id("result").Op(":=").Id("buf"),
+			// Initialize - use buf[:0] to reset length while keeping capacity for zero-alloc
+			jen.Id("result").Op(":=").Id("buf").Index(jen.Op(":").Lit(0)),
 			jen.Id("lastEnd").Op(":=").Lit(0),
 			jen.Var().Id("r").Id(bytesStructName),
 			jen.Line(),
@@ -584,7 +584,8 @@ func (c *Compiler) generatePrecompiledReplaceAllBytesAppend(index int, tmpl *Par
 		).
 		Params(jen.Index().Byte()).
 		Block(
-			jen.Id("result").Op(":=").Id("buf"),
+			// Use buf[:0] to reset length while keeping capacity for zero-alloc
+			jen.Id("result").Op(":=").Id("buf").Index(jen.Op(":").Lit(0)),
 			jen.Id("lastEnd").Op(":=").Lit(0),
 			jen.Var().Id("r").Id(bytesStructName),
 			jen.Line(),

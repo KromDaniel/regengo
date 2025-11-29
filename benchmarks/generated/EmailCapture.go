@@ -1676,7 +1676,7 @@ func (EmailCapture) ReplaceAllBytesAppend(input []byte, template string, buf []b
 		return append(buf, input...)
 	}
 
-	result := buf
+	result := buf[:0]
 	lastEnd := 0
 	var r EmailCaptureBytesResult
 

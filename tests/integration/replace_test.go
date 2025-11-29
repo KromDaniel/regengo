@@ -141,6 +141,152 @@ replace github.com/KromDaniel/regengo => ` + projectRoot + `
 	}
 }
 
+func TestReplaceAppendZeroAlloc(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "email.go")
+
+	// Generate a pattern with pre-compiled replacers
+	opts := regengo.Options{
+		Pattern:    `(?P<user>\w+)@(?P<domain>\w+)\.(?P<tld>\w+)`,
+		Name:       "Email",
+		OutputFile: outputFile,
+		Package:    "main",
+		Replacers:  []string{"$user@REDACTED.$tld"},
+	}
+
+	if err := regengo.Compile(opts); err != nil {
+		t.Fatalf("compilation failed: %v", err)
+	}
+
+	// Get project root
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+
+	// Create a test program that verifies zero-allocation behavior
+	testProgram := `package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	input := []byte("test@example.com and admin@site.org")
+
+	// Create a buffer with a marker byte to verify reuse
+	buf := make([]byte, 1, 1024)
+	buf[0] = 0xFF // Marker byte
+	origCap := cap(buf)
+
+	// Perform replacement - pass buf[:0] to reset length
+	result := CompiledEmail.ReplaceAllBytesAppend0(input, buf[:0])
+
+	// Verify same backing array by checking:
+	// 1. The result capacity should match original (uses same backing array)
+	// 2. The original buffer should show the written data (backing array modified)
+	sameBackingArray := cap(result) == origCap && buf[0] == result[0]
+	if sameBackingArray {
+		fmt.Println("SameArray: true")
+	} else {
+		fmt.Printf("SameArray: false (cap result=%d, orig=%d)\n", cap(result), origCap)
+	}
+
+	// Verify correct output
+	expected := "test@REDACTED.com and admin@REDACTED.org"
+	if string(result) == expected {
+		fmt.Println("Output: correct")
+	} else {
+		fmt.Printf("Output: wrong, got %q\n", string(result))
+	}
+
+	// Test with nil buffer (should still work, just allocate)
+	resultNil := CompiledEmail.ReplaceAllBytesAppend0(input, nil)
+	if string(resultNil) == expected {
+		fmt.Println("NilBuf: correct")
+	} else {
+		fmt.Printf("NilBuf: wrong, got %q\n", string(resultNil))
+	}
+
+	// Test buffer reuse in loop (simulating zero-alloc pattern)
+	buf2 := make([]byte, 0, 1024)
+	for i := 0; i < 3; i++ {
+		buf2 = CompiledEmail.ReplaceAllBytesAppend0(input, buf2[:0])
+	}
+	if string(buf2) == expected {
+		fmt.Println("Loop: correct")
+	} else {
+		fmt.Printf("Loop: wrong, got %q\n", string(buf2))
+	}
+
+	// Test runtime version too - verify it uses the same backing array
+	buf3 := make([]byte, 1, 1024)
+	buf3[0] = 0xFE
+	runtimeResult := CompiledEmail.ReplaceAllBytesAppend(input, "$user@REDACTED.$tld", buf3[:0])
+	sameBackingArrayRuntime := cap(runtimeResult) == cap(buf3) && buf3[0] == runtimeResult[0]
+	if sameBackingArrayRuntime {
+		fmt.Println("RuntimeSameArray: true")
+	} else {
+		fmt.Println("RuntimeSameArray: false")
+	}
+}
+`
+
+	testFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+		t.Fatalf("failed to write test program: %v", err)
+	}
+
+	// Create go.mod
+	goMod := `module test
+
+go 1.21
+
+require github.com/KromDaniel/regengo v0.0.0
+
+replace github.com/KromDaniel/regengo => ` + projectRoot + `
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		t.Fatalf("failed to write go.mod: %v", err)
+	}
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
+	}
+
+	// Run the test program
+	cmd = exec.Command("go", "run", ".")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test program failed: %v\n%s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Verify results
+	zeroAllocExpected := []struct {
+		prefix string
+		want   string
+	}{
+		{"SameArray:", "SameArray: true"},
+		{"Output:", "Output: correct"},
+		{"NilBuf:", "NilBuf: correct"},
+		{"Loop:", "Loop: correct"},
+		{"RuntimeSameArray:", "RuntimeSameArray: true"},
+	}
+
+	for _, exp := range zeroAllocExpected {
+		if !containsLine(outputStr, exp.want) {
+			t.Errorf("expected output to contain %q, got:\n%s", exp.want, outputStr)
+		}
+	}
+}
+
 func containsLine(output, want string) bool {
 	for _, line := range splitLines(output) {
 		if line == want {

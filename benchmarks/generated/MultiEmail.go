@@ -1676,7 +1676,7 @@ func (MultiEmail) ReplaceAllBytesAppend(input []byte, template string, buf []byt
 		return append(buf, input...)
 	}
 
-	result := buf
+	result := buf[:0]
 	lastEnd := 0
 	var r MultiEmailBytesResult
 
