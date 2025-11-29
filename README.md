@@ -208,6 +208,7 @@ Advanced:
 
 ## Documentation
 
+- [API Comparison](docs/api-comparison.md) - Full regengo vs stdlib reference
 - [Streaming API](docs/streaming.md) - Processing large files and streams
 - [Analysis & Complexity](docs/analysis.md) - Engine selection and guarantees
 - [Unicode Support](docs/unicode.md) - Unicode character classes
@@ -218,11 +219,14 @@ Advanced:
 
 | stdlib `regexp` | regengo | Notes |
 |-----------------|---------|-------|
+| `[]string` / `[][]string` | Typed struct | Named field access vs index |
 | `MatchString(s)` | `MatchString(s)` | Identical |
-| `FindStringSubmatch(s)` | `FindString(s)` | Returns typed struct |
-| `FindAllStringSubmatch(s, n)` | `FindAllString(s, n)` | Returns `[]*Result` |
+| `FindStringSubmatch(s)` | `FindString(s)` | `[]string` → `*DateResult` |
+| `FindAllStringSubmatch(s, n)` | `FindAllString(s, n)` | `[][]string` → `[]*DateResult` |
+| `FindReaderIndex(r)` | `FindReader(r, cfg, cb)` | First only → all matches |
 | - | `FindStringReuse(s, r)` | Zero-alloc reuse |
-| - | `FindReader(r, cfg, cb)` | Streaming |
+
+See [Full API Comparison](docs/api-comparison.md) for complete method reference.
 
 ## License
 
