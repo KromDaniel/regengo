@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/KromDaniel/regengo/e2e/streaming/testdata"
 	stream "github.com/KromDaniel/regengo/stream"
+	"github.com/KromDaniel/regengo/tests/integration/streaming/testdata"
 )
 
 // Benchmarks compare streaming vs in-memory performance.

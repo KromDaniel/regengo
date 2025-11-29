@@ -17,7 +17,6 @@ coverage.*
 *.coverprofile
 profile.cov
 *_coverage.txt
-e2e_*.txt
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -54,9 +53,10 @@ examples/*.go
 
 benchmarks/mass_generated
 
-# E2E test generated files
-e2e/generated/
+# Test generated files
+tests/e2e/generated/
 
 # Built binaries
 bin/
 regengo
+/streaming

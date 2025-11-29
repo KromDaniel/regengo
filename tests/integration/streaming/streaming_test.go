@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/KromDaniel/regengo/e2e/streaming/testdata"
 	stream "github.com/KromDaniel/regengo/stream"
+	"github.com/KromDaniel/regengo/tests/integration/streaming/testdata"
 )
 
 // TestStreamingVsStdlib compares streaming results with stdlib regexp results

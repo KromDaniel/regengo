@@ -1,0 +1,23 @@
+# Codecov configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+ignore:
+  # Generated benchmark patterns
+  - "benchmarks/generated/**"
+  # Integration test fixtures (generated patterns)
+  - "tests/integration/streaming/testdata/**"
+  # Example files
+  - "examples/**"
+  # Scripts
+  - "scripts/**"
