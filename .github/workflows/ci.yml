@@ -54,8 +54,11 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run all tests with coverage
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+          # Run all tests with coverage for specific packages
+          go test -v -race -covermode=atomic \
+            -coverpkg=github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/pkg/regengo,github.com/KromDaniel/regengo/stream \
+            -coverprofile=coverage.txt \
+            ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

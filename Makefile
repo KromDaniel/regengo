@@ -26,7 +26,10 @@ install:
 ## test: Run all tests with coverage
 test:
 	@echo "Running tests with coverage..."
-	@go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+	@go test -v -race -covermode=atomic \
+		-coverpkg=github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/pkg/regengo,github.com/KromDaniel/regengo/stream \
+		-coverprofile=coverage.txt \
+		./...
 
 ## bench: Run benchmarks
 bench: bench-gen
