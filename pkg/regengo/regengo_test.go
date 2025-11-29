@@ -193,3 +193,145 @@ func TestCompileIntegration(t *testing.T) {
 		}
 	}
 }
+
+func TestCompileWithReplacers(t *testing.T) {
+	tests := []struct {
+		name        string
+		pattern     string
+		replacers   []string
+		wantErr     bool
+		errContains string
+	}{
+		// Valid cases
+		{
+			name:      "simple replacer with named capture",
+			pattern:   `(?P<x>\w+)`,
+			replacers: []string{"[$x]"},
+			wantErr:   false,
+		},
+		{
+			name:      "multiple replacers",
+			pattern:   `(?P<x>\w+)`,
+			replacers: []string{"$x", "[$0]", "REDACTED"},
+			wantErr:   false,
+		},
+		{
+			name:      "full match only - no captures",
+			pattern:   `\d+`,
+			replacers: []string{"[NUMBER]"},
+			wantErr:   false,
+		},
+		{
+			name:      "full match $0 - no captures",
+			pattern:   `\d+`,
+			replacers: []string{"[$0]"},
+			wantErr:   false,
+		},
+		{
+			name:      "no replacers - nil",
+			pattern:   `(?P<x>\w+)`,
+			replacers: nil,
+			wantErr:   false,
+		},
+		{
+			name:      "no replacers - empty slice",
+			pattern:   `(?P<x>\w+)`,
+			replacers: []string{},
+			wantErr:   false,
+		},
+		{
+			name:      "indexed capture",
+			pattern:   `(\w+)@(\w+)`,
+			replacers: []string{"$1 at $2"},
+			wantErr:   false,
+		},
+		{
+			name:      "escaped dollar",
+			pattern:   `\d+`,
+			replacers: []string{"$$100"},
+			wantErr:   false,
+		},
+
+		// Invalid cases
+		{
+			name:        "invalid named ref",
+			pattern:     `(?P<x>\w+)`,
+			replacers:   []string{"$y"},
+			wantErr:     true,
+			errContains: `"y"`,
+		},
+		{
+			name:        "invalid index - too high",
+			pattern:     `(?P<x>\w+)`,
+			replacers:   []string{"$2"},
+			wantErr:     true,
+			errContains: "capture group 2",
+		},
+		{
+			name:        "malformed template - unclosed brace",
+			pattern:     `(?P<x>\w+)`,
+			replacers:   []string{"${unclosed"},
+			wantErr:     true,
+			errContains: "unclosed",
+		},
+		{
+			name:        "malformed template - empty braces",
+			pattern:     `(?P<x>\w+)`,
+			replacers:   []string{"${}"},
+			wantErr:     true,
+			errContains: "empty",
+		},
+		{
+			name:        "second replacer invalid",
+			pattern:     `(?P<x>\w+)`,
+			replacers:   []string{"$x", "$invalid"},
+			wantErr:     true,
+			errContains: "replacer[1]",
+		},
+		{
+			name:        "index on pattern without captures",
+			pattern:     `\d+`,
+			replacers:   []string{"$1"},
+			wantErr:     true,
+			errContains: "capture group 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			outputFile := filepath.Join(tmpDir, "test.go")
+
+			opts := Options{
+				Pattern:    tt.pattern,
+				Name:       "Test",
+				OutputFile: outputFile,
+				Package:    "test",
+				Replacers:  tt.replacers,
+			}
+
+			err := Compile(opts)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error but got none")
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("error %q should contain %q", err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			// Verify output file exists for successful compilations
+			if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+				t.Error("output file was not created")
+			}
+		})
+	}
+}

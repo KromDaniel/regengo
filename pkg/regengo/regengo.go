@@ -52,6 +52,12 @@ type Options struct {
 	// Output is written to stderr and includes pattern analysis, engine selection,
 	// and code generation details.
 	Verbose bool
+
+	// Replacers defines replacement templates to pre-compile.
+	// Each template generates ReplaceAllString{N}, ReplaceAllBytes{N}, ReplaceAllBytesAppend{N} methods.
+	// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+	// Templates are validated at compile time against the pattern's capture groups.
+	Replacers []string
 }
 
 // Validate checks if the options are valid.
@@ -131,6 +137,7 @@ func Compile(opts Options) error {
 		ForceTDFA:        opts.ForceTDFA,
 		TDFAThreshold:    opts.TDFAThreshold,
 		Verbose:          opts.Verbose,
+		Replacers:        opts.Replacers,
 	}
 
 	c := compiler.NewCompiler(config)
