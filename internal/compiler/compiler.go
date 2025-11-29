@@ -330,6 +330,13 @@ func (c *Compiler) Generate() error {
 		if err := c.generateReplaceMethods(); err != nil {
 			return fmt.Errorf("failed to generate replace methods: %w", err)
 		}
+
+		// Generate pre-compiled Replace methods if Replacers were specified
+		if len(c.parsedReplacers) > 0 {
+			if err := c.generatePrecompiledReplaceMethods(); err != nil {
+				return fmt.Errorf("failed to generate pre-compiled replace methods: %w", err)
+			}
+		}
 	}
 
 	// Save to file
@@ -372,6 +379,13 @@ func (c *Compiler) parseAndValidateReplacers() error {
 		}
 	}
 
+	// Get capture names without the leading empty string (c.captureNames[0] is always "" for full match)
+	// ValidateTemplate/ResolveTemplate expect index 0 to be group 1's name
+	var captureNamesForTemplate []string
+	if len(c.captureNames) > 1 {
+		captureNamesForTemplate = c.captureNames[1:]
+	}
+
 	for i, template := range c.config.Replacers {
 		// Parse the template
 		parsed, err := ParseReplaceTemplate(template)
@@ -380,12 +394,12 @@ func (c *Compiler) parseAndValidateReplacers() error {
 		}
 
 		// Validate against pattern's capture groups
-		if err := ValidateTemplate(parsed, c.captureNames, numCaptures); err != nil {
+		if err := ValidateTemplate(parsed, captureNamesForTemplate, numCaptures); err != nil {
 			return fmt.Errorf("replacer[%d]: %w", i, err)
 		}
 
 		// Resolve named references to indices for code generation
-		resolved, err := ResolveTemplate(parsed, c.captureNames)
+		resolved, err := ResolveTemplate(parsed, captureNamesForTemplate)
 		if err != nil {
 			return fmt.Errorf("replacer[%d]: %w", i, err)
 		}

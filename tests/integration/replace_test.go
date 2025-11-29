@@ -186,3 +186,130 @@ func TestRuntimeReplaceEdgeCases(t *testing.T) {
 		t.Error("output file was not created")
 	}
 }
+
+func TestPrecompiledReplace(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "email.go")
+
+	// Generate a pattern with pre-compiled replacers
+	opts := regengo.Options{
+		Pattern:    `(?P<user>\w+)@(?P<domain>\w+)\.(?P<tld>\w+)`,
+		Name:       "Email",
+		OutputFile: outputFile,
+		Package:    "main",
+		Replacers:  []string{"$user@REDACTED.$tld", "[$0]", "FILTERED"},
+	}
+
+	if err := regengo.Compile(opts); err != nil {
+		t.Fatalf("compilation failed: %v", err)
+	}
+
+	// Get project root
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+
+	// Create a test program that uses the pre-compiled Replace methods
+	testProgram := `package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	input := "Contact alice@example.com and bob@test.org"
+
+	// Test pre-compiled replacer 0: $user@REDACTED.$tld
+	result0 := CompiledEmail.ReplaceAllString0(input)
+	fmt.Println("Replacer0:", result0)
+
+	// Test pre-compiled replacer 1: [$0]
+	result1 := CompiledEmail.ReplaceAllString1(input)
+	fmt.Println("Replacer1:", result1)
+
+	// Test pre-compiled replacer 2: FILTERED
+	result2 := CompiledEmail.ReplaceAllString2(input)
+	fmt.Println("Replacer2:", result2)
+
+	// Test ReplaceFirst variants
+	resultFirst0 := CompiledEmail.ReplaceFirstString0(input)
+	fmt.Println("First0:", resultFirst0)
+
+	// Test bytes variant
+	inputBytes := []byte("test@example.com")
+	resultBytes := CompiledEmail.ReplaceAllBytes0(inputBytes)
+	fmt.Println("Bytes0:", string(resultBytes))
+
+	// Test BytesAppend variant
+	buf := make([]byte, 0, 100)
+	resultAppend := CompiledEmail.ReplaceAllBytesAppend0(inputBytes, buf)
+	fmt.Println("Append0:", string(resultAppend))
+
+	// Verify pre-compiled matches runtime for same template
+	runtime := CompiledEmail.ReplaceAllString(input, "$user@REDACTED.$tld")
+	precompiled := CompiledEmail.ReplaceAllString0(input)
+	if runtime == precompiled {
+		fmt.Println("Match: runtime equals precompiled")
+	} else {
+		fmt.Printf("Mismatch: runtime=%q precompiled=%q\n", runtime, precompiled)
+	}
+}
+`
+
+	testFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+		t.Fatalf("failed to write test program: %v", err)
+	}
+
+	// Create go.mod
+	goMod := `module test
+
+go 1.21
+
+require github.com/KromDaniel/regengo v0.0.0
+
+replace github.com/KromDaniel/regengo => ` + projectRoot + `
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		t.Fatalf("failed to write go.mod: %v", err)
+	}
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
+	}
+
+	// Run the test program
+	cmd = exec.Command("go", "run", ".")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test program failed: %v\n%s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Verify results
+	expected := []struct {
+		prefix string
+		want   string
+	}{
+		{"Replacer0:", "Replacer0: Contact alice@REDACTED.com and bob@REDACTED.org"},
+		{"Replacer1:", "Replacer1: Contact [alice@example.com] and [bob@test.org]"},
+		{"Replacer2:", "Replacer2: Contact FILTERED and FILTERED"},
+		{"First0:", "First0: Contact alice@REDACTED.com and bob@test.org"},
+		{"Bytes0:", "Bytes0: test@REDACTED.com"},
+		{"Append0:", "Append0: test@REDACTED.com"},
+		{"Match:", "Match: runtime equals precompiled"},
+	}
+
+	for _, exp := range expected {
+		if !containsLine(outputStr, exp.want) {
+			t.Errorf("expected output to contain %q, got:\n%s", exp.want, outputStr)
+		}
+	}
+}

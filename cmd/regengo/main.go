@@ -10,6 +10,18 @@ import (
 	"github.com/KromDaniel/regengo/pkg/regengo"
 )
 
+// arrayFlags allows multiple -replacer flags to be passed
+type arrayFlags []string
+
+func (a *arrayFlags) String() string {
+	return strings.Join(*a, ", ")
+}
+
+func (a *arrayFlags) Set(value string) error {
+	*a = append(*a, value)
+	return nil
+}
+
 var (
 	pattern       = flag.String("pattern", "", "Regular expression pattern to compile")
 	name          = flag.String("name", "", "Name prefix for generated functions")
@@ -26,7 +38,12 @@ var (
 	analyze       = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
 	version       = flag.Bool("version", false, "Print version information")
 	helpFlag      = flag.Bool("help", false, "Show help message")
+	replacers     arrayFlags
 )
+
+func init() {
+	flag.Var(&replacers, "replacer", "Pre-compiled replacement template (can be used multiple times)")
+}
 
 const (
 	appVersion = "1.0.0"
@@ -112,6 +129,7 @@ func main() {
 		ForceTNFA:        *forceTNFA,
 		ForceTDFA:        *forceTDFA,
 		TDFAThreshold:    *tdfaThreshold,
+		Replacers:        replacers,
 	}
 
 	if err := regengo.Compile(opts); err != nil {
@@ -169,6 +187,10 @@ Options:
   -tdfa-threshold int
       Max DFA states before falling back to other engines (default: 500)
       Higher values allow more complex patterns to use TDFA
+  -replacer string
+      Pre-compiled replacement template (can be used multiple times)
+      Generates optimized ReplaceAllString0, ReplaceAllString1, etc.
+      Example: -replacer '$user@REDACTED.$tld' -replacer '[$0]'
   -analyze
       Analyze pattern and output labels as JSON (no code generation)
       Only requires -pattern flag. Outputs feature_labels and engine_labels.

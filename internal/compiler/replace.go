@@ -462,3 +462,328 @@ func (c *Compiler) generateNamedCaptureLookupBytes(matchVar *jen.Statement) jen.
 
 	return jen.Switch(jen.Id("seg").Dot("CaptureName")).Block(cases...)
 }
+
+// generatePrecompiledReplaceMethods generates optimized Replace methods for pre-compiled templates.
+// These have zero runtime template parsing and use direct struct field access.
+func (c *Compiler) generatePrecompiledReplaceMethods() error {
+	for i, tmpl := range c.parsedReplacers {
+		// Generate ReplaceAllString{N}
+		c.generatePrecompiledReplaceAllString(i, tmpl)
+
+		// Generate ReplaceAllBytes{N}
+		c.generatePrecompiledReplaceAllBytes(i, tmpl)
+
+		// Generate ReplaceAllBytesAppend{N}
+		c.generatePrecompiledReplaceAllBytesAppend(i, tmpl)
+
+		// Generate ReplaceFirstString{N}
+		c.generatePrecompiledReplaceFirstString(i, tmpl)
+
+		// Generate ReplaceFirstBytes{N}
+		c.generatePrecompiledReplaceFirstBytes(i, tmpl)
+	}
+
+	return nil
+}
+
+// generatePrecompiledReplaceAllString generates an optimized ReplaceAllString{N} method.
+func (c *Compiler) generatePrecompiledReplaceAllString(index int, tmpl *ParsedTemplate) {
+	structName := fmt.Sprintf("%sResult", c.config.Name)
+	methodName := fmt.Sprintf("ReplaceAllString%d", index)
+
+	c.file.Comment(fmt.Sprintf("%s replaces all matches with pre-compiled template: %s", methodName, tmpl.Original))
+	c.method(methodName).
+		Params(jen.Id("input").String()).
+		Params(jen.String()).
+		Block(
+			jen.Var().Id("result").Qual("strings", "Builder"),
+			jen.Id("lastEnd").Op(":=").Lit(0),
+			jen.Var().Id("r").Id(structName),
+			jen.Line(),
+
+			jen.Id("remaining").Op(":=").Id("input"),
+			jen.Id("offset").Op(":=").Lit(0),
+			jen.Line(),
+
+			jen.For().Block(
+				jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
+					jen.Id("remaining"),
+					jen.Op("&").Id("r"),
+				),
+				jen.If(jen.Op("!").Id("ok")).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchIdx").Op(":=").Qual("strings", "Index").Call(jen.Id("remaining"), jen.Id("match").Dot("Match")),
+				jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchStart").Op(":=").Id("offset").Op("+").Id("matchIdx"),
+				jen.Id("matchEnd").Op(":=").Id("matchStart").Op("+").Len(jen.Id("match").Dot("Match")),
+				jen.Line(),
+
+				jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("lastEnd").Op(":").Id("matchStart"))),
+				jen.Line(),
+
+				// Inlined template expansion
+				c.generateInlinedTemplateExpansionString(tmpl, jen.Id("match")),
+
+				jen.Id("lastEnd").Op("=").Id("matchEnd"),
+				jen.If(jen.Len(jen.Id("match").Dot("Match")).Op(">").Lit(0)).Block(
+					jen.Id("remaining").Op("=").Id("input").Index(jen.Id("matchEnd").Op(":")),
+					jen.Id("offset").Op("=").Id("matchEnd"),
+				).Else().Block(
+					jen.If(jen.Id("matchEnd").Op("<").Len(jen.Id("input"))).Block(
+						jen.Id("remaining").Op("=").Id("input").Index(jen.Id("matchEnd").Op("+").Lit(1).Op(":")),
+						jen.Id("offset").Op("=").Id("matchEnd").Op("+").Lit(1),
+					).Else().Block(
+						jen.Break(),
+					),
+				),
+			),
+			jen.Line(),
+
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("lastEnd").Op(":"))),
+			jen.Return(jen.Id("result").Dot("String").Call()),
+		)
+	c.file.Line()
+}
+
+// generatePrecompiledReplaceAllBytes generates an optimized ReplaceAllBytes{N} method.
+func (c *Compiler) generatePrecompiledReplaceAllBytes(index int, tmpl *ParsedTemplate) {
+	methodName := fmt.Sprintf("ReplaceAllBytes%d", index)
+	appendMethodName := fmt.Sprintf("ReplaceAllBytesAppend%d", index)
+
+	c.file.Comment(fmt.Sprintf("%s replaces all matches with pre-compiled template: %s", methodName, tmpl.Original))
+	c.method(methodName).
+		Params(jen.Id("input").Index().Byte()).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Return(jen.Id(c.config.Name).Values().Dot(appendMethodName).Call(
+				jen.Id("input"),
+				jen.Nil(),
+			)),
+		)
+	c.file.Line()
+}
+
+// generatePrecompiledReplaceAllBytesAppend generates an optimized ReplaceAllBytesAppend{N} method.
+func (c *Compiler) generatePrecompiledReplaceAllBytesAppend(index int, tmpl *ParsedTemplate) {
+	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+	methodName := fmt.Sprintf("ReplaceAllBytesAppend%d", index)
+
+	c.file.Comment(fmt.Sprintf("%s replaces all matches and appends to buf.", methodName))
+	c.file.Comment(fmt.Sprintf("Pre-compiled template: %s", tmpl.Original))
+	c.method(methodName).
+		Params(
+			jen.Id("input").Index().Byte(),
+			jen.Id("buf").Index().Byte(),
+		).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Id("result").Op(":=").Id("buf"),
+			jen.Id("lastEnd").Op(":=").Lit(0),
+			jen.Var().Id("r").Id(bytesStructName),
+			jen.Line(),
+
+			jen.Id("remaining").Op(":=").Id("input"),
+			jen.Id("offset").Op(":=").Lit(0),
+			jen.Line(),
+
+			jen.For().Block(
+				jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
+					jen.Id("remaining"),
+					jen.Op("&").Id("r"),
+				),
+				jen.If(jen.Op("!").Id("ok")).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchIdx").Op(":=").Qual("bytes", "Index").Call(jen.Id("remaining"), jen.Id("match").Dot("Match")),
+				jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchStart").Op(":=").Id("offset").Op("+").Id("matchIdx"),
+				jen.Id("matchEnd").Op(":=").Id("matchStart").Op("+").Len(jen.Id("match").Dot("Match")),
+				jen.Line(),
+
+				jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("lastEnd").Op(":").Id("matchStart")).Op("...")),
+				jen.Line(),
+
+				// Inlined template expansion
+				c.generateInlinedTemplateExpansionBytes(tmpl, jen.Id("match")),
+
+				jen.Id("lastEnd").Op("=").Id("matchEnd"),
+				jen.If(jen.Len(jen.Id("match").Dot("Match")).Op(">").Lit(0)).Block(
+					jen.Id("remaining").Op("=").Id("input").Index(jen.Id("matchEnd").Op(":")),
+					jen.Id("offset").Op("=").Id("matchEnd"),
+				).Else().Block(
+					jen.If(jen.Id("matchEnd").Op("<").Len(jen.Id("input"))).Block(
+						jen.Id("remaining").Op("=").Id("input").Index(jen.Id("matchEnd").Op("+").Lit(1).Op(":")),
+						jen.Id("offset").Op("=").Id("matchEnd").Op("+").Lit(1),
+					).Else().Block(
+						jen.Break(),
+					),
+				),
+			),
+			jen.Line(),
+
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("lastEnd").Op(":")).Op("...")),
+			jen.Return(jen.Id("result")),
+		)
+	c.file.Line()
+}
+
+// generatePrecompiledReplaceFirstString generates an optimized ReplaceFirstString{N} method.
+func (c *Compiler) generatePrecompiledReplaceFirstString(index int, tmpl *ParsedTemplate) {
+	structName := fmt.Sprintf("%sResult", c.config.Name)
+	methodName := fmt.Sprintf("ReplaceFirstString%d", index)
+
+	c.file.Comment(fmt.Sprintf("%s replaces only the first match with pre-compiled template: %s", methodName, tmpl.Original))
+	c.method(methodName).
+		Params(jen.Id("input").String()).
+		Params(jen.String()).
+		Block(
+			jen.Var().Id("r").Id(structName),
+			jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
+				jen.Id("input"),
+				jen.Op("&").Id("r"),
+			),
+			jen.If(jen.Op("!").Id("ok")).Block(
+				jen.Return(jen.Id("input")),
+			),
+			jen.Line(),
+
+			jen.Id("matchIdx").Op(":=").Qual("strings", "Index").Call(jen.Id("input"), jen.Id("match").Dot("Match")),
+			jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+				jen.Return(jen.Id("input")),
+			),
+			jen.Line(),
+
+			jen.Var().Id("result").Qual("strings", "Builder"),
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Op(":").Id("matchIdx"))),
+			jen.Line(),
+
+			// Inlined template expansion
+			c.generateInlinedTemplateExpansionString(tmpl, jen.Id("match")),
+
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("matchIdx").Op("+").Len(jen.Id("match").Dot("Match")).Op(":"))),
+			jen.Return(jen.Id("result").Dot("String").Call()),
+		)
+	c.file.Line()
+}
+
+// generatePrecompiledReplaceFirstBytes generates an optimized ReplaceFirstBytes{N} method.
+func (c *Compiler) generatePrecompiledReplaceFirstBytes(index int, tmpl *ParsedTemplate) {
+	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+	methodName := fmt.Sprintf("ReplaceFirstBytes%d", index)
+
+	c.file.Comment(fmt.Sprintf("%s replaces only the first match with pre-compiled template: %s", methodName, tmpl.Original))
+	c.method(methodName).
+		Params(jen.Id("input").Index().Byte()).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Var().Id("r").Id(bytesStructName),
+			jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
+				jen.Id("input"),
+				jen.Op("&").Id("r"),
+			),
+			jen.If(jen.Op("!").Id("ok")).Block(
+				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
+			),
+			jen.Line(),
+
+			jen.Id("matchIdx").Op(":=").Qual("bytes", "Index").Call(jen.Id("input"), jen.Id("match").Dot("Match")),
+			jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
+			),
+			jen.Line(),
+
+			jen.Var().Id("result").Index().Byte(),
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Op(":").Id("matchIdx")).Op("...")),
+			jen.Line(),
+
+			// Inlined template expansion
+			c.generateInlinedTemplateExpansionBytes(tmpl, jen.Id("match")),
+
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("matchIdx").Op("+").Len(jen.Id("match").Dot("Match")).Op(":")).Op("...")),
+			jen.Return(jen.Id("result")),
+		)
+	c.file.Line()
+}
+
+// generateInlinedTemplateExpansionString generates inlined code to expand a pre-compiled template.
+// Unlike runtime expansion, this doesn't loop - it generates direct code for each segment.
+func (c *Compiler) generateInlinedTemplateExpansionString(tmpl *ParsedTemplate, matchVar *jen.Statement) jen.Code {
+	var stmts []jen.Code
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case SegmentLiteral:
+			stmts = append(stmts, jen.Id("result").Dot("WriteString").Call(jen.Lit(seg.Literal)))
+		case SegmentFullMatch:
+			stmts = append(stmts, jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot("Match")))
+		case SegmentCaptureIndex:
+			fieldName := c.getCaptureFieldName(seg.CaptureIndex)
+			stmts = append(stmts, jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot(fieldName)))
+		case SegmentCaptureName:
+			// Named captures were resolved to indices in parseAndValidateReplacers
+			// This shouldn't happen, but handle it anyway
+			fieldName := codegen.UpperFirst(seg.CaptureName)
+			stmts = append(stmts, jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot(fieldName)))
+		}
+	}
+
+	if len(stmts) == 0 {
+		return jen.Comment("Empty template")
+	}
+
+	// Return as a block of statements
+	return jen.Block(stmts...)
+}
+
+// generateInlinedTemplateExpansionBytes generates inlined code to expand a pre-compiled template for bytes.
+func (c *Compiler) generateInlinedTemplateExpansionBytes(tmpl *ParsedTemplate, matchVar *jen.Statement) jen.Code {
+	var stmts []jen.Code
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case SegmentLiteral:
+			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), jen.Lit(seg.Literal).Op("...")))
+		case SegmentFullMatch:
+			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot("Match").Op("...")))
+		case SegmentCaptureIndex:
+			fieldName := c.getCaptureFieldName(seg.CaptureIndex)
+			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot(fieldName).Op("...")))
+		case SegmentCaptureName:
+			fieldName := codegen.UpperFirst(seg.CaptureName)
+			stmts = append(stmts, jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot(fieldName).Op("...")))
+		}
+	}
+
+	if len(stmts) == 0 {
+		return jen.Comment("Empty template")
+	}
+
+	return jen.Block(stmts...)
+}
+
+// getCaptureFieldName returns the struct field name for a capture group by index.
+func (c *Compiler) getCaptureFieldName(captureIndex int) string {
+	if captureIndex == 0 {
+		return "Match"
+	}
+	if captureIndex < len(c.captureNames) {
+		name := c.captureNames[captureIndex]
+		if name != "" {
+			return codegen.UpperFirst(name)
+		}
+	}
+	return fmt.Sprintf("Group%d", captureIndex)
+}
