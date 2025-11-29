@@ -946,3 +946,91 @@ func TestValidateAndResolve_Integration(t *testing.T) {
 		}
 	}
 }
+
+func TestParsedTemplate_IsLiteralOnly(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		want     bool
+	}{
+		{"empty", "", true},
+		{"literal only", "REDACTED", true},
+		{"multiple literals via escape", "$$user$$domain", true}, // $$ becomes literal $
+		{"full match", "$0", false},
+		{"full match with literal", "[$0]", false},
+		{"indexed capture", "$1", false},
+		{"named capture", "$user", false},
+		{"mixed", "prefix-$1-suffix", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := ParseReplaceTemplate(tt.template)
+			if err != nil {
+				t.Fatalf("ParseReplaceTemplate failed: %v", err)
+			}
+			if got := parsed.IsLiteralOnly(); got != tt.want {
+				t.Errorf("IsLiteralOnly() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParsedTemplate_UsesOnlyFullMatch(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		want     bool
+	}{
+		{"empty", "", true},
+		{"literal only", "REDACTED", true},
+		{"full match only", "$0", true},
+		{"full match with literals", "[$0]", true},
+		{"multiple full matches", "$0-$0", true},
+		{"indexed capture", "$1", false},
+		{"named capture", "$user", false},
+		{"full match and indexed", "$0-$1", false},
+		{"full match and named", "[$0] by $user", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := ParseReplaceTemplate(tt.template)
+			if err != nil {
+				t.Fatalf("ParseReplaceTemplate failed: %v", err)
+			}
+			if got := parsed.UsesOnlyFullMatch(); got != tt.want {
+				t.Errorf("UsesOnlyFullMatch() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParsedTemplate_CombinedLiteral(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		want     string
+	}{
+		{"empty", "", ""},
+		{"single literal", "REDACTED", "REDACTED"},
+		{"escaped dollars", "$$100", "$100"},
+		{"multiple escaped", "$$a$$b$$c", "$a$b$c"},
+		{"complex literal", "prefix-$$-suffix", "prefix-$-suffix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := ParseReplaceTemplate(tt.template)
+			if err != nil {
+				t.Fatalf("ParseReplaceTemplate failed: %v", err)
+			}
+			if !parsed.IsLiteralOnly() {
+				t.Skip("template is not literal-only")
+			}
+			if got := parsed.CombinedLiteral(); got != tt.want {
+				t.Errorf("CombinedLiteral() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

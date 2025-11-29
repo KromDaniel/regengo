@@ -287,6 +287,169 @@ replace github.com/KromDaniel/regengo => ` + projectRoot + `
 	}
 }
 
+func TestSpecialCaseOptimizations(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "pattern.go")
+
+	// Generate a pattern with special case replacers:
+	// - Literal-only template (FILTERED)
+	// - Full-match-only template ([$0])
+	// - Regular template with captures ($user@REDACTED.$tld)
+	opts := regengo.Options{
+		Pattern:    `(?P<user>\w+)@(?P<domain>\w+)\.(?P<tld>\w+)`,
+		Name:       "Pattern",
+		OutputFile: outputFile,
+		Package:    "main",
+		Replacers:  []string{"FILTERED", "[$0]", "$user@REDACTED.$tld"},
+	}
+
+	if err := regengo.Compile(opts); err != nil {
+		t.Fatalf("compilation failed: %v", err)
+	}
+
+	// Read generated file and verify optimization comments
+	content, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("failed to read generated file: %v", err)
+	}
+	contentStr := string(content)
+
+	// Check for optimization comments in generated code
+	if !containsString(contentStr, "Optimized: literal-only template") {
+		t.Error("expected literal-only optimization comment in generated code")
+	}
+	if !containsString(contentStr, "Optimized: uses only full match") {
+		t.Error("expected full-match-only optimization comment in generated code")
+	}
+
+	// Get project root
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+
+	// Create a test program that verifies optimized replacers work correctly
+	testProgram := `package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	input := "Contact alice@example.com and bob@test.org"
+
+	// Test literal-only replacer (optimized)
+	result0 := CompiledPattern.ReplaceAllString0(input)
+	if result0 == "Contact FILTERED and FILTERED" {
+		fmt.Println("LiteralOnly: correct")
+	} else {
+		fmt.Printf("LiteralOnly: wrong, got %q\n", result0)
+	}
+
+	// Test full-match-only replacer (optimized)
+	result1 := CompiledPattern.ReplaceAllString1(input)
+	if result1 == "Contact [alice@example.com] and [bob@test.org]" {
+		fmt.Println("FullMatchOnly: correct")
+	} else {
+		fmt.Printf("FullMatchOnly: wrong, got %q\n", result1)
+	}
+
+	// Test regular replacer with captures
+	result2 := CompiledPattern.ReplaceAllString2(input)
+	if result2 == "Contact alice@REDACTED.com and bob@REDACTED.org" {
+		fmt.Println("WithCaptures: correct")
+	} else {
+		fmt.Printf("WithCaptures: wrong, got %q\n", result2)
+	}
+
+	// Test bytes variants too
+	inputBytes := []byte("test@example.com")
+
+	resultBytes0 := CompiledPattern.ReplaceAllBytes0(inputBytes)
+	if string(resultBytes0) == "FILTERED" {
+		fmt.Println("BytesLiteralOnly: correct")
+	} else {
+		fmt.Printf("BytesLiteralOnly: wrong, got %q\n", string(resultBytes0))
+	}
+
+	resultBytes1 := CompiledPattern.ReplaceAllBytes1(inputBytes)
+	if string(resultBytes1) == "[test@example.com]" {
+		fmt.Println("BytesFullMatchOnly: correct")
+	} else {
+		fmt.Printf("BytesFullMatchOnly: wrong, got %q\n", string(resultBytes1))
+	}
+}
+`
+
+	testFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+		t.Fatalf("failed to write test program: %v", err)
+	}
+
+	// Create go.mod
+	goMod := `module test
+
+go 1.21
+
+require github.com/KromDaniel/regengo v0.0.0
+
+replace github.com/KromDaniel/regengo => ` + projectRoot + `
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		t.Fatalf("failed to write go.mod: %v", err)
+	}
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
+	}
+
+	// Run the test program
+	cmd = exec.Command("go", "run", ".")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test program failed: %v\n%s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Verify results
+	expectedResults := []struct {
+		prefix string
+		want   string
+	}{
+		{"LiteralOnly:", "LiteralOnly: correct"},
+		{"FullMatchOnly:", "FullMatchOnly: correct"},
+		{"WithCaptures:", "WithCaptures: correct"},
+		{"BytesLiteralOnly:", "BytesLiteralOnly: correct"},
+		{"BytesFullMatchOnly:", "BytesFullMatchOnly: correct"},
+	}
+
+	for _, exp := range expectedResults {
+		if !containsLine(outputStr, exp.want) {
+			t.Errorf("expected output to contain %q, got:\n%s", exp.want, outputStr)
+		}
+	}
+}
+
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func containsLine(output, want string) bool {
 	for _, line := range splitLines(output) {
 		if line == want {

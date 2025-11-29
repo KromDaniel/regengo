@@ -721,8 +721,28 @@ func (c *Compiler) generatePrecompiledReplaceFirstBytes(index int, tmpl *ParsedT
 
 // generateInlinedTemplateExpansionString generates inlined code to expand a pre-compiled template.
 // Unlike runtime expansion, this doesn't loop - it generates direct code for each segment.
+// Optimizations:
+//   - Literal-only templates: combines all literals into a single WriteString call
+//   - Full-match-only templates: only accesses match.Match, no capture field access
 func (c *Compiler) generateInlinedTemplateExpansionString(tmpl *ParsedTemplate, matchVar *jen.Statement) jen.Code {
+	// Optimization: literal-only templates use a single combined string
+	if tmpl.IsLiteralOnly() {
+		combined := tmpl.CombinedLiteral()
+		if combined == "" {
+			return jen.Comment("Empty template - literal only (optimized)")
+		}
+		return jen.Block(
+			jen.Comment("Optimized: literal-only template"),
+			jen.Id("result").Dot("WriteString").Call(jen.Lit(combined)),
+		)
+	}
+
 	var stmts []jen.Code
+
+	// Add optimization comment for full-match-only templates
+	if tmpl.UsesOnlyFullMatch() {
+		stmts = append(stmts, jen.Comment("Optimized: uses only full match, no capture field access"))
+	}
 
 	for _, seg := range tmpl.Segments {
 		switch seg.Type {
@@ -750,8 +770,28 @@ func (c *Compiler) generateInlinedTemplateExpansionString(tmpl *ParsedTemplate, 
 }
 
 // generateInlinedTemplateExpansionBytes generates inlined code to expand a pre-compiled template for bytes.
+// Optimizations:
+//   - Literal-only templates: combines all literals into a single append call
+//   - Full-match-only templates: only accesses match.Match, no capture field access
 func (c *Compiler) generateInlinedTemplateExpansionBytes(tmpl *ParsedTemplate, matchVar *jen.Statement) jen.Code {
+	// Optimization: literal-only templates use a single combined string
+	if tmpl.IsLiteralOnly() {
+		combined := tmpl.CombinedLiteral()
+		if combined == "" {
+			return jen.Comment("Empty template - literal only (optimized)")
+		}
+		return jen.Block(
+			jen.Comment("Optimized: literal-only template"),
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Lit(combined).Op("...")),
+		)
+	}
+
 	var stmts []jen.Code
+
+	// Add optimization comment for full-match-only templates
+	if tmpl.UsesOnlyFullMatch() {
+		stmts = append(stmts, jen.Comment("Optimized: uses only full match, no capture field access"))
+	}
 
 	for _, seg := range tmpl.Segments {
 		switch seg.Type {

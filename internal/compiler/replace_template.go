@@ -34,6 +34,41 @@ type ParsedTemplate struct {
 	Segments []TemplateSegment
 }
 
+// IsLiteralOnly returns true if the template contains only literal text
+// (no capture references at all). This allows skipping capture extraction entirely.
+func (t *ParsedTemplate) IsLiteralOnly() bool {
+	for _, seg := range t.Segments {
+		if seg.Type != SegmentLiteral {
+			return false
+		}
+	}
+	return true
+}
+
+// UsesOnlyFullMatch returns true if the template uses only literals and $0.
+// This allows skipping individual capture extraction and using only match.Match.
+func (t *ParsedTemplate) UsesOnlyFullMatch() bool {
+	for _, seg := range t.Segments {
+		if seg.Type == SegmentCaptureIndex || seg.Type == SegmentCaptureName {
+			return false
+		}
+	}
+	return true // Only literals and $0
+}
+
+// CombinedLiteral returns all literal segments combined into a single string.
+// This is useful for literal-only templates to optimize into a single write operation.
+// Should only be called when IsLiteralOnly() returns true.
+func (t *ParsedTemplate) CombinedLiteral() string {
+	var result strings.Builder
+	for _, seg := range t.Segments {
+		if seg.Type == SegmentLiteral {
+			result.WriteString(seg.Literal)
+		}
+	}
+	return result.String()
+}
+
 // ParseReplaceTemplate parses a replacement template string into segments.
 // Template syntax:
 //   - $0 or ${0}: full match
