@@ -217,16 +217,23 @@ Advanced:
 
 ## API Comparison
 
+Regengo returns typed structs with named fields instead of `[]string` slices—access `result.Year` instead of `match[1]`.
+
 | stdlib `regexp` | regengo | Notes |
 |-----------------|---------|-------|
-| `[]string` / `[][]string` | Typed struct | Named field access vs index |
 | `MatchString(s)` | `MatchString(s)` | Identical |
-| `FindStringSubmatch(s)` | `FindString(s)` | `[]string` → `*DateResult` |
-| `FindAllStringSubmatch(s, n)` | `FindAllString(s, n)` | `[][]string` → `[]*DateResult` |
-| `FindReaderIndex(r)` | `FindReader(r, cfg, cb)` | First only → all matches |
-| - | `FindStringReuse(s, r)` | Zero-alloc reuse |
+| `MatchBytes(b)` | `MatchBytes(b)` | Identical |
+| `FindStringSubmatch(s)` | `FindString(s)` | `[]string` → `*Result` |
+| `FindSubmatch(b)` | `FindBytes(b)` | `[][]byte` → `*BytesResult` |
+| `FindAllStringSubmatch(s, n)` | `FindAllString(s, n)` | `[][]string` → `[]*Result` |
+| `FindAllSubmatch(b, n)` | `FindAllBytes(b, n)` | `[][][]byte` → `[]*BytesResult` |
+| `FindReaderIndex(r)` | `FindReader(r, cfg, cb)` | First match → all matches |
+| - | `FindReaderCount(r, cfg)` | Count matches in stream |
+| - | `FindReaderFirst(r, cfg)` | First match with captures |
+| - | `Find*Reuse(...)` | Zero-alloc result reuse |
+| - | `FindAll*Append(...)` | Append to existing slice |
 
-See [Full API Comparison](docs/api-comparison.md) for complete method reference.
+See [Full API Comparison](docs/api-comparison.md) for complete reference with examples.
 
 ## License
 
