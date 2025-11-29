@@ -220,12 +220,12 @@ func countTests(output string) int {
 // This is needed for the replace directive so that generated tests can import
 // the stream package used by streaming tests.
 func getRegengoModulePath() (string, error) {
-	// The tests are in the testdata directory, so go up one level
+	// The tests are in tests/e2e/, so go up two levels to reach project root
 	// Use runtime.Caller to get the current file's directory
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		return "", fmt.Errorf("failed to get current file path")
 	}
 	dir := filepath.Dir(file)
-	return filepath.Abs(filepath.Join(dir, ".."))
+	return filepath.Abs(filepath.Join(dir, "..", ".."))
 }
