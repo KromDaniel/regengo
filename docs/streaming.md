@@ -68,6 +68,8 @@ type Config struct {
 | BufferSize | 64KB | Minimum enforced: 64KB or 2*MaxMatchLength (whichever is larger) |
 | MaxLeftover | Pattern-dependent | Bounded: 10*MaxMatchLength (clamped to 1KB-1MB). Unbounded: 1MB |
 
+> **Warning for unbounded patterns:** For patterns like `.*` or `.+`, matches longer than `MaxLeftover` (default 1MB) that cross chunk boundaries may be truncated or missed entirely. If you expect very long matches, increase `MaxLeftover` accordingly.
+
 ### Buffer Size Guidelines
 
 | Use Case | Recommended Size |

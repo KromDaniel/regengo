@@ -184,6 +184,101 @@ func TestStreamingNoMatches(t *testing.T) {
 	}
 }
 
+// TestStreamingLargeInputBoundary verifies precise match handling across chunk boundaries.
+// This test uses input > 64KB (the minimum buffer size) to ensure matches crossing
+// chunk boundaries are correctly detected.
+func TestStreamingLargeInputBoundary(t *testing.T) {
+	// Create a 100KB input with dates at known positions
+	const totalSize = 100 * 1024 // 100KB
+
+	// Place dates at specific positions, including near and across the 64KB boundary
+	// Each date is 10 bytes, so positions must be at least 10 apart
+	datePositions := []int{
+		100,   // early in the stream
+		32768, // 32KB - middle of first chunk
+		65530, // just before 64KB boundary (date spans 65530-65540, crossing 65536)
+		65550, // just after boundary-crossing date
+		70000, // well into second chunk
+		99000, // near end
+	}
+
+	// Build input: fill with 'x', insert dates at positions
+	input := make([]byte, totalSize)
+	for i := range input {
+		input[i] = 'x'
+	}
+
+	dates := []string{
+		"2024-01-01",
+		"2024-02-02",
+		"2024-03-03",
+		"2024-04-04",
+		"2024-05-05",
+		"2024-06-06",
+	}
+
+	for i, pos := range datePositions {
+		copy(input[pos:], dates[i])
+	}
+
+	inputStr := string(input)
+
+	// Get expected results from stdlib
+	stdlibRe := regexp.MustCompile(`(\d{4}-\d{2}-\d{2})`)
+	expectedMatches := stdlibRe.FindAllString(inputStr, -1)
+	expectedIndices := stdlibRe.FindAllStringIndex(inputStr, -1)
+
+	// Verify we have the expected number of dates
+	if len(expectedMatches) != len(dates) {
+		t.Fatalf("Test setup error: expected %d dates, stdlib found %d", len(dates), len(expectedMatches))
+	}
+
+	// Stream with minimum buffer size to force boundary handling
+	cfg := stream.Config{
+		BufferSize: 64 * 1024, // Force minimum buffer size
+	}
+
+	var results []string
+	var offsets []int64
+	err := testdata.CompiledDatePattern.FindReader(
+		strings.NewReader(inputStr),
+		cfg,
+		func(m stream.Match[*testdata.DatePatternBytesResult]) bool {
+			results = append(results, string(m.Result.Match))
+			offsets = append(offsets, m.StreamOffset)
+			return true
+		},
+	)
+	if err != nil {
+		t.Fatalf("FindReader error: %v", err)
+	}
+
+	// Verify exact count
+	if len(results) != len(expectedMatches) {
+		t.Errorf("Count mismatch: got %d, want %d", len(results), len(expectedMatches))
+		t.Logf("Got matches: %v", results)
+		t.Logf("Expected: %v", expectedMatches)
+		return
+	}
+
+	// Verify exact content and positions
+	for i := range results {
+		if results[i] != expectedMatches[i] {
+			t.Errorf("Match[%d] content mismatch: got %q, want %q", i, results[i], expectedMatches[i])
+		}
+		if offsets[i] != int64(expectedIndices[i][0]) {
+			t.Errorf("Match[%d] offset mismatch: got %d, want %d", i, offsets[i], expectedIndices[i][0])
+		}
+	}
+
+	// Specifically verify the boundary-crossing match
+	boundaryMatchIdx := 2 // The date at position 65530
+	if offsets[boundaryMatchIdx] != int64(datePositions[boundaryMatchIdx]) {
+		t.Errorf("Boundary-crossing match at wrong offset: got %d, want %d",
+			offsets[boundaryMatchIdx], datePositions[boundaryMatchIdx])
+	}
+}
+
 // TestStreamingOffsets verifies that stream offsets are correct.
 func TestStreamingOffsets(t *testing.T) {
 	input := "prefix 2024-01-15 middle 2024-02-20 suffix"
