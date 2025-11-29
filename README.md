@@ -170,7 +170,7 @@ See [Detailed Benchmarks](docs/benchmarks.md) for complete results.
 
 ## Streaming API
 
-Process large files with constant memory:
+Process any `io.Reader` with constant memory. Unlike Go's `regexp.FindReaderIndex` which only finds the first match, Regengo finds **all matches** in a stream—handling buffering and cross-boundary matches automatically. Matches are delivered via callback, avoiding slice allocations and enabling true streaming semantics.
 
 ```go
 file, _ := os.Open("server.log")
