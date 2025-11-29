@@ -55,7 +55,6 @@ benchmarks/mass_generated
 
 # Test generated files
 tests/e2e/generated/
-tests/integration/
 
 # Built binaries
 bin/
