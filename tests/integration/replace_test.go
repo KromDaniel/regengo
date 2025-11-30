@@ -816,3 +816,201 @@ replace github.com/KromDaniel/regengo => ` + projectRoot + `
 		}
 	}
 }
+
+func TestCompileReplaceTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "email.go")
+
+	// Generate a pattern with named captures
+	opts := regengo.Options{
+		Pattern:    `(?P<user>\w+)@(?P<domain>\w+)\.(?P<tld>\w+)`,
+		Name:       "Email",
+		OutputFile: outputFile,
+		Package:    "main",
+	}
+
+	if err := regengo.Compile(opts); err != nil {
+		t.Fatalf("compilation failed: %v", err)
+	}
+
+	// Get project root
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+
+	// Create a test program that uses CompileReplaceTemplate
+	testProgram := `package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	// Test valid template compilation
+	tmpl, err := CompiledEmail.CompileReplaceTemplate("$user@REDACTED.$tld")
+	if err != nil {
+		fmt.Printf("CompileValid: error %v\n", err)
+		return
+	}
+	fmt.Println("CompileValid: success")
+
+	// Test String() method
+	if tmpl.String() == "$user@REDACTED.$tld" {
+		fmt.Println("TemplateString: correct")
+	} else {
+		fmt.Printf("TemplateString: wrong, got %q\n", tmpl.String())
+	}
+
+	// Test ReplaceAllString
+	input := "Contact alice@example.com or bob@test.org"
+	result := tmpl.ReplaceAllString(input)
+	expected := "Contact alice@REDACTED.com or bob@REDACTED.org"
+	if result == expected {
+		fmt.Println("ReplaceAllString: correct")
+	} else {
+		fmt.Printf("ReplaceAllString: wrong, got %q\n", result)
+	}
+
+	// Test ReplaceFirstString
+	result = tmpl.ReplaceFirstString(input)
+	expected = "Contact alice@REDACTED.com or bob@test.org"
+	if result == expected {
+		fmt.Println("ReplaceFirstString: correct")
+	} else {
+		fmt.Printf("ReplaceFirstString: wrong, got %q\n", result)
+	}
+
+	// Test ReplaceAllBytes
+	inputBytes := []byte("test@example.com")
+	resultBytes := tmpl.ReplaceAllBytes(inputBytes)
+	expectedBytes := []byte("test@REDACTED.com")
+	if string(resultBytes) == string(expectedBytes) {
+		fmt.Println("ReplaceAllBytes: correct")
+	} else {
+		fmt.Printf("ReplaceAllBytes: wrong, got %q\n", string(resultBytes))
+	}
+
+	// Test ReplaceAllBytesAppend (zero-alloc pattern)
+	buf := make([]byte, 0, 1024)
+	resultBytes = tmpl.ReplaceAllBytesAppend(inputBytes, buf)
+	if string(resultBytes) == string(expectedBytes) {
+		fmt.Println("ReplaceAllBytesAppend: correct")
+	} else {
+		fmt.Printf("ReplaceAllBytesAppend: wrong, got %q\n", string(resultBytes))
+	}
+
+	// Test ReplaceFirstBytes
+	resultBytes = tmpl.ReplaceFirstBytes(inputBytes)
+	if string(resultBytes) == string(expectedBytes) {
+		fmt.Println("ReplaceFirstBytes: correct")
+	} else {
+		fmt.Printf("ReplaceFirstBytes: wrong, got %q\n", string(resultBytes))
+	}
+
+	// Test template reuse
+	tmpl2, _ := CompiledEmail.CompileReplaceTemplate("[$0]")
+	result1 := tmpl2.ReplaceAllString("a@b.c")
+	result2 := tmpl2.ReplaceAllString("x@y.z")
+	if result1 == "[a@b.c]" && result2 == "[x@y.z]" {
+		fmt.Println("TemplateReuse: correct")
+	} else {
+		fmt.Printf("TemplateReuse: wrong, got %q and %q\n", result1, result2)
+	}
+
+	// Test compiled matches runtime
+	runtimeResult := CompiledEmail.ReplaceAllString(input, "$user@REDACTED.$tld")
+	compiledResult := tmpl.ReplaceAllString(input)
+	if runtimeResult == compiledResult {
+		fmt.Println("CompiledMatchesRuntime: correct")
+	} else {
+		fmt.Printf("CompiledMatchesRuntime: wrong, runtime=%q compiled=%q\n", runtimeResult, compiledResult)
+	}
+
+	// Test invalid template - invalid name
+	_, err = CompiledEmail.CompileReplaceTemplate("$invalid")
+	if err != nil {
+		fmt.Println("InvalidName: error as expected")
+	} else {
+		fmt.Println("InvalidName: should have returned error")
+	}
+
+	// Test invalid template - invalid index
+	_, err = CompiledEmail.CompileReplaceTemplate("$5")
+	if err != nil {
+		fmt.Println("InvalidIndex: error as expected")
+	} else {
+		fmt.Println("InvalidIndex: should have returned error")
+	}
+
+	// Test invalid template - syntax error
+	_, err = CompiledEmail.CompileReplaceTemplate("${unclosed")
+	if err != nil {
+		fmt.Println("SyntaxError: error as expected")
+	} else {
+		fmt.Println("SyntaxError: should have returned error")
+	}
+}
+`
+
+	testFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+		t.Fatalf("failed to write test program: %v", err)
+	}
+
+	// Create go.mod
+	goMod := `module test
+
+go 1.21
+
+require github.com/KromDaniel/regengo v0.0.0
+
+replace github.com/KromDaniel/regengo => ` + projectRoot + `
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		t.Fatalf("failed to write go.mod: %v", err)
+	}
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\n%s", err, output)
+	}
+
+	// Run the test program
+	cmd = exec.Command("go", "run", ".")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test program failed: %v\n%s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Verify results
+	compileTemplateExpected := []struct {
+		prefix string
+		want   string
+	}{
+		{"CompileValid:", "CompileValid: success"},
+		{"TemplateString:", "TemplateString: correct"},
+		{"ReplaceAllString:", "ReplaceAllString: correct"},
+		{"ReplaceFirstString:", "ReplaceFirstString: correct"},
+		{"ReplaceAllBytes:", "ReplaceAllBytes: correct"},
+		{"ReplaceAllBytesAppend:", "ReplaceAllBytesAppend: correct"},
+		{"ReplaceFirstBytes:", "ReplaceFirstBytes: correct"},
+		{"TemplateReuse:", "TemplateReuse: correct"},
+		{"CompiledMatchesRuntime:", "CompiledMatchesRuntime: correct"},
+		{"InvalidName:", "InvalidName: error as expected"},
+		{"InvalidIndex:", "InvalidIndex: error as expected"},
+		{"SyntaxError:", "SyntaxError: error as expected"},
+	}
+
+	for _, exp := range compileTemplateExpected {
+		if !containsLine(outputStr, exp.want) {
+			t.Errorf("expected output to contain %q, got:\n%s", exp.want, outputStr)
+		}
+	}
+}
