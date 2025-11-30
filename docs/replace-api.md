@@ -26,7 +26,7 @@ Regengo generates three types of Replace methods:
 | **Compiled** | `CompileReplaceTemplate` → `ReplaceAllString` | Once at startup | Returns error | Config-driven templates, graceful error handling |
 | **Pre-compiled** | `ReplaceAllString0`, `ReplaceAllString1`, ... | At code generation | Compile error | Type safety, no runtime surprises |
 
-**Performance note:** Compiled and pre-compiled templates have nearly identical performance—both skip template parsing. The main benefit of pre-compiled is **compile-time type safety**: invalid templates cause build failures, not runtime errors.
+**Performance note:** Compiled and pre-compiled templates have nearly identical performance—both are **2-3x faster than stdlib** and skip template parsing. The main benefit of pre-compiled is **compile-time type safety**: invalid templates cause build failures, not runtime errors.
 
 All types support:
 - Full match reference (`$0`)
@@ -292,7 +292,7 @@ BenchmarkCompileTemplateComparison/compiled-12     390 ns/op   4 allocs/op
 BenchmarkCompileTemplateComparison/precompiled-12  387 ns/op   4 allocs/op
 ```
 
-**Key insight:** Compiled and pre-compiled have nearly identical performance. Choose based on your needs:
+**Key insight:** Both compiled and pre-compiled are 2-3x faster than stdlib with identical performance to each other. Choose based on your needs:
 - **Pre-compiled**: Compile-time type safety, no runtime template errors possible
 - **Compiled**: Runtime flexibility with graceful error handling
 
