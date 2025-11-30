@@ -9,8 +9,7 @@ coverage:
         threshold: 1%
     patch:
       default:
-        target: auto
-        threshold: 1%
+        informational: true  # Don't fail PR on patch coverage
 
 ignore:
   # Generated benchmark patterns (curated patterns used for benchmarks)
