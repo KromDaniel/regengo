@@ -20,11 +20,13 @@ Regengo generates three types of Replace methods:
 
 **Compile-time safety:** Pre-compiled replacer templates are validated during code generation. References to non-existent capture groups (e.g., `$invalid` or `$3` when only 2 groups exist) cause a compile error—you'll know immediately if a template is invalid, not at runtime.
 
-| Type | Methods | Template Parsing | Error Handling | Best For |
-|------|---------|------------------|----------------|----------|
+| Type | Methods | Template Validation | Error Handling | Best For |
+|------|---------|---------------------|----------------|----------|
 | **Runtime** | `ReplaceAllString`, `ReplaceFirstString` | Every call | Panics | Dynamic templates, flexibility |
-| **Compiled** | `CompileReplaceTemplate` → `ReplaceAllString` | Once | Returns error | Config-driven templates, validation |
-| **Pre-compiled** | `ReplaceAllString0`, `ReplaceAllString1`, ... | At code generation | Compile error | Maximum performance |
+| **Compiled** | `CompileReplaceTemplate` → `ReplaceAllString` | Once at startup | Returns error | Config-driven templates, graceful error handling |
+| **Pre-compiled** | `ReplaceAllString0`, `ReplaceAllString1`, ... | At code generation | Compile error | Type safety, no runtime surprises |
+
+**Performance note:** Compiled and pre-compiled templates have nearly identical performance—both skip template parsing. The main benefit of pre-compiled is **compile-time type safety**: invalid templates cause build failures, not runtime errors.
 
 All types support:
 - Full match reference (`$0`)
@@ -179,14 +181,14 @@ tmpl, err := CompiledEmail.CompileReplaceTemplate("${unclosed")
 
 | Scenario | Recommended Approach |
 |----------|---------------------|
-| Template known at build time | Pre-compiled (`-replacer` flag) |
-| Template from config/DB, used many times | Compiled (`CompileReplaceTemplate`) |
+| Template known at build time, want type safety | Pre-compiled (`-replacer` flag) |
+| Template from config/DB, need error handling | Compiled (`CompileReplaceTemplate`) |
 | Template from user input, one-time use | Runtime (`ReplaceAllString`) |
 | Need to validate template before use | Compiled (`CompileReplaceTemplate`) |
 
 ## Pre-compiled Replace
 
-Pre-compiled Replace methods have templates specified at code generation time. The template is parsed once during compilation, eliminating runtime parsing overhead.
+Pre-compiled Replace methods have templates specified at code generation time. Invalid templates cause **build failures**, not runtime errors—guaranteeing type safety and eliminating runtime surprises.
 
 ### CLI Usage
 
@@ -278,22 +280,25 @@ Regengo Replace methods are significantly faster than stdlib:
 
 | Method | vs stdlib | Notes |
 |--------|-----------|-------|
-| Pre-compiled | ~3x faster | No template parsing, direct field access |
-| Compiled | ~2.5x faster | Template parsed once, reused many times |
-| Runtime | ~2x faster | Template parsed each call |
-| Zero-alloc | ~4x faster | Buffer reuse eliminates GC pressure |
+| Compiled / Pre-compiled | ~2-3x faster | Template parsed once or at build time |
+| Runtime | ~1.5-2x faster | Template parsed each call |
+| Zero-alloc (BytesAppend) | ~3-4x faster | Buffer reuse eliminates GC pressure |
 
 ### Benchmark Results
 
 ```
-BenchmarkReplaceEmail/stdlib-12                1142 ns/op    248 B/op    7 allocs/op
-BenchmarkReplaceEmail/regengo_runtime-12        422 ns/op    504 B/op    8 allocs/op
-BenchmarkReplaceEmail/regengo_precompiled-12    342 ns/op    120 B/op    4 allocs/op
+BenchmarkCompileTemplateComparison/runtime-12      490 ns/op   8 allocs/op
+BenchmarkCompileTemplateComparison/compiled-12     390 ns/op   4 allocs/op
+BenchmarkCompileTemplateComparison/precompiled-12  387 ns/op   4 allocs/op
 ```
+
+**Key insight:** Compiled and pre-compiled have nearly identical performance. Choose based on your needs:
+- **Pre-compiled**: Compile-time type safety, no runtime template errors possible
+- **Compiled**: Runtime flexibility with graceful error handling
 
 ### Optimization Tips
 
-1. **Use pre-compiled for known templates** - Specify templates at generation time
+1. **Use compiled or pre-compiled** - Both skip template parsing (~20% faster than runtime)
 2. **Use Append variants for throughput** - Pre-allocate buffers for hot paths
 3. **Literal-only templates are fastest** - `"REDACTED"` skips capture extraction
 4. **Full-match templates are fast** - `"[$0]"` only needs match bounds
