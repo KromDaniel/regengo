@@ -147,12 +147,30 @@ func BenchmarkReplaceURLFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkReplaceURLFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = ReplaceURL{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkReplaceURLFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*ReplaceURLResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range replaceURLTestInputs {
 			results = ReplaceURL{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibReplaceURLFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = replaceURLRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }
@@ -375,24 +393,22 @@ func TestReplaceURLReplaceAllString2(t *testing.T) {
 	}
 }
 
-func BenchmarkReplaceURLReplaceAllString(b *testing.B) {
-	for _, replacer := range replaceURLTestReplacers {
+func BenchmarkStdlibReplaceURLReplaceAllString0(b *testing.B) {
+	b.ReportAllocs()
+	stdlibTemplate := convertToStdlibTemplateReplaceURL(replaceURLTestReplacers[0])
+	for i := 0; i < b.N; i++ {
 		for _, input := range replaceURLTestInputs {
-			stdlibTemplate := convertToStdlibTemplateReplaceURL(replacer)
+			_ = replaceURLRegexp.ReplaceAllString(input, stdlibTemplate)
+		}
+	}
+}
 
-			b.Run("stdlib/"+replacer, func(b *testing.B) {
-				b.ReportAllocs()
-				for i := 0; i < b.N; i++ {
-					_ = replaceURLRegexp.ReplaceAllString(input, stdlibTemplate)
-				}
-			})
-
-			b.Run("regengo/"+replacer, func(b *testing.B) {
-				b.ReportAllocs()
-				for i := 0; i < b.N; i++ {
-					_ = ReplaceURL{}.ReplaceAllString(input, replacer)
-				}
-			})
+func BenchmarkReplaceURLReplaceAllStringRuntime0(b *testing.B) {
+	b.ReportAllocs()
+	replacer := replaceURLTestReplacers[0]
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = ReplaceURL{}.ReplaceAllString(input, replacer)
 		}
 	}
 }
@@ -419,6 +435,26 @@ func BenchmarkReplaceURLReplaceAllBytesAppend0(b *testing.B) {
 
 // Template 0: $protocol://$host[REDACTED]
 
+func BenchmarkStdlibReplaceURLReplaceAllString1(b *testing.B) {
+	b.ReportAllocs()
+	stdlibTemplate := convertToStdlibTemplateReplaceURL(replaceURLTestReplacers[1])
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = replaceURLRegexp.ReplaceAllString(input, stdlibTemplate)
+		}
+	}
+}
+
+func BenchmarkReplaceURLReplaceAllStringRuntime1(b *testing.B) {
+	b.ReportAllocs()
+	replacer := replaceURLTestReplacers[1]
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = ReplaceURL{}.ReplaceAllString(input, replacer)
+		}
+	}
+}
+
 func BenchmarkReplaceURLReplaceAllString1(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -440,6 +476,26 @@ func BenchmarkReplaceURLReplaceAllBytesAppend1(b *testing.B) {
 }
 
 // Template 1: [URL]
+
+func BenchmarkStdlibReplaceURLReplaceAllString2(b *testing.B) {
+	b.ReportAllocs()
+	stdlibTemplate := convertToStdlibTemplateReplaceURL(replaceURLTestReplacers[2])
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = replaceURLRegexp.ReplaceAllString(input, stdlibTemplate)
+		}
+	}
+}
+
+func BenchmarkReplaceURLReplaceAllStringRuntime2(b *testing.B) {
+	b.ReportAllocs()
+	replacer := replaceURLTestReplacers[2]
+	for i := 0; i < b.N; i++ {
+		for _, input := range replaceURLTestInputs {
+			_ = ReplaceURL{}.ReplaceAllString(input, replacer)
+		}
+	}
+}
 
 func BenchmarkReplaceURLReplaceAllString2(b *testing.B) {
 	b.ReportAllocs()

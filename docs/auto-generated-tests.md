@@ -29,10 +29,13 @@ Comparison benchmarks to measure speedup vs stdlib:
 - `Benchmark...FindString` - regengo FindString performance
 - `BenchmarkStdlib...FindStringSubmatch` - stdlib comparison
 - `Benchmark...FindStringReuse` - Zero-allocation single match
-- `Benchmark...FindAllStringAppend` - Zero-allocation multi-match
-- `Benchmark...ReplaceAllString` - Replace comparison (if replacers defined)
-- `Benchmark...ReplaceAllStringN` - Precompiled replace (if replacers defined)
-- `Benchmark...ReplaceAllBytesAppendN` - Zero-allocation replace (if replacers defined)
+- `Benchmark...FindAllString` - regengo FindAllString performance
+- `Benchmark...FindAllStringAppend` - Zero-allocation multi-match (reuse)
+- `BenchmarkStdlib...FindAllStringSubmatch` - stdlib comparison for FindAll
+- `BenchmarkStdlib...ReplaceAllStringN` - stdlib comparison per template (if replacers defined)
+- `Benchmark...ReplaceAllStringRuntimeN` - regengo runtime replace per template (if replacers defined)
+- `Benchmark...ReplaceAllStringN` - Precompiled replace per template (if replacers defined)
+- `Benchmark...ReplaceAllBytesAppendN` - Memory-reuse replace per template (if replacers defined)
 
 ## Generating Tests
 

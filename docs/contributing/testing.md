@@ -1,6 +1,6 @@
 # Testing Regengo
 
-This guide covers testing the regengo project itself. For documentation on the test files regengo generates for users, see [Generated Tests](../testing.md).
+This guide covers testing the regengo project itself. For documentation on the test files regengo generates for users, see [Auto-Generated Tests](../auto-generated-tests.md).
 
 ## Running Tests
 

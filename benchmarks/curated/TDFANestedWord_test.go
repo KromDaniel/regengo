@@ -135,12 +135,30 @@ func BenchmarkTDFANestedWordFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkTDFANestedWordFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFANestedWordTestInputs {
+			_ = TDFANestedWord{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkTDFANestedWordFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*TDFANestedWordResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range tDFANestedWordTestInputs {
 			results = TDFANestedWord{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibTDFANestedWordFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFANestedWordTestInputs {
+			_ = tDFANestedWordRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

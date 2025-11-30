@@ -135,12 +135,30 @@ func BenchmarkTDFAPathologicalFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkTDFAPathologicalFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFAPathologicalTestInputs {
+			_ = TDFAPathological{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkTDFAPathologicalFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*TDFAPathologicalResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range tDFAPathologicalTestInputs {
 			results = TDFAPathological{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibTDFAPathologicalFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFAPathologicalTestInputs {
+			_ = tDFAPathologicalRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

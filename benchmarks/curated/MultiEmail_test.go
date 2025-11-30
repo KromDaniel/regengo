@@ -141,12 +141,30 @@ func BenchmarkMultiEmailFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkMultiEmailFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range multiEmailTestInputs {
+			_ = MultiEmail{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkMultiEmailFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*MultiEmailResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range multiEmailTestInputs {
 			results = MultiEmail{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibMultiEmailFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range multiEmailTestInputs {
+			_ = multiEmailRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }
