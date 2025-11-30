@@ -60,6 +60,8 @@ The template syntax is **fully compatible with Go's stdlib `regexp`**. Templates
 
 Runtime Replace methods accept a template string at call time. The template is parsed on each call, providing flexibility at a small performance cost.
 
+**Error handling:** Invalid templates cause a panic, consistent with Go's stdlib `regexp` behavior. This ensures template errors are caught immediately rather than silently ignored.
+
 ### Generated Methods
 
 ```go

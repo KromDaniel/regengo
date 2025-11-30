@@ -98,7 +98,7 @@ func (c *Compiler) generateReplaceAllString() {
 			// Parse template
 			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
-				jen.Return(jen.Id("input")), // On parse error, return input unchanged (consistent with stdlib)
+				jen.Panic(jen.Qual("fmt", "Sprintf").Call(jen.Lit("regengo: invalid replace template: %v"), jen.Id("err"))),
 			),
 			jen.Line(),
 
@@ -206,7 +206,7 @@ func (c *Compiler) generateReplaceAllBytesAppend() {
 			// Parse template
 			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
-				jen.Return(jen.Append(jen.Id("buf"), jen.Id("input").Op("..."))),
+				jen.Panic(jen.Qual("fmt", "Sprintf").Call(jen.Lit("regengo: invalid replace template: %v"), jen.Id("err"))),
 			),
 			jen.Line(),
 
@@ -286,7 +286,7 @@ func (c *Compiler) generateReplaceFirstString() {
 		Block(
 			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
-				jen.Return(jen.Id("input")),
+				jen.Panic(jen.Qual("fmt", "Sprintf").Call(jen.Lit("regengo: invalid replace template: %v"), jen.Id("err"))),
 			),
 			jen.Line(),
 
@@ -334,7 +334,7 @@ func (c *Compiler) generateReplaceFirstBytes() {
 		Block(
 			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
-				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
+				jen.Panic(jen.Qual("fmt", "Sprintf").Call(jen.Lit("regengo: invalid replace template: %v"), jen.Id("err"))),
 			),
 			jen.Line(),
 
