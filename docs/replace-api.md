@@ -32,6 +32,8 @@ Both types support:
 
 ## Template Syntax
 
+The template syntax is **fully compatible with Go's stdlib `regexp`**. Templates that work with `regexp.ReplaceAllString` will work identically with regengo.
+
 | Syntax | Description | Example |
 |--------|-------------|---------|
 | `$0` | Full match | `"[$0]"` → `"[full match]"` |
