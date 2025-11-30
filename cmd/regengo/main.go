@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/KromDaniel/regengo/pkg/regengo"
+	"github.com/KromDaniel/regengo"
 )
 
 // arrayFlags allows multiple -replacer flags to be passed

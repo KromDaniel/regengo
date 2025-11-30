@@ -96,7 +96,7 @@ func (c *Compiler) generateReplaceAllString() {
 		Params(jen.String()).
 		Block(
 			// Parse template
-			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "Parse").Call(jen.Id("template")),
+			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
 				jen.Return(jen.Id("input")), // On parse error, return input unchanged (consistent with stdlib)
 			),
@@ -204,7 +204,7 @@ func (c *Compiler) generateReplaceAllBytesAppend() {
 		Params(jen.Index().Byte()).
 		Block(
 			// Parse template
-			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "Parse").Call(jen.Id("template")),
+			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
 				jen.Return(jen.Append(jen.Id("buf"), jen.Id("input").Op("..."))),
 			),
@@ -284,7 +284,7 @@ func (c *Compiler) generateReplaceFirstString() {
 		).
 		Params(jen.String()).
 		Block(
-			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "Parse").Call(jen.Id("template")),
+			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
 				jen.Return(jen.Id("input")),
 			),
@@ -332,7 +332,7 @@ func (c *Compiler) generateReplaceFirstBytes() {
 		).
 		Params(jen.Index().Byte()).
 		Block(
-			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "Parse").Call(jen.Id("template")),
+			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
 			jen.If(jen.Id("err").Op("!=").Nil()).Block(
 				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
 			),
@@ -371,16 +371,16 @@ func (c *Compiler) generateReplaceFirstBytes() {
 func (c *Compiler) generateTemplateExpansionString(matchVar *jen.Statement) jen.Code {
 	return jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("tmpl").Dot("Segments")).Block(
 		jen.Switch(jen.Id("seg").Dot("Type")).Block(
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentLiteral")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
 				jen.Id("result").Dot("WriteString").Call(jen.Id("seg").Dot("Literal")),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentFullMatch")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
 				jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot("Match")),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentCaptureIndex")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
 				jen.Id("result").Dot("WriteString").Call(matchVar.Clone().Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex"))),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentCaptureName")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureName")).Block(
 				// For named captures, we need to look up the index
 				// This is handled by generating a name->index map or switch
 				c.generateNamedCaptureLookupString(matchVar),
@@ -393,16 +393,16 @@ func (c *Compiler) generateTemplateExpansionString(matchVar *jen.Statement) jen.
 func (c *Compiler) generateTemplateExpansionBytes(matchVar *jen.Statement) jen.Code {
 	return jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("tmpl").Dot("Segments")).Block(
 		jen.Switch(jen.Id("seg").Dot("Type")).Block(
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentLiteral")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
 				jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("seg").Dot("Literal").Op("...")),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentFullMatch")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
 				jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot("Match").Op("...")),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentCaptureIndex")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
 				jen.Id("result").Op("=").Append(jen.Id("result"), matchVar.Clone().Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex")).Op("...")),
 			),
-			jen.Case(jen.Qual("github.com/KromDaniel/regengo/pkg/regengo/replace", "SegmentCaptureName")).Block(
+			jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureName")).Block(
 				c.generateNamedCaptureLookupBytes(matchVar),
 			),
 		),

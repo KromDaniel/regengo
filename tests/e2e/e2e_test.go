@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/KromDaniel/regengo/pkg/regengo"
+	"github.com/KromDaniel/regengo"
 )
 
 // TestCase represents a test case with a pattern, inputs, and labels

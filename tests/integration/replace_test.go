@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/KromDaniel/regengo/pkg/regengo"
+	"github.com/KromDaniel/regengo"
 )
 
 func TestRuntimeReplace(t *testing.T) {

@@ -14,8 +14,9 @@ go test ./...
 
 ```bash
 go test ./internal/compiler/...
-go test ./pkg/regengo/...
+go test .                        # Root package (regengo API)
 go test ./stream/...
+go test ./replace/...
 ```
 
 ### With Options
@@ -35,21 +36,23 @@ go test -coverprofile=coverage.txt -covermode=atomic ./...
 
 ```
 regengo/
+├── regengo.go            # Public API
+├── regengo_test.go       # Public API tests
+├── replace/
+│   └── template.go       # Replace template parsing
+├── stream/
+│   └── *_test.go         # Streaming API tests
 ├── internal/
 │   ├── compiler/
 │   │   └── *_test.go     # Unit tests for compiler
 │   └── codegen/
 │       └── *_test.go     # Unit tests for code generation
-├── pkg/regengo/
-│   └── *_test.go         # Public API tests
-├── stream/
-│   └── *_test.go         # Streaming API tests
 ├── tests/
 │   └── e2e/
 │       ├── e2e_test.go   # End-to-end pattern tests
 │       └── testdata.json # Test pattern definitions
 └── benchmarks/
-    └── curated/          # Generated curated benchmark patterns
+    └── curated/          # Curated benchmark patterns
 ```
 
 ## End-to-End Tests

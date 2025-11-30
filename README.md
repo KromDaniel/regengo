@@ -44,7 +44,7 @@ regengo -pattern '(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})' \
 ### Library
 
 ```go
-import "github.com/KromDaniel/regengo/pkg/regengo"
+import "github.com/KromDaniel/regengo"
 
 err := regengo.Compile(regengo.Options{
     Pattern:    `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`,

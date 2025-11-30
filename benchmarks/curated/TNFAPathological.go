@@ -2,7 +2,7 @@ package curated
 
 import (
 	"bytes"
-	replace "github.com/KromDaniel/regengo/pkg/regengo/replace"
+	replace "github.com/KromDaniel/regengo/replace"
 	stream "github.com/KromDaniel/regengo/stream"
 	"io"
 	"strings"

@@ -27,7 +27,7 @@ install:
 test:
 	@echo "Running tests with coverage..."
 	@go test -v -race -covermode=atomic \
-		-coverpkg=github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/pkg/regengo,github.com/KromDaniel/regengo/stream \
+		-coverpkg=github.com/KromDaniel/regengo,github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/replace,github.com/KromDaniel/regengo/stream \
 		-coverprofile=coverage.txt \
 		./...
 
