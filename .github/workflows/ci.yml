@@ -49,8 +49,9 @@ jobs:
 
       - name: Test CLI
         run: |
-          ./bin/regengo -pattern "test" -name Test -output test.go -package main
-          test -f test.go
+          mkdir -p output
+          ./bin/regengo -pattern "test" -name Test -output output/test.go -package main
+          test -f output/test.go
 
       - name: Run tests
         run: |
