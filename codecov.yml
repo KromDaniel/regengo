@@ -13,8 +13,8 @@ coverage:
         threshold: 1%
 
 ignore:
-  # Generated benchmark patterns
-  - "benchmarks/generated/**"
+  # Generated benchmark patterns (curated patterns used for benchmarks)
+  - "benchmarks/curated/**"
   # Integration test fixtures (generated patterns)
   - "tests/integration/streaming/testdata/**"
   # Example files
