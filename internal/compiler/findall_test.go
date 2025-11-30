@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"os"
-	"os/exec"
 	"regexp"
 	"testing"
 )
@@ -66,49 +64,4 @@ func TestFindAllBehavior(t *testing.T) {
 			t.Logf("Pattern: %s, Input: %q, n: %d, Matches: %d", tt.pattern, tt.input, tt.n, len(stdlibMatches))
 		})
 	}
-}
-
-// TestGeneratedFindAll tests that generated code has FindAll functions
-func TestGeneratedFindAll(t *testing.T) {
-	// Run make bench-gen and verify output
-	cmd := exec.Command("make", "bench-gen")
-	cmd.Dir = "../../"
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("failed to run make bench-gen: %v\nOutput: %s", err, output)
-	}
-
-	// Check that FindAll functions exist in generated code
-	dateCapturePath := "../../benchmarks/generated/DateCapture.go"
-	content, err := os.ReadFile(dateCapturePath)
-	if err != nil {
-		t.Fatalf("failed to read generated file: %v", err)
-	}
-
-	contentStr := string(content)
-
-	// Verify FindAllString exists
-	if !contains(contentStr, "func (r DateCapture) FindAllString(input string, n int)") {
-		t.Error("DateCapture.FindAllString not found in generated code")
-	}
-
-	// Verify FindAllBytes exists
-	if !contains(contentStr, "func (r DateCapture) FindAllBytes(input []byte, n int)") {
-		t.Error("DateCapture.FindAllBytes not found in generated code")
-	}
-
-	t.Log("✓ FindAll methods generated successfully")
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && hasSubstring(s, substr))
-}
-
-func hasSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

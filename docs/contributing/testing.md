@@ -14,8 +14,9 @@ go test ./...
 
 ```bash
 go test ./internal/compiler/...
-go test ./pkg/regengo/...
+go test .                        # Root package (regengo API)
 go test ./stream/...
+go test ./replace/...
 ```
 
 ### With Options
@@ -35,22 +36,23 @@ go test -coverprofile=coverage.txt -covermode=atomic ./...
 
 ```
 regengo/
+├── regengo.go            # Public API
+├── regengo_test.go       # Public API tests
+├── replace/
+│   └── template.go       # Replace template parsing
+├── stream/
+│   └── *_test.go         # Streaming API tests
 ├── internal/
 │   ├── compiler/
 │   │   └── *_test.go     # Unit tests for compiler
 │   └── codegen/
 │       └── *_test.go     # Unit tests for code generation
-├── pkg/regengo/
-│   └── *_test.go         # Public API tests
-├── stream/
-│   └── *_test.go         # Streaming API tests
 ├── tests/
 │   └── e2e/
 │       ├── e2e_test.go   # End-to-end pattern tests
 │       └── testdata.json # Test pattern definitions
 └── benchmarks/
-    ├── generated/        # Generated benchmark patterns
-    └── findall_test.go   # FindAll comparison tests
+    └── curated/          # Curated benchmark patterns
 ```
 
 ## End-to-End Tests
@@ -109,13 +111,13 @@ make bench
 make bench-analyze
 
 # Generate markdown output
-make bench-readme
+make bench-format
 ```
 
 ### Specific Benchmark
 
 ```bash
-go test -bench=BenchmarkDate -benchmem ./benchmarks/generated/
+go test -bench=BenchmarkDate -benchmem ./benchmarks/curated/
 ```
 
 ## Coverage
@@ -134,8 +136,8 @@ The CI pipeline runs with coverage and uploads to Codecov:
 
 ```bash
 go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-    -coverpkg=./internal/...,./pkg/...,./tests/...,./benchmarks/... \
-    ./internal/... ./pkg/... ./tests/... ./benchmarks/...
+    -coverpkg=./internal/...,./pkg/...,./tests/... \
+    ./internal/... ./pkg/... ./tests/...
 ```
 
 ## CI/CD Pipeline

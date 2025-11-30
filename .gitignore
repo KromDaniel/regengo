@@ -59,5 +59,8 @@ tests/e2e/generated/
 
 # Built binaries
 bin/
-regengo
+/regengo
 /streaming
+
+# Design documents (internal only)
+docs/design/

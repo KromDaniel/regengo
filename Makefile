@@ -1,4 +1,4 @@
-.PHONY: all build test bench bench-gen bench-chart clean fmt lint install help setup-hooks
+.PHONY: all build test bench bench-analyze bench-chart bench-format clean fmt lint install help setup-hooks
 
 # Variables
 BINARY_NAME=regengo
@@ -27,37 +27,34 @@ install:
 test:
 	@echo "Running tests with coverage..."
 	@go test -v -race -covermode=atomic \
-		-coverpkg=github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/pkg/regengo,github.com/KromDaniel/regengo/stream \
+		-coverpkg=github.com/KromDaniel/regengo,github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/replace,github.com/KromDaniel/regengo/stream \
 		-coverprofile=coverage.txt \
 		./...
 
-## bench: Run benchmarks
-bench: bench-gen
-	@echo "Running benchmarks..."
-	@go test -bench=. -benchmem ./benchmarks/generated/
-
-## bench-readme: Generate benchmark markdown for README
-bench-readme: bench-gen
-	@echo "Generating benchmark markdown..."
-	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./scripts/format_benchmarks.go
+## bench: Generate and run curated benchmarks
+bench:
+	@echo "Generating curated benchmarks..."
+	@go run scripts/curated/generate.go scripts/curated/cases.go
+	@echo "Running curated benchmarks..."
+	@go test -bench=. -benchmem ./benchmarks/curated/...
 
 ## bench-analyze: Analyze benchmark results with comparison summary
-bench-analyze: bench-gen
-	@echo "Running benchmarks with analysis..."
-	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | go run ./scripts/analyze_benchmarks.go
-
-## bench-gen: Generate benchmark code
-bench-gen:
-	@echo "Generating benchmark code..."
-	@rm -rf ./benchmarks/generated
-	@mkdir -p ./benchmarks/generated
-	@go run ./scripts/generate_benchmarks.go
-	@gofmt -s -w ./benchmarks/generated
+bench-analyze:
+	@echo "Analyzing curated benchmarks..."
+	@go run scripts/curated/generate.go scripts/curated/cases.go
+	@go test -bench=. -benchmem ./benchmarks/curated/... 2>&1 | go run ./scripts/curated/analyze.go
 
 ## bench-chart: Generate performance comparison chart
-bench-chart: bench-gen
+bench-chart:
 	@echo "Generating performance chart..."
-	@go test -bench=. -benchmem ./benchmarks/generated/ 2>&1 | python3 scripts/benchmark_chart.py
+	@go run scripts/curated/generate.go scripts/curated/cases.go
+	@go test -bench=. -benchmem ./benchmarks/curated/... 2>&1 | python3 scripts/curated/chart.py
+
+## bench-format: Format benchmark results as markdown
+bench-format:
+	@echo "Formatting curated benchmarks..."
+	@go run scripts/curated/generate.go scripts/curated/cases.go
+	@go test -bench=. -benchmem ./benchmarks/curated/... 2>&1 | go run ./scripts/curated/format.go
 
 ## coverage: Generate and open coverage report
 coverage: test
@@ -80,7 +77,7 @@ lint:
 clean:
 	@echo "Cleaning..."
 	@rm -rf bin/
-	@rm -rf benchmarks/generated/
+	@rm -rf benchmarks/curated/
 	@rm -rf output/
 	@rm -f coverage.txt coverage.html
 	@go clean

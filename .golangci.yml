@@ -35,6 +35,7 @@ linters-settings:
 issues:
   exclude-dirs:
     - benchmarks/generated
+    - benchmarks/curated
     - benchmarks/mass_generated
     - examples/generated
     - output
