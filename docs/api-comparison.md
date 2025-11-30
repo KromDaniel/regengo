@@ -207,6 +207,8 @@ if result != nil {
 }
 ```
 
+See [Streaming API](streaming.md) for complete documentation.
+
 ---
 
 ### Match Length Info
