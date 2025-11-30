@@ -153,12 +153,30 @@ func BenchmarkTDFASemVerFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkTDFASemVerFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFASemVerTestInputs {
+			_ = TDFASemVer{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkTDFASemVerFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*TDFASemVerResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range tDFASemVerTestInputs {
 			results = TDFASemVer{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibTDFASemVerFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFASemVerTestInputs {
+			_ = tDFASemVerRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

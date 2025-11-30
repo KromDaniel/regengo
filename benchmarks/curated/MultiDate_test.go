@@ -141,12 +141,30 @@ func BenchmarkMultiDateFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkMultiDateFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range multiDateTestInputs {
+			_ = MultiDate{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkMultiDateFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*MultiDateResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range multiDateTestInputs {
 			results = MultiDate{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibMultiDateFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range multiDateTestInputs {
+			_ = multiDateRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

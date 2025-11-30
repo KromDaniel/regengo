@@ -141,12 +141,30 @@ func BenchmarkEmailCaptureFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkEmailCaptureFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range emailCaptureTestInputs {
+			_ = EmailCapture{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkEmailCaptureFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*EmailCaptureResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range emailCaptureTestInputs {
 			results = EmailCapture{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibEmailCaptureFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range emailCaptureTestInputs {
+			_ = emailCaptureRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

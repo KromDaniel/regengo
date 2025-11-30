@@ -171,12 +171,30 @@ func BenchmarkTDFAComplexURLFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkTDFAComplexURLFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFAComplexURLTestInputs {
+			_ = TDFAComplexURL{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkTDFAComplexURLFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*TDFAComplexURLResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range tDFAComplexURLTestInputs {
 			results = TDFAComplexURL{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibTDFAComplexURLFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range tDFAComplexURLTestInputs {
+			_ = tDFAComplexURLRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

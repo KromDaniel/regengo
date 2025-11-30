@@ -141,12 +141,30 @@ func BenchmarkDateCaptureFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkDateCaptureFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range dateCaptureTestInputs {
+			_ = DateCapture{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkDateCaptureFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*DateCaptureResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range dateCaptureTestInputs {
 			results = DateCapture{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibDateCaptureFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range dateCaptureTestInputs {
+			_ = dateCaptureRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }

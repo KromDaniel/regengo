@@ -11,8 +11,25 @@
 
 Regengo is a **compile-time finite state machine generator** for regular expressions. It converts regex patterns into optimized Go code, leveraging the Go compiler's optimizations for type-safe, pattern-specific code generation.
 
+## Highlights
+
+🚀 **High Performance** — 2-15x faster than Go's `regexp`, including capture group extraction
+
+🛡️ **Compile-Time Safety** — Invalid capture group references fail at Go compilation, not runtime
+
+🧠 **Smart Engine Selection** — Automatically chooses Thompson NFA, DFA, or TDFA based on pattern analysis
+
+🔄 **Fast Replacers** — Pre-compiled replacement templates, 2-3x faster than stdlib
+
+📡 **Efficient Streaming** — Match patterns over `io.Reader` with constant memory and cross-boundary support
+
+📦 **Zero Allocations** — `FindStringReuse`, `FindAllStringAppend`, `ReplaceAllBytesAppend` for hot paths
+
+✅ **Rigorously Tested** — Over 2,000 generated tests across 250 patterns verify correctness against Go stdlib
+
 ## Table of Contents
 
+- [Highlights](#highlights)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Generated Methods](#generated-methods)
@@ -106,7 +123,7 @@ func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, i
 
 ### Generated Tests
 
-Regengo automatically generates a `_test.go` file with correctness tests and benchmarks. See [Testing Guide](docs/testing.md) for details.
+Regengo automatically generates a `_test.go` file with correctness tests and benchmarks. See [Auto-Generated Tests](docs/auto-generated-tests.md) for details.
 
 ## Capture Groups
 
@@ -229,15 +246,22 @@ Basic:
   -package string    Package name (default "main")
   -test-inputs       Comma-separated test inputs
   -no-test           Disable test file generation
+  -no-pool           Disable sync.Pool (pool enabled by default for 0 allocs)
   -replacer string   Pre-compiled replacement template (can repeat)
 
 Analysis:
   -analyze           Output pattern analysis as JSON (no code generation)
   -verbose           Print analysis decisions
 
-Advanced:
+Engine Control:
   -force-thompson    Force Thompson NFA (prevents ReDoS)
+  -force-tnfa        Force Tagged NFA for captures
   -force-tdfa        Force Tagged DFA for captures
+  -tdfa-threshold    Max DFA states before fallback (default: 500)
+
+Info:
+  -version           Print version information
+  -help              Show help message
 ```
 
 ## Documentation
@@ -248,7 +272,7 @@ Advanced:
 - [Analysis & Complexity](docs/analysis.md) - Engine selection and guarantees
 - [Unicode Support](docs/unicode.md) - Unicode character classes
 - [Detailed Benchmarks](docs/benchmarks.md) - Complete performance data
-- [Testing Guide](docs/testing.md) - Running and writing tests
+- [Auto-Generated Tests](docs/auto-generated-tests.md) - Generated correctness tests and benchmarks
 
 ## API Comparison
 

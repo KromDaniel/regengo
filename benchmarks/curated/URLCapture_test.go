@@ -147,12 +147,30 @@ func BenchmarkURLCaptureFindStringReuse(b *testing.B) {
 	}
 }
 
+func BenchmarkURLCaptureFindAllString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range uRLCaptureTestInputs {
+			_ = URLCapture{}.FindAllString(input, -1)
+		}
+	}
+}
+
 func BenchmarkURLCaptureFindAllStringAppend(b *testing.B) {
 	b.ReportAllocs()
 	results := make([]*URLCaptureResult, 0, 100)
 	for i := 0; i < b.N; i++ {
 		for _, input := range uRLCaptureTestInputs {
 			results = URLCapture{}.FindAllStringAppend(input, -1, results[:0])
+		}
+	}
+}
+
+func BenchmarkStdlibURLCaptureFindAllStringSubmatch(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, input := range uRLCaptureTestInputs {
+			_ = uRLCaptureRegexp.FindAllStringSubmatch(input, -1)
 		}
 	}
 }
