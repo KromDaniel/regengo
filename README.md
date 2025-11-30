@@ -246,15 +246,22 @@ Basic:
   -package string    Package name (default "main")
   -test-inputs       Comma-separated test inputs
   -no-test           Disable test file generation
+  -no-pool           Disable sync.Pool (pool enabled by default for 0 allocs)
   -replacer string   Pre-compiled replacement template (can repeat)
 
 Analysis:
   -analyze           Output pattern analysis as JSON (no code generation)
   -verbose           Print analysis decisions
 
-Advanced:
+Engine Control:
   -force-thompson    Force Thompson NFA (prevents ReDoS)
+  -force-tnfa        Force Tagged NFA for captures
   -force-tdfa        Force Tagged DFA for captures
+  -tdfa-threshold    Max DFA states before fallback (default: 500)
+
+Info:
+  -version           Print version information
+  -help              Show help message
 ```
 
 ## Documentation
