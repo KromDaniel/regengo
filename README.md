@@ -119,6 +119,23 @@ func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*Dat
 func (Date) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*DateBytesResult]) bool) error
 func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
 func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, int64, error)
+
+// Replace (runtime template parsing)
+func (Date) ReplaceAllString(input string, template string) string
+func (Date) ReplaceAllBytes(input []byte, template string) []byte
+func (Date) ReplaceAllBytesAppend(input []byte, template string, buf []byte) []byte
+func (Date) ReplaceFirstString(input string, template string) string
+func (Date) ReplaceFirstBytes(input []byte, template string) []byte
+
+// Replace precompiled (when using -replacer flag, N = 0, 1, 2...)
+func (Date) ReplaceAllStringN(input string) string
+func (Date) ReplaceAllBytesN(input []byte) []byte
+func (Date) ReplaceAllBytesAppendN(input []byte, buf []byte) []byte
+func (Date) ReplaceFirstStringN(input string) string
+func (Date) ReplaceFirstBytesN(input []byte) []byte
+
+// Utility
+func (Date) MatchLengthInfo() (minLen, maxLen int)
 ```
 
 ### Generated Tests
