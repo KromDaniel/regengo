@@ -7,6 +7,7 @@ The Replace API provides high-performance string replacement with regex capture 
 - [Overview](#overview)
 - [Template Syntax](#template-syntax)
 - [Runtime Replace](#runtime-replace)
+- [Compiled Templates](#compiled-templates)
 - [Pre-compiled Replace](#pre-compiled-replace)
 - [Zero-Allocation Patterns](#zero-allocation-patterns)
 - [Performance](#performance)
@@ -15,16 +16,17 @@ The Replace API provides high-performance string replacement with regex capture 
 
 ## Overview
 
-Regengo generates two types of Replace methods:
+Regengo generates three types of Replace methods:
 
 **Compile-time safety:** Pre-compiled replacer templates are validated during code generation. References to non-existent capture groups (e.g., `$invalid` or `$3` when only 2 groups exist) cause a compile error—you'll know immediately if a template is invalid, not at runtime.
 
-| Type | Methods | Template Parsing | Best For |
-|------|---------|------------------|----------|
-| **Runtime** | `ReplaceAllString`, `ReplaceFirstString` | At call time | Dynamic templates, flexibility |
-| **Pre-compiled** | `ReplaceAllString0`, `ReplaceAllString1`, ... | At compile time | Maximum performance |
+| Type | Methods | Template Parsing | Error Handling | Best For |
+|------|---------|------------------|----------------|----------|
+| **Runtime** | `ReplaceAllString`, `ReplaceFirstString` | Every call | Panics | Dynamic templates, flexibility |
+| **Compiled** | `CompileReplaceTemplate` → `ReplaceAllString` | Once | Returns error | Config-driven templates, validation |
+| **Pre-compiled** | `ReplaceAllString0`, `ReplaceAllString1`, ... | At code generation | Compile error | Maximum performance |
 
-Both types support:
+All types support:
 - Full match reference (`$0`)
 - Indexed captures (`$1`, `$2`, ...)
 - Named captures (`$name`, `${name}`)
@@ -95,6 +97,92 @@ result := CompiledEmail.ReplaceFirstString(input, "[$0]")
 template := getUserTemplate() // e.g., "$user at $domain"
 result := CompiledEmail.ReplaceAllString(input, template)
 ```
+
+## Compiled Templates
+
+Compiled Templates provide a middle ground between runtime and pre-compiled approaches. The template is parsed once at runtime with proper error handling, then reused for multiple replacements without re-parsing.
+
+**Use Cases:**
+- Templates loaded from configuration files
+- Templates stored in databases
+- User-provided templates that need validation before use
+- High-throughput scenarios where the same dynamic template is used repeatedly
+
+### Generated Types and Methods
+
+```go
+// Generated struct to hold a compiled template
+type EmailReplaceTemplate struct {
+    // internal fields
+}
+
+// Compile a template with validation (returns error, doesn't panic)
+func (Email) CompileReplaceTemplate(template string) (*EmailReplaceTemplate, error)
+
+// Replace methods on the compiled template
+func (t *EmailReplaceTemplate) ReplaceAllString(input string) string
+func (t *EmailReplaceTemplate) ReplaceAllBytes(input []byte) []byte
+func (t *EmailReplaceTemplate) ReplaceAllBytesAppend(input []byte, buf []byte) []byte
+func (t *EmailReplaceTemplate) ReplaceFirstString(input string) string
+func (t *EmailReplaceTemplate) ReplaceFirstBytes(input []byte) []byte
+
+// Access to the original template string
+func (t *EmailReplaceTemplate) String() string
+```
+
+### Usage
+
+```go
+// Load template from config (might be invalid)
+templateStr := config.Get("email.redaction.template")
+
+// Compile with error handling - doesn't panic on invalid template
+tmpl, err := CompiledEmail.CompileReplaceTemplate(templateStr)
+if err != nil {
+    log.Fatalf("Invalid email redaction template: %v", err)
+}
+
+// Use many times without re-parsing
+for _, input := range inputs {
+    result := tmpl.ReplaceAllString(input)
+    process(result)
+}
+
+// Zero-allocation variant
+buf := make([]byte, 0, 4096)
+for _, input := range inputBytes {
+    buf = tmpl.ReplaceAllBytesAppend(input, buf)
+    process(buf)
+    buf = buf[:0]
+}
+```
+
+### Error Handling
+
+`CompileReplaceTemplate` returns an error for:
+- Malformed template syntax (e.g., `${unclosed`)
+- Invalid capture index (e.g., `$3` when pattern has only 2 captures)
+- Invalid capture name (e.g., `$invalid` when no such named group exists)
+
+```go
+tmpl, err := CompiledEmail.CompileReplaceTemplate("$invalid")
+// err: capture group "invalid" not found in pattern
+
+tmpl, err := CompiledEmail.CompileReplaceTemplate("$5")
+// err: capture group 5 out of range (pattern has 2 capture groups)
+
+tmpl, err := CompiledEmail.CompileReplaceTemplate("${unclosed")
+// err: at position 0: unclosed ${
+```
+
+### When to Use Compiled Templates
+
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Template known at build time | Pre-compiled (`-replacer` flag) |
+| Template from config/DB, used many times | Compiled (`CompileReplaceTemplate`) |
+| Template from user input, one-time use | Runtime (`ReplaceAllString`) |
+| Need to validate template before use | Compiled (`CompileReplaceTemplate`) |
 
 ## Pre-compiled Replace
 
@@ -186,11 +274,12 @@ for _, input := range inputs {
 
 ## Performance
 
-Pre-compiled Replace methods are significantly faster than stdlib:
+Regengo Replace methods are significantly faster than stdlib:
 
 | Method | vs stdlib | Notes |
 |--------|-----------|-------|
 | Pre-compiled | ~3x faster | No template parsing, direct field access |
+| Compiled | ~2.5x faster | Template parsed once, reused many times |
 | Runtime | ~2x faster | Template parsed each call |
 | Zero-alloc | ~4x faster | Buffer reuse eliminates GC pressure |
 

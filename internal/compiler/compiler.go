@@ -338,6 +338,9 @@ func (c *Compiler) Generate() error {
 				return fmt.Errorf("failed to generate pre-compiled replace methods: %w", err)
 			}
 		}
+
+		// Generate CompileReplaceTemplate API for runtime template compilation with error handling
+		c.generateCompiledTemplateAPI()
 	}
 
 	// Save to file

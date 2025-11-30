@@ -867,3 +867,367 @@ func (c *Compiler) getCaptureFieldNameByName(captureName string) string {
 	// Fallback: just uppercase the name (shouldn't happen if validation is correct)
 	return codegen.UpperFirst(captureName)
 }
+
+// generateCompiledTemplateAPI generates the compiled template struct and methods.
+// This allows users to compile a template once and reuse it for multiple replacements.
+func (c *Compiler) generateCompiledTemplateAPI() {
+	c.generateCompiledTemplateStruct()
+	c.generateCompileReplaceTemplateMethod()
+	c.generateCompiledTemplateStringMethod()
+	c.generateCompiledReplaceAllString()
+	c.generateCompiledReplaceAllBytes()
+	c.generateCompiledReplaceAllBytesAppend()
+	c.generateCompiledReplaceFirstString()
+	c.generateCompiledReplaceFirstBytes()
+}
+
+// generateCompiledTemplateStruct generates the struct to hold a compiled replace template.
+func (c *Compiler) generateCompiledTemplateStruct() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+
+	c.file.Comment(fmt.Sprintf("%s holds a pre-compiled replace template for the %s pattern.", structName, c.config.Name))
+	c.file.Comment("Use CompileReplaceTemplate to create one, then call its Replace methods.")
+	c.file.Type().Id(structName).Struct(
+		jen.Id("original").String(),
+		jen.Id("segments").Index().Qual("github.com/KromDaniel/regengo/replace", "Segment"),
+	)
+	c.file.Line()
+}
+
+// generateCompileReplaceTemplateMethod generates the method to compile a replace template.
+func (c *Compiler) generateCompileReplaceTemplateMethod() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+
+	// Build capture names map literal
+	captureNamesMap := jen.Dict{}
+	for i := 1; i < len(c.captureNames); i++ {
+		name := c.captureNames[i]
+		if name != "" {
+			captureNamesMap[jen.Lit(name)] = jen.Lit(i)
+		}
+	}
+
+	numCaptures := len(c.captureNames) - 1 // exclude full match
+
+	c.file.Comment("CompileReplaceTemplate parses and validates a replace template.")
+	c.file.Comment("Returns an error if the template syntax is invalid or references non-existent captures.")
+	c.file.Comment("The compiled template can be reused for multiple replacements without re-parsing.")
+	c.file.Comment("")
+	c.file.Comment("Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)")
+	c.method("CompileReplaceTemplate").
+		Params(jen.Id("template").String()).
+		Params(
+			jen.Op("*").Id(structName),
+			jen.Error(),
+		).
+		Block(
+			// Parse template
+			jen.List(jen.Id("tmpl"), jen.Id("err")).Op(":=").
+				Qual("github.com/KromDaniel/regengo/replace", "Parse").Call(jen.Id("template")),
+			jen.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Return(jen.Nil(), jen.Id("err")),
+			),
+			jen.Line(),
+
+			// Build capture names map
+			jen.Id("captureNames").Op(":=").Map(jen.String()).Int().Values(captureNamesMap),
+			jen.Line(),
+
+			// Validate and resolve
+			jen.List(jen.Id("resolved"), jen.Id("err")).Op(":=").
+				Id("tmpl").Dot("ValidateAndResolve").Call(
+				jen.Id("captureNames"),
+				jen.Lit(numCaptures),
+			),
+			jen.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Return(jen.Nil(), jen.Id("err")),
+			),
+			jen.Line(),
+
+			jen.Return(
+				jen.Op("&").Id(structName).Values(jen.Dict{
+					jen.Id("original"): jen.Id("template"),
+					jen.Id("segments"): jen.Id("resolved"),
+				}),
+				jen.Nil(),
+			),
+		)
+	c.file.Line()
+}
+
+// generateCompiledTemplateStringMethod generates the String() method.
+func (c *Compiler) generateCompiledTemplateStringMethod() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+
+	c.file.Comment("String returns the original template string.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("String").
+		Params().
+		Params(jen.String()).
+		Block(
+			jen.Return(jen.Id("t").Dot("original")),
+		)
+	c.file.Line()
+}
+
+// generateCompiledReplaceAllString generates ReplaceAllString on the compiled template.
+func (c *Compiler) generateCompiledReplaceAllString() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+	resultStructName := fmt.Sprintf("%sResult", c.config.Name)
+
+	c.file.Comment("ReplaceAllString replaces all matches in input using this compiled template.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("ReplaceAllString").
+		Params(jen.Id("input").String()).
+		Params(jen.String()).
+		Block(
+			jen.Var().Id("result").Qual("strings", "Builder"),
+			jen.Id("lastEnd").Op(":=").Lit(0),
+			jen.Var().Id("r").Id(resultStructName),
+			jen.Line(),
+
+			jen.Id("remaining").Op(":=").Id("input"),
+			jen.Id("offset").Op(":=").Lit(0),
+			jen.Line(),
+
+			jen.For().Block(
+				jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
+					jen.Id("remaining"),
+					jen.Op("&").Id("r"),
+				),
+				jen.If(jen.Op("!").Id("ok")).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchIdx").Op(":=").Qual("strings", "Index").Call(jen.Id("remaining"), jen.Id("match").Dot("Match")),
+				jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("absMatchStart").Op(":=").Id("offset").Op("+").Id("matchIdx"),
+				jen.Id("absMatchEnd").Op(":=").Id("absMatchStart").Op("+").Len(jen.Id("match").Dot("Match")),
+				jen.Line(),
+
+				jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("lastEnd").Op(":").Id("absMatchStart"))),
+				jen.Line(),
+
+				// Expand template using segments
+				jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("t").Dot("segments")).Block(
+					jen.Switch(jen.Id("seg").Dot("Type")).Block(
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
+							jen.Id("result").Dot("WriteString").Call(jen.Id("seg").Dot("Literal")),
+						),
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
+							jen.Id("result").Dot("WriteString").Call(jen.Id("match").Dot("Match")),
+						),
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
+							jen.Id("result").Dot("WriteString").Call(jen.Id("match").Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex"))),
+						),
+					),
+				),
+				jen.Line(),
+
+				jen.Id("lastEnd").Op("=").Id("absMatchEnd"),
+				jen.Id("remaining").Op("=").Id("input").Index(jen.Id("absMatchEnd").Op(":")),
+				jen.Id("offset").Op("=").Id("absMatchEnd"),
+			),
+			jen.Line(),
+
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("lastEnd").Op(":"))),
+			jen.Return(jen.Id("result").Dot("String").Call()),
+		)
+	c.file.Line()
+}
+
+// generateCompiledReplaceAllBytes generates ReplaceAllBytes on the compiled template.
+func (c *Compiler) generateCompiledReplaceAllBytes() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+	resultStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+
+	c.file.Comment("ReplaceAllBytes replaces all matches in input using this compiled template.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("ReplaceAllBytes").
+		Params(jen.Id("input").Index().Byte()).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Return(jen.Id("t").Dot("ReplaceAllBytesAppend").Call(jen.Id("input"), jen.Nil())),
+		)
+	c.file.Line()
+
+	// Also need to generate ReplaceAllBytesAppend
+	c.file.Comment("ReplaceAllBytesAppend replaces all matches and appends to buf.")
+	c.file.Comment("If buf has sufficient capacity, no allocation occurs.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("ReplaceAllBytesAppend").
+		Params(
+			jen.Id("input").Index().Byte(),
+			jen.Id("buf").Index().Byte(),
+		).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Id("result").Op(":=").Id("buf").Index(jen.Op(":").Lit(0)),
+			jen.Id("lastEnd").Op(":=").Lit(0),
+			jen.Var().Id("r").Id(resultStructName),
+			jen.Line(),
+
+			jen.Id("remaining").Op(":=").Id("input"),
+			jen.Id("offset").Op(":=").Lit(0),
+			jen.Line(),
+
+			jen.For().Block(
+				jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
+					jen.Id("remaining"),
+					jen.Op("&").Id("r"),
+				),
+				jen.If(jen.Op("!").Id("ok")).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("matchIdx").Op(":=").Qual("bytes", "Index").Call(jen.Id("remaining"), jen.Id("match").Dot("Match")),
+				jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+					jen.Break(),
+				),
+				jen.Line(),
+
+				jen.Id("absMatchStart").Op(":=").Id("offset").Op("+").Id("matchIdx"),
+				jen.Id("absMatchEnd").Op(":=").Id("absMatchStart").Op("+").Len(jen.Id("match").Dot("Match")),
+				jen.Line(),
+
+				jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("lastEnd").Op(":").Id("absMatchStart")).Op("...")),
+				jen.Line(),
+
+				// Expand template using segments
+				jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("t").Dot("segments")).Block(
+					jen.Switch(jen.Id("seg").Dot("Type")).Block(
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
+							jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("seg").Dot("Literal").Op("...")),
+						),
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
+							jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("match").Dot("Match").Op("...")),
+						),
+						jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
+							jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("match").Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex")).Op("...")),
+						),
+					),
+				),
+				jen.Line(),
+
+				jen.Id("lastEnd").Op("=").Id("absMatchEnd"),
+				jen.Id("remaining").Op("=").Id("input").Index(jen.Id("absMatchEnd").Op(":")),
+				jen.Id("offset").Op("=").Id("absMatchEnd"),
+			),
+			jen.Line(),
+
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("lastEnd").Op(":")).Op("...")),
+			jen.Return(jen.Id("result")),
+		)
+	c.file.Line()
+}
+
+// generateCompiledReplaceAllBytesAppend is included in generateCompiledReplaceAllBytes.
+func (c *Compiler) generateCompiledReplaceAllBytesAppend() {
+	// Already generated in generateCompiledReplaceAllBytes
+}
+
+// generateCompiledReplaceFirstString generates ReplaceFirstString on the compiled template.
+func (c *Compiler) generateCompiledReplaceFirstString() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+	resultStructName := fmt.Sprintf("%sResult", c.config.Name)
+
+	c.file.Comment("ReplaceFirstString replaces only the first match using this compiled template.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("ReplaceFirstString").
+		Params(jen.Id("input").String()).
+		Params(jen.String()).
+		Block(
+			jen.Var().Id("r").Id(resultStructName),
+			jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
+				jen.Id("input"),
+				jen.Op("&").Id("r"),
+			),
+			jen.If(jen.Op("!").Id("ok")).Block(
+				jen.Return(jen.Id("input")),
+			),
+			jen.Line(),
+
+			jen.Id("matchIdx").Op(":=").Qual("strings", "Index").Call(jen.Id("input"), jen.Id("match").Dot("Match")),
+			jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+				jen.Return(jen.Id("input")),
+			),
+			jen.Line(),
+
+			jen.Var().Id("result").Qual("strings", "Builder"),
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Op(":").Id("matchIdx"))),
+			jen.Line(),
+
+			// Expand template
+			jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("t").Dot("segments")).Block(
+				jen.Switch(jen.Id("seg").Dot("Type")).Block(
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
+						jen.Id("result").Dot("WriteString").Call(jen.Id("seg").Dot("Literal")),
+					),
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
+						jen.Id("result").Dot("WriteString").Call(jen.Id("match").Dot("Match")),
+					),
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
+						jen.Id("result").Dot("WriteString").Call(jen.Id("match").Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex"))),
+					),
+				),
+			),
+			jen.Line(),
+
+			jen.Id("result").Dot("WriteString").Call(jen.Id("input").Index(jen.Id("matchIdx").Op("+").Len(jen.Id("match").Dot("Match")).Op(":"))),
+			jen.Return(jen.Id("result").Dot("String").Call()),
+		)
+	c.file.Line()
+}
+
+// generateCompiledReplaceFirstBytes generates ReplaceFirstBytes on the compiled template.
+func (c *Compiler) generateCompiledReplaceFirstBytes() {
+	structName := fmt.Sprintf("%sReplaceTemplate", c.config.Name)
+	resultStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
+
+	c.file.Comment("ReplaceFirstBytes replaces only the first match using this compiled template.")
+	c.file.Func().Params(jen.Id("t").Op("*").Id(structName)).Id("ReplaceFirstBytes").
+		Params(jen.Id("input").Index().Byte()).
+		Params(jen.Index().Byte()).
+		Block(
+			jen.Var().Id("r").Id(resultStructName),
+			jen.List(jen.Id("match"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytesReuse").Call(
+				jen.Id("input"),
+				jen.Op("&").Id("r"),
+			),
+			jen.If(jen.Op("!").Id("ok")).Block(
+				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
+			),
+			jen.Line(),
+
+			jen.Id("matchIdx").Op(":=").Qual("bytes", "Index").Call(jen.Id("input"), jen.Id("match").Dot("Match")),
+			jen.If(jen.Id("matchIdx").Op("<").Lit(0)).Block(
+				jen.Return(jen.Append(jen.Index().Byte().Values(), jen.Id("input").Op("..."))),
+			),
+			jen.Line(),
+
+			jen.Var().Id("result").Index().Byte(),
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Op(":").Id("matchIdx")).Op("...")),
+			jen.Line(),
+
+			// Expand template
+			jen.For(jen.List(jen.Id("_"), jen.Id("seg")).Op(":=").Range().Id("t").Dot("segments")).Block(
+				jen.Switch(jen.Id("seg").Dot("Type")).Block(
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentLiteral")).Block(
+						jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("seg").Dot("Literal").Op("...")),
+					),
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentFullMatch")).Block(
+						jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("match").Dot("Match").Op("...")),
+					),
+					jen.Case(jen.Qual("github.com/KromDaniel/regengo/replace", "SegmentCaptureIndex")).Block(
+						jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("match").Dot("CaptureByIndex").Call(jen.Id("seg").Dot("CaptureIndex")).Op("...")),
+					),
+				),
+			),
+			jen.Line(),
+
+			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("input").Index(jen.Id("matchIdx").Op("+").Len(jen.Id("match").Dot("Match")).Op(":")).Op("...")),
+			jen.Return(jen.Id("result")),
+		)
+	c.file.Line()
+}

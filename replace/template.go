@@ -251,3 +251,41 @@ func isValidIdentifier(s string) bool {
 	}
 	return true
 }
+
+// ValidateAndResolve validates capture references against the pattern and resolves
+// named captures to their indices. Returns a new slice of segments with all
+// SegmentCaptureName converted to SegmentCaptureIndex.
+//
+// Parameters:
+//   - captureNames: map of capture group names to their 1-based indices
+//   - numCaptures: total number of capture groups (not including full match)
+//
+// Returns an error if any capture reference is invalid.
+func (t *Template) ValidateAndResolve(captureNames map[string]int, numCaptures int) ([]Segment, error) {
+	resolved := make([]Segment, len(t.Segments))
+
+	for i, seg := range t.Segments {
+		switch seg.Type {
+		case SegmentLiteral, SegmentFullMatch:
+			resolved[i] = seg
+
+		case SegmentCaptureIndex:
+			if seg.CaptureIndex > numCaptures {
+				return nil, fmt.Errorf("capture group %d out of range (pattern has %d capture groups)", seg.CaptureIndex, numCaptures)
+			}
+			resolved[i] = seg
+
+		case SegmentCaptureName:
+			idx, ok := captureNames[seg.CaptureName]
+			if !ok {
+				return nil, fmt.Errorf("capture group %q not found in pattern", seg.CaptureName)
+			}
+			resolved[i] = Segment{
+				Type:         SegmentCaptureIndex,
+				CaptureIndex: idx,
+			}
+		}
+	}
+
+	return resolved, nil
+}

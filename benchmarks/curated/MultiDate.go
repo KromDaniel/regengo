@@ -2,6 +2,7 @@ package curated
 
 import (
 	"bytes"
+	"fmt"
 	replace "github.com/KromDaniel/regengo/replace"
 	stream "github.com/KromDaniel/regengo/stream"
 	"io"
@@ -1742,7 +1743,7 @@ func (r *MultiDateBytesResult) CaptureByIndex(idx int) []byte {
 func (MultiDate) ReplaceAllString(input string, template string) string {
 	tmpl, err := replace.Parse(template)
 	if err != nil {
-		return input
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
 	}
 
 	var result strings.Builder
@@ -1818,7 +1819,7 @@ func (MultiDate) ReplaceAllBytes(input []byte, template string) []byte {
 func (MultiDate) ReplaceAllBytesAppend(input []byte, template string, buf []byte) []byte {
 	tmpl, err := replace.Parse(template)
 	if err != nil {
-		return append(buf, input...)
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
 	}
 
 	result := buf[:0]
@@ -1887,7 +1888,7 @@ func (MultiDate) ReplaceAllBytesAppend(input []byte, template string, buf []byte
 func (MultiDate) ReplaceFirstString(input string, template string) string {
 	tmpl, err := replace.Parse(template)
 	if err != nil {
-		return input
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
 	}
 
 	var r MultiDateResult
@@ -1933,7 +1934,7 @@ func (MultiDate) ReplaceFirstString(input string, template string) string {
 func (MultiDate) ReplaceFirstBytes(input []byte, template string) []byte {
 	tmpl, err := replace.Parse(template)
 	if err != nil {
-		return append([]byte{}, input...)
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
 	}
 
 	var r MultiDateBytesResult
@@ -1967,6 +1968,204 @@ func (MultiDate) ReplaceFirstBytes(input []byte, template string) []byte {
 			case "day":
 				result = append(result, match.Day...)
 			}
+		}
+	}
+
+	result = append(result, input[matchIdx+len(match.Match):]...)
+	return result
+}
+
+// MultiDateReplaceTemplate holds a pre-compiled replace template for the MultiDate pattern.
+// Use CompileReplaceTemplate to create one, then call its Replace methods.
+type MultiDateReplaceTemplate struct {
+	original string
+	segments []replace.Segment
+}
+
+// CompileReplaceTemplate parses and validates a replace template.
+// Returns an error if the template syntax is invalid or references non-existent captures.
+// The compiled template can be reused for multiple replacements without re-parsing.
+//
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (MultiDate) CompileReplaceTemplate(template string) (*MultiDateReplaceTemplate, error) {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return nil, err
+	}
+
+	captureNames := map[string]int{
+		"day":   3,
+		"month": 2,
+		"year":  1,
+	}
+
+	resolved, err := tmpl.ValidateAndResolve(captureNames, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MultiDateReplaceTemplate{
+		original: template,
+		segments: resolved,
+	}, nil
+}
+
+// String returns the original template string.
+func (t *MultiDateReplaceTemplate) String() string {
+	return t.original
+}
+
+// ReplaceAllString replaces all matches in input using this compiled template.
+func (t *MultiDateReplaceTemplate) ReplaceAllString(input string) string {
+	var result strings.Builder
+	lastEnd := 0
+	var r MultiDateResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := MultiDate{}.FindStringReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := strings.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		absMatchStart := offset + matchIdx
+		absMatchEnd := absMatchStart + len(match.Match)
+
+		result.WriteString(input[lastEnd:absMatchStart])
+
+		for _, seg := range t.segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result.WriteString(seg.Literal)
+			case replace.SegmentFullMatch:
+				result.WriteString(match.Match)
+			case replace.SegmentCaptureIndex:
+				result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+			}
+		}
+
+		lastEnd = absMatchEnd
+		remaining = input[absMatchEnd:]
+		offset = absMatchEnd
+	}
+
+	result.WriteString(input[lastEnd:])
+	return result.String()
+}
+
+// ReplaceAllBytes replaces all matches in input using this compiled template.
+func (t *MultiDateReplaceTemplate) ReplaceAllBytes(input []byte) []byte {
+	return t.ReplaceAllBytesAppend(input, nil)
+}
+
+// ReplaceAllBytesAppend replaces all matches and appends to buf.
+// If buf has sufficient capacity, no allocation occurs.
+func (t *MultiDateReplaceTemplate) ReplaceAllBytesAppend(input []byte, buf []byte) []byte {
+	result := buf[:0]
+	lastEnd := 0
+	var r MultiDateBytesResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := MultiDate{}.FindBytesReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := bytes.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		absMatchStart := offset + matchIdx
+		absMatchEnd := absMatchStart + len(match.Match)
+
+		result = append(result, input[lastEnd:absMatchStart]...)
+
+		for _, seg := range t.segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, match.Match...)
+			case replace.SegmentCaptureIndex:
+				result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+			}
+		}
+
+		lastEnd = absMatchEnd
+		remaining = input[absMatchEnd:]
+		offset = absMatchEnd
+	}
+
+	result = append(result, input[lastEnd:]...)
+	return result
+}
+
+// ReplaceFirstString replaces only the first match using this compiled template.
+func (t *MultiDateReplaceTemplate) ReplaceFirstString(input string) string {
+	var r MultiDateResult
+	match, ok := MultiDate{}.FindStringReuse(input, &r)
+	if !ok {
+		return input
+	}
+
+	matchIdx := strings.Index(input, match.Match)
+	if matchIdx < 0 {
+		return input
+	}
+
+	var result strings.Builder
+	result.WriteString(input[:matchIdx])
+
+	for _, seg := range t.segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result.WriteString(seg.Literal)
+		case replace.SegmentFullMatch:
+			result.WriteString(match.Match)
+		case replace.SegmentCaptureIndex:
+			result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+		}
+	}
+
+	result.WriteString(input[matchIdx+len(match.Match):])
+	return result.String()
+}
+
+// ReplaceFirstBytes replaces only the first match using this compiled template.
+func (t *MultiDateReplaceTemplate) ReplaceFirstBytes(input []byte) []byte {
+	var r MultiDateBytesResult
+	match, ok := MultiDate{}.FindBytesReuse(input, &r)
+	if !ok {
+		return append([]byte{}, input...)
+	}
+
+	matchIdx := bytes.Index(input, match.Match)
+	if matchIdx < 0 {
+		return append([]byte{}, input...)
+	}
+
+	var result []byte
+	result = append(result, input[:matchIdx]...)
+
+	for _, seg := range t.segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result = append(result, seg.Literal...)
+		case replace.SegmentFullMatch:
+			result = append(result, match.Match...)
+		case replace.SegmentCaptureIndex:
+			result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
 		}
 	}
 
