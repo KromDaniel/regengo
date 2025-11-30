@@ -355,17 +355,6 @@ for scanner.Scan() {
 
 ## Migration from stdlib
 
-### Import Changes
-
-```go
-// Before
-import "regexp"
-
-// After
-import "github.com/KromDaniel/regengo"
-// Plus your generated package
-```
-
 ### Template Syntax
 
 | stdlib | regengo | Notes |
