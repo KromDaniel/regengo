@@ -17,6 +17,7 @@ Regengo is a **compile-time finite state machine generator** for regular express
 - [Quick Start](#quick-start)
 - [Generated Methods](#generated-methods)
 - [Capture Groups](#capture-groups)
+- [Replace API](#replace-api)
 - [Performance](#performance)
 - [Streaming API](#streaming-api)
 - [CLI Reference](#cli-reference)
@@ -149,6 +150,38 @@ for _, input := range inputs {
 }
 ```
 
+## Replace API
+
+Replace matches using capture group references. Supports both runtime templates and pre-compiled templates for maximum performance.
+
+**Compile-time safety:** Pre-compiled replacer templates are validated during code generation. References to non-existent capture groups (e.g., `$invalid` or `$3` when only 2 groups exist) cause a compile error—not a runtime surprise.
+
+```go
+// Generate with pre-compiled replacer
+// regengo -pattern '(?P<user>\w+)@(?P<domain>\w+)' -name Email -replacer '$user@HIDDEN' -output email.go
+
+input := "Contact alice@example.com or bob@test.org"
+
+// Pre-compiled (fastest) - template: "$user@HIDDEN"
+result := CompiledEmail.ReplaceAllString0(input)
+// Result: "Contact alice@HIDDEN or bob@HIDDEN"
+
+// Runtime (flexible) - any template at runtime
+result := CompiledEmail.ReplaceAllString(input, "[$0]")
+// Result: "Contact [alice@example.com] or [bob@test.org]"
+```
+
+### Template Syntax
+
+| Syntax | Description |
+|--------|-------------|
+| `$0` | Full match |
+| `$1`, `$2` | Capture by index |
+| `$name` | Capture by name |
+| `$$` | Literal `$` |
+
+See [Replace API Guide](docs/replace-api.md) for complete documentation.
+
 ## Performance
 
 Regengo consistently outperforms Go's standard `regexp` package:
@@ -196,6 +229,7 @@ Basic:
   -package string    Package name (default "main")
   -test-inputs       Comma-separated test inputs
   -no-test           Disable test file generation
+  -replacer string   Pre-compiled replacement template (can repeat)
 
 Analysis:
   -analyze           Output pattern analysis as JSON (no code generation)
@@ -209,6 +243,7 @@ Advanced:
 ## Documentation
 
 - [API Comparison](docs/api-comparison.md) - Full regengo vs stdlib reference
+- [Replace API](docs/replace-api.md) - String replacement with captures
 - [Streaming API](docs/streaming.md) - Processing large files and streams
 - [Analysis & Complexity](docs/analysis.md) - Engine selection and guarantees
 - [Unicode Support](docs/unicode.md) - Unicode character classes
@@ -232,6 +267,9 @@ Regengo returns typed structs with named fields instead of `[]string` slices—a
 | - | `FindReaderFirst(r, cfg)` | First match with captures |
 | - | `Find*Reuse(...)` | Zero-alloc result reuse |
 | - | `FindAll*Append(...)` | Append to existing slice |
+| `ReplaceAllString(s, t)` | `ReplaceAllString(s, t)` | Runtime template |
+| `ReplaceAllString(s, t)` | `ReplaceAllString0(s)` | Pre-compiled (3x faster) |
+| - | `ReplaceAllBytesAppend(...)` | Zero-alloc replace |
 
 See [Full API Comparison](docs/api-comparison.md) for complete reference with examples.
 
