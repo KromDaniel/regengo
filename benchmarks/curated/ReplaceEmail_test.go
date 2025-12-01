@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,138 @@ func TestReplaceEmailFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkReplaceEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkReplaceEmail(b *testing.B) {
+	inputs := replaceEmailTestInputs
 
-func BenchmarkStdlibReplaceEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceEmailRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = ReplaceEmail{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceEmailFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_, _ = ReplaceEmail{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceEmailRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = ReplaceEmail{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *ReplaceEmailResult
+					for b.Loop() {
+						result, _ = ReplaceEmail{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibReplaceEmailFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceEmailRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = ReplaceEmail{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*ReplaceEmailResult, 0, 100)
+					for b.Loop() {
+						results = ReplaceEmail{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceEmailFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *ReplaceEmailResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			result, _ = ReplaceEmail{}.FindStringReuse(input, result)
+	b.Run("Replace", func(b *testing.B) {
+		for j, template := range replaceEmailTestReplacers {
+			template := template
+			stdlibTemplate := convertToStdlibTemplateReplaceEmail(template)
+			b.Run(fmt.Sprintf("Template[%d]", j), func(b *testing.B) {
+				for i, input := range inputs {
+					input := input
+					inputBytes := []byte(input)
+					j := j
+					b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+						b.Run("stdlib", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								_ = replaceEmailRegexp.ReplaceAllString(input, stdlibTemplate)
+							}
+						})
+						b.Run("regengo_runtime", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								_ = ReplaceEmail{}.ReplaceAllString(input, template)
+							}
+						})
+						b.Run("regengo", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								switch j {
+								case 0:
+									_ = ReplaceEmail{}.ReplaceAllString0(input)
+								case 1:
+									_ = ReplaceEmail{}.ReplaceAllString1(input)
+								case 2:
+									_ = ReplaceEmail{}.ReplaceAllString2(input)
+								}
+							}
+						})
+						b.Run("regengo_append", func(b *testing.B) {
+							b.ReportAllocs()
+							buf := make([]byte, 0, 4096)
+							for b.Loop() {
+								switch j {
+								case 0:
+									buf = ReplaceEmail{}.ReplaceAllBytesAppend0(inputBytes, buf[:0])
+								case 1:
+									buf = ReplaceEmail{}.ReplaceAllBytesAppend1(inputBytes, buf[:0])
+								case 2:
+									buf = ReplaceEmail{}.ReplaceAllBytesAppend2(inputBytes, buf[:0])
+								}
+							}
+						})
+					})
+				}
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceEmailFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*ReplaceEmailResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			results = ReplaceEmail{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibReplaceEmailFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestReplaceEmailFindReader(t *testing.T) {
@@ -386,129 +447,3 @@ func TestReplaceEmailReplaceAllString2(t *testing.T) {
 		}
 	}
 }
-
-func BenchmarkStdlibReplaceEmailReplaceAllString0(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceEmail(replaceEmailTestReplacers[0])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllStringRuntime0(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceEmailTestReplacers[0]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllString0(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString0(input)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllBytesAppend0(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			buf = ReplaceEmail{}.ReplaceAllBytesAppend0([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 0: $user@REDACTED.$tld
-
-func BenchmarkStdlibReplaceEmailReplaceAllString1(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceEmail(replaceEmailTestReplacers[1])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllStringRuntime1(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceEmailTestReplacers[1]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllString1(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString1(input)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllBytesAppend1(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			buf = ReplaceEmail{}.ReplaceAllBytesAppend1([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 1: [EMAIL]
-
-func BenchmarkStdlibReplaceEmailReplaceAllString2(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceEmail(replaceEmailTestReplacers[2])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = replaceEmailRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllStringRuntime2(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceEmailTestReplacers[2]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllString2(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			_ = ReplaceEmail{}.ReplaceAllString2(input)
-		}
-	}
-}
-
-func BenchmarkReplaceEmailReplaceAllBytesAppend2(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceEmailTestInputs {
-			buf = ReplaceEmail{}.ReplaceAllBytesAppend2([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 2: $0

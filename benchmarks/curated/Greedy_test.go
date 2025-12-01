@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 )
@@ -33,20 +34,27 @@ func TestGreedyMatchBytes(t *testing.T) {
 	}
 }
 
-func BenchmarkGreedyMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range greedyTestInputs {
-			_ = Greedy{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkGreedy(b *testing.B) {
+	inputs := greedyTestInputs
 
-func BenchmarkStdlibGreedyMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range greedyTestInputs {
-			_ = greedyRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = greedyRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = Greedy{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
+	})
+
 }

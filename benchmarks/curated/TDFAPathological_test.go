@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -89,78 +90,83 @@ func TestTDFAPathologicalFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTDFAPathologicalMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_ = TDFAPathological{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTDFAPathological(b *testing.B) {
+	inputs := tDFAPathologicalTestInputs
 
-func BenchmarkStdlibTDFAPathologicalMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_ = tDFAPathologicalRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAPathologicalRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFAPathological{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFAPathologicalFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_, _ = TDFAPathological{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAPathologicalRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TDFAPathological{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TDFAPathologicalResult
+					for b.Loop() {
+						result, _ = TDFAPathological{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTDFAPathologicalFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_ = tDFAPathologicalRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAPathologicalRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFAPathological{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TDFAPathologicalResult, 0, 100)
+					for b.Loop() {
+						results = TDFAPathological{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFAPathologicalFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TDFAPathologicalResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			result, _ = TDFAPathological{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTDFAPathologicalFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_ = TDFAPathological{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTDFAPathologicalFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TDFAPathologicalResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			results = TDFAPathological{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTDFAPathologicalFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAPathologicalTestInputs {
-			_ = tDFAPathologicalRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTDFAPathologicalFindReader(t *testing.T) {

@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 )
@@ -33,20 +34,27 @@ func TestEmailMatchBytes(t *testing.T) {
 	}
 }
 
-func BenchmarkEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailTestInputs {
-			_ = Email{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkEmail(b *testing.B) {
+	inputs := emailTestInputs
 
-func BenchmarkStdlibEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailTestInputs {
-			_ = emailRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = emailRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = Email{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
+	})
+
 }

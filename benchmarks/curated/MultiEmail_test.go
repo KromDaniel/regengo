@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,83 @@ func TestMultiEmailFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkMultiEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_ = MultiEmail{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkMultiEmail(b *testing.B) {
+	inputs := multiEmailTestInputs
 
-func BenchmarkStdlibMultiEmailMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_ = multiEmailRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiEmailRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = MultiEmail{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkMultiEmailFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_, _ = MultiEmail{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiEmailRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = MultiEmail{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *MultiEmailResult
+					for b.Loop() {
+						result, _ = MultiEmail{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibMultiEmailFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_ = multiEmailRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiEmailRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = MultiEmail{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*MultiEmailResult, 0, 100)
+					for b.Loop() {
+						results = MultiEmail{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkMultiEmailFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *MultiEmailResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			result, _ = MultiEmail{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkMultiEmailFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_ = MultiEmail{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkMultiEmailFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*MultiEmailResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			results = MultiEmail{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibMultiEmailFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiEmailTestInputs {
-			_ = multiEmailRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestMultiEmailFindReader(t *testing.T) {

@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -107,78 +108,83 @@ func TestTDFALogParserFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTDFALogParserMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_ = TDFALogParser{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTDFALogParser(b *testing.B) {
+	inputs := tDFALogParserTestInputs
 
-func BenchmarkStdlibTDFALogParserMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_ = tDFALogParserRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFALogParserRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFALogParser{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFALogParserFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_, _ = TDFALogParser{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFALogParserRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TDFALogParser{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TDFALogParserResult
+					for b.Loop() {
+						result, _ = TDFALogParser{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTDFALogParserFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_ = tDFALogParserRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFALogParserRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFALogParser{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TDFALogParserResult, 0, 100)
+					for b.Loop() {
+						results = TDFALogParser{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFALogParserFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TDFALogParserResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			result, _ = TDFALogParser{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTDFALogParserFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_ = TDFALogParser{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTDFALogParserFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TDFALogParserResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			results = TDFALogParser{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTDFALogParserFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFALogParserTestInputs {
-			_ = tDFALogParserRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTDFALogParserFindReader(t *testing.T) {

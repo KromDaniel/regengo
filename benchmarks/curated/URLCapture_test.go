@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -101,78 +102,83 @@ func TestURLCaptureFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkURLCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_ = URLCapture{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkURLCapture(b *testing.B) {
+	inputs := uRLCaptureTestInputs
 
-func BenchmarkStdlibURLCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_ = uRLCaptureRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = uRLCaptureRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = URLCapture{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkURLCaptureFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_, _ = URLCapture{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = uRLCaptureRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = URLCapture{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *URLCaptureResult
+					for b.Loop() {
+						result, _ = URLCapture{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibURLCaptureFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_ = uRLCaptureRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = uRLCaptureRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = URLCapture{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*URLCaptureResult, 0, 100)
+					for b.Loop() {
+						results = URLCapture{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkURLCaptureFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *URLCaptureResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			result, _ = URLCapture{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkURLCaptureFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_ = URLCapture{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkURLCaptureFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*URLCaptureResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			results = URLCapture{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibURLCaptureFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range uRLCaptureTestInputs {
-			_ = uRLCaptureRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestURLCaptureFindReader(t *testing.T) {

@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -89,78 +90,83 @@ func TestTDFANestedWordFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTDFANestedWordMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_ = TDFANestedWord{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTDFANestedWord(b *testing.B) {
+	inputs := tDFANestedWordTestInputs
 
-func BenchmarkStdlibTDFANestedWordMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_ = tDFANestedWordRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFANestedWordRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFANestedWord{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFANestedWordFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_, _ = TDFANestedWord{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFANestedWordRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TDFANestedWord{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TDFANestedWordResult
+					for b.Loop() {
+						result, _ = TDFANestedWord{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTDFANestedWordFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_ = tDFANestedWordRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFANestedWordRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFANestedWord{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TDFANestedWordResult, 0, 100)
+					for b.Loop() {
+						results = TDFANestedWord{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFANestedWordFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TDFANestedWordResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			result, _ = TDFANestedWord{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTDFANestedWordFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_ = TDFANestedWord{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTDFANestedWordFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TDFANestedWordResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			results = TDFANestedWord{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTDFANestedWordFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFANestedWordTestInputs {
-			_ = tDFANestedWordRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTDFANestedWordFindReader(t *testing.T) {
