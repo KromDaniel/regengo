@@ -13,19 +13,19 @@ Regengo is a **compile-time finite state machine generator** for regular express
 
 ## Highlights
 
-🚀 **High Performance** — 2-15x faster than Go's `regexp`, including capture group extraction
+**High Performance** — 2-15x faster than Go's `regexp`, including capture group extraction
 
-🛡️ **Compile-Time Safety** — Invalid capture group references fail at Go compilation, not runtime
+**Compile-Time Safety** — Invalid capture group references fail at Go compilation, not runtime
 
-🧠 **Smart Engine Selection** — Automatically chooses Thompson NFA, DFA, or TDFA based on pattern analysis
+**Smart Engine Selection** — Automatically chooses Thompson NFA, DFA, or TDFA based on pattern analysis
 
-🔄 **Fast Replacers** — Pre-compiled replacement templates, 2-3x faster than stdlib
+**Fast Replacers** — Pre-compiled replacement templates, 2-3x faster than stdlib
 
-📡 **Efficient Streaming** — Match patterns over `io.Reader` with constant memory and cross-boundary support
+**Efficient Streaming** — Match patterns over `io.Reader` with constant memory and cross-boundary support
 
-📦 **Zero Allocations** — `FindStringReuse`, `FindAllStringAppend`, `ReplaceAllBytesAppend` for hot paths
+**Zero Allocations** — `FindStringReuse`, `FindAllStringAppend`, `ReplaceAllBytesAppend` for hot paths
 
-✅ **Rigorously Tested** — Over 2,000 generated tests across 250 patterns verify correctness against Go stdlib
+**Rigorously Tested** — Over 2,000 generated tests across 250 patterns verify correctness against Go stdlib
 
 ## Table of Contents
 
