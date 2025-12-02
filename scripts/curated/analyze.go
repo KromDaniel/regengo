@@ -11,20 +11,27 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
 type patternCategory string
 
 const (
-	categorySimple      patternCategory = "simple"
-	categoryComplex     patternCategory = "complex"
-	categoryVeryComplex patternCategory = "very_complex"
-	categoryTDFA        patternCategory = "tdfa"
+	categoryMatch   patternCategory = "match"
+	categoryCapture patternCategory = "capture"
+	categoryFindAll patternCategory = "findall"
+	categoryTDFA    patternCategory = "tdfa"
+	categoryTNFA    patternCategory = "tnfa"
+	categoryReplace patternCategory = "replace"
 )
 
 type benchmarkResult struct {
-	Name        string
+	Pattern     string
+	Category    string // Match, FindFirst, FindAll, Replace
+	Input       string
+	Variant     string // stdlib, regengo, regengo_reuse, regengo_append, regengo_runtime
+	Template    string // for Replace category
 	NsPerOp     float64
 	BytesPerOp  int64
 	AllocsPerOp int64
@@ -51,6 +58,12 @@ type slowPattern struct {
 	SlowerByPct float64
 }
 
+// benchmarkLineRe matches new nested benchmark output lines
+// Example: BenchmarkDateCapture/Match/Input[0]/stdlib-12  	16418577	        72.75 ns/op	       0 B/op	       0 allocs/op
+var benchmarkLineRe = regexp.MustCompile(
+	`^(Benchmark\S+)-\d+\s+\d+\s+([\d.]+)\s+ns/op(?:\s+(\d+)\s+B/op)?(?:\s+(\d+)\s+allocs/op)?`,
+)
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	var lines []string
@@ -71,13 +84,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Detect categories from benchmark names
+	// Analyze and compare results
 	comparisons := analyzeBenchmarks(benchResults)
 	printBenchmarkAnalysis(comparisons)
 }
 
-func parseBenchmarkResults(output string) map[string]*benchmarkResult {
-	results := make(map[string]*benchmarkResult)
+func parseBenchmarkResults(output string) []benchmarkResult {
+	var results []benchmarkResult
 	lines := strings.Split(output, "\n")
 
 	for _, line := range lines {
@@ -85,100 +98,161 @@ func parseBenchmarkResults(output string) map[string]*benchmarkResult {
 			continue
 		}
 
-		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		match := benchmarkLineRe.FindStringSubmatch(line)
+		if match == nil {
 			continue
 		}
 
-		name := fields[0]
-
+		name := match[1]
 		var nsPerOp float64
 		var bytesPerOp, allocsPerOp int64
 
-		for i := 2; i < len(fields); i++ {
-			if i+1 < len(fields) && fields[i+1] == "ns/op" {
-				fmt.Sscanf(fields[i], "%f", &nsPerOp)
-			}
-			if i+1 < len(fields) && fields[i+1] == "B/op" {
-				fmt.Sscanf(fields[i], "%d", &bytesPerOp)
-			}
-			if i+1 < len(fields) && fields[i+1] == "allocs/op" {
-				fmt.Sscanf(fields[i], "%d", &allocsPerOp)
-			}
+		fmt.Sscanf(match[2], "%f", &nsPerOp)
+		if match[3] != "" {
+			fmt.Sscanf(match[3], "%d", &bytesPerOp)
+		}
+		if match[4] != "" {
+			fmt.Sscanf(match[4], "%d", &allocsPerOp)
 		}
 
-		results[name] = &benchmarkResult{
-			Name:        name,
-			NsPerOp:     nsPerOp,
-			BytesPerOp:  bytesPerOp,
-			AllocsPerOp: allocsPerOp,
+		result := parseBenchmarkName(name)
+		if result == nil {
+			continue
 		}
+
+		result.NsPerOp = nsPerOp
+		result.BytesPerOp = bytesPerOp
+		result.AllocsPerOp = allocsPerOp
+
+		results = append(results, *result)
 	}
 
 	return results
 }
 
-func detectCategory(benchName string) patternCategory {
-	lowerName := strings.ToLower(benchName)
-	if strings.Contains(lowerName, "tdfa") {
-		return categoryTDFA
+// parseBenchmarkName extracts components from nested benchmark name
+// Examples:
+//   - BenchmarkDateCapture/Match/Input[0]/stdlib
+//   - BenchmarkDateCapture/FindFirst/Input[0]/regengo_reuse
+//   - BenchmarkReplaceDate/Replace/Template[0]/Input[0]/regengo_append
+func parseBenchmarkName(name string) *benchmarkResult {
+	if !strings.HasPrefix(name, "Benchmark") {
+		return nil
 	}
-	if strings.Contains(lowerName, "verycomplex") {
-		return categoryVeryComplex
+	name = strings.TrimPrefix(name, "Benchmark")
+
+	parts := strings.Split(name, "/")
+	if len(parts) < 4 {
+		return nil
 	}
-	if strings.Contains(lowerName, "complex") {
-		return categoryComplex
+
+	result := &benchmarkResult{
+		Pattern: parts[0],
 	}
-	return categorySimple
+
+	// Handle different structures
+	// Match/FindFirst/FindAll: Pattern/Category/Input[i]/variant
+	// Replace: Pattern/Category/Template[j]/Input[i]/variant
+	if parts[1] == "Replace" && len(parts) >= 5 {
+		result.Category = parts[1]
+		result.Template = parts[2]
+		result.Input = parts[3]
+		result.Variant = parts[4]
+	} else if len(parts) >= 4 {
+		result.Category = parts[1]
+		result.Input = parts[2]
+		result.Variant = parts[3]
+	} else {
+		return nil
+	}
+
+	return result
 }
 
-func analyzeBenchmarks(benchResults map[string]*benchmarkResult) map[patternCategory]*benchmarkComparison {
+func detectPatternCategory(patternName string) patternCategory {
+	lowerName := strings.ToLower(patternName)
+	if strings.HasPrefix(lowerName, "tdfa") {
+		return categoryTDFA
+	}
+	if strings.HasPrefix(lowerName, "tnfa") {
+		return categoryTNFA
+	}
+	if strings.HasPrefix(lowerName, "replace") {
+		return categoryReplace
+	}
+	if strings.HasPrefix(lowerName, "multi") {
+		return categoryFindAll
+	}
+	if strings.Contains(lowerName, "capture") {
+		return categoryCapture
+	}
+	return categoryMatch
+}
+
+func analyzeBenchmarks(benchResults []benchmarkResult) map[patternCategory]*benchmarkComparison {
 	comparisons := make(map[patternCategory]*benchmarkComparison)
 
-	for _, cat := range []patternCategory{categorySimple, categoryComplex, categoryVeryComplex, categoryTDFA} {
+	for _, cat := range []patternCategory{categoryMatch, categoryCapture, categoryFindAll, categoryTDFA, categoryTNFA, categoryReplace} {
 		comparisons[cat] = &benchmarkComparison{Category: cat}
 	}
 
-	// Find pairs of regengo vs stdlib benchmarks
-	for name, result := range benchResults {
-		if strings.Contains(name, "golang_std") {
+	// Group results by pattern+category+input+template to find stdlib vs regengo pairs
+	type resultKey struct {
+		pattern  string
+		category string
+		input    string
+		template string
+	}
+
+	grouped := make(map[resultKey]map[string]benchmarkResult) // key -> variant -> result
+
+	for _, r := range benchResults {
+		key := resultKey{
+			pattern:  r.Pattern,
+			category: r.Category,
+			input:    r.Input,
+			template: r.Template,
+		}
+		if grouped[key] == nil {
+			grouped[key] = make(map[string]benchmarkResult)
+		}
+		grouped[key][r.Variant] = r
+	}
+
+	// Compare stdlib vs regengo (default variant, not reuse/append)
+	for key, variants := range grouped {
+		stdlibResult, hasStdlib := variants["stdlib"]
+		regengoResult, hasRegengo := variants["regengo"]
+
+		if !hasStdlib || !hasRegengo {
 			continue
 		}
 
-		// Find stdlib counterpart
-		var stdlibName string
-		if strings.Contains(name, "/regengo") {
-			stdlibName = strings.Replace(name, "/regengo", "/golang_std", 1)
-		} else {
-			continue
-		}
+		patCat := detectPatternCategory(key.pattern)
+		comp := comparisons[patCat]
 
-		stdlibResult, hasStdlib := benchResults[stdlibName]
-		if !hasStdlib {
-			continue
-		}
-
-		category := detectCategory(name)
-		comp := comparisons[category]
-
-		if result.NsPerOp < stdlibResult.NsPerOp {
+		if regengoResult.NsPerOp < stdlibResult.NsPerOp {
 			comp.RegengoFaster++
 		} else {
 			comp.StdlibFaster++
-			slowerByPct := ((result.NsPerOp - stdlibResult.NsPerOp) / stdlibResult.NsPerOp) * 100
+			slowerByPct := ((regengoResult.NsPerOp - stdlibResult.NsPerOp) / stdlibResult.NsPerOp) * 100
+			benchName := fmt.Sprintf("%s/%s/%s", key.pattern, key.category, key.input)
+			if key.template != "" {
+				benchName = fmt.Sprintf("%s/%s/%s/%s", key.pattern, key.category, key.template, key.input)
+			}
 			comp.SlowerPatterns = append(comp.SlowerPatterns, slowPattern{
-				Name:        name,
-				RegengoNs:   result.NsPerOp,
+				Name:        benchName,
+				RegengoNs:   regengoResult.NsPerOp,
 				StdlibNs:    stdlibResult.NsPerOp,
 				SlowerByPct: slowerByPct,
 			})
 		}
 
-		comp.RegengoAvgNs += result.NsPerOp
+		comp.RegengoAvgNs += regengoResult.NsPerOp
 		comp.StdlibAvgNs += stdlibResult.NsPerOp
-		comp.RegengoAvgBytes += float64(result.BytesPerOp)
+		comp.RegengoAvgBytes += float64(regengoResult.BytesPerOp)
 		comp.StdlibAvgBytes += float64(stdlibResult.BytesPerOp)
-		comp.RegengoAvgAllocs += float64(result.AllocsPerOp)
+		comp.RegengoAvgAllocs += float64(regengoResult.AllocsPerOp)
 		comp.StdlibAvgAllocs += float64(stdlibResult.AllocsPerOp)
 	}
 
@@ -213,7 +287,7 @@ func printBenchmarkAnalysis(comparisons map[patternCategory]*benchmarkComparison
 	fmt.Println("======== Benchmark Comparison Summary ========")
 	fmt.Println()
 
-	orderedCategories := []patternCategory{categorySimple, categoryComplex, categoryVeryComplex, categoryTDFA}
+	orderedCategories := []patternCategory{categoryMatch, categoryCapture, categoryFindAll, categoryTDFA, categoryTNFA, categoryReplace}
 
 	var totalRegengoFaster, totalStdlibFaster int
 	var overallRegengoNs, overallStdlibNs float64
@@ -250,8 +324,10 @@ func printBenchmarkAnalysis(comparisons map[patternCategory]*benchmarkComparison
 			comp.RegengoAvgBytes, comp.StdlibAvgBytes)
 		if bytesDiff > 0 {
 			fmt.Printf("[%.1f%% less]\n", bytesDiff)
-		} else {
+		} else if bytesDiff < 0 {
 			fmt.Printf("[%.1f%% more]\n", -bytesDiff)
+		} else {
+			fmt.Printf("[same]\n")
 		}
 
 		allocsDiff := 0.0
@@ -262,8 +338,10 @@ func printBenchmarkAnalysis(comparisons map[patternCategory]*benchmarkComparison
 			comp.RegengoAvgAllocs, comp.StdlibAvgAllocs)
 		if allocsDiff > 0 {
 			fmt.Printf("[%.1f%% less]\n", allocsDiff)
-		} else {
+		} else if allocsDiff < 0 {
 			fmt.Printf("[%.1f%% more]\n", -allocsDiff)
+		} else {
+			fmt.Printf("[same]\n")
 		}
 		fmt.Println()
 
@@ -300,22 +378,32 @@ func printBenchmarkAnalysis(comparisons map[patternCategory]*benchmarkComparison
 			fmt.Printf("[%.1f%% slower]\n", -overallSpeedupPct)
 		}
 
-		overallBytesDiff := ((overallStdlibBytes - overallRegengoBytes) / overallStdlibBytes) * 100
+		overallBytesDiff := 0.0
+		if overallStdlibBytes > 0 {
+			overallBytesDiff = ((overallStdlibBytes - overallRegengoBytes) / overallStdlibBytes) * 100
+		}
 		fmt.Printf("Avg memory:     %.0f B/op (regengo) vs %.0f B/op (stdlib) ",
 			overallRegengoBytes, overallStdlibBytes)
 		if overallBytesDiff > 0 {
 			fmt.Printf("[%.1f%% less]\n", overallBytesDiff)
-		} else {
+		} else if overallBytesDiff < 0 {
 			fmt.Printf("[%.1f%% more]\n", -overallBytesDiff)
+		} else {
+			fmt.Printf("[same]\n")
 		}
 
-		overallAllocsDiff := ((overallStdlibAllocs - overallRegengoAllocs) / overallStdlibAllocs) * 100
+		overallAllocsDiff := 0.0
+		if overallStdlibAllocs > 0 {
+			overallAllocsDiff = ((overallStdlibAllocs - overallRegengoAllocs) / overallStdlibAllocs) * 100
+		}
 		fmt.Printf("Avg allocs:     %.1f allocs/op (regengo) vs %.1f allocs/op (stdlib) ",
 			overallRegengoAllocs, overallStdlibAllocs)
 		if overallAllocsDiff > 0 {
 			fmt.Printf("[%.1f%% less]\n", overallAllocsDiff)
-		} else {
+		} else if overallAllocsDiff < 0 {
 			fmt.Printf("[%.1f%% more]\n", -overallAllocsDiff)
+		} else {
+			fmt.Printf("[same]\n")
 		}
 	}
 

@@ -28,33 +28,43 @@ except ImportError:
 
 
 def parse_benchmark_output(lines: list[str]) -> dict:
-    """Parse benchmark output and extract timing data."""
-    # Pattern: BenchmarkXxxMethod/variant_N-CPU    iterations    ns/op
+    """Parse benchmark output and extract timing data.
+
+    New nested format:
+    - BenchmarkPattern/Category/Input[i]/variant-CPU
+    - BenchmarkPattern/Replace/Template[j]/Input[i]/variant-CPU
+
+    Categories: Match, FindFirst, FindAll, Replace
+    Variants: stdlib, regengo, regengo_reuse, regengo_append, regengo_runtime
+    """
+    # Pattern for nested benchmark format
+    # Example: BenchmarkDateCapture/Match/Input[0]/stdlib-12    16418577    72.75 ns/op
     pattern = re.compile(
-        r"Benchmark(\w+?)(?:MatchString|FindString|FindAllString)"
-        r"/(\w+)_\d+-\d+\s+\d+\s+([\d.]+)\s+ns/op"
+        r"Benchmark(\w+)/(Match|FindFirst|FindAll|Replace)"
+        r"(?:/Template\[\d+\])?/Input\[\d+\]/(\w+)-\d+\s+\d+\s+([\d.]+)\s+ns/op"
     )
 
-    results = defaultdict(lambda: {"stdlib": [], "regengo": []})
+    # Group by pattern+category -> variant -> list of ns/op values
+    results = defaultdict(lambda: defaultdict(list))
 
     for line in lines:
         match = pattern.search(line)
         if match:
-            name, variant, ns_op = match.groups()
+            name, category, variant, ns_op = match.groups()
             ns_op = float(ns_op)
 
-            # Normalize variant names
-            if variant == "golang_std":
-                results[name]["stdlib"].append(ns_op)
-            elif variant == "regengo":
-                results[name]["regengo"].append(ns_op)
-            # Skip reuse variants for chart simplicity
+            # Create key combining pattern and category for more granular comparison
+            key = f"{name}/{category}"
+
+            # Only collect stdlib and regengo (skip reuse/append variants for chart simplicity)
+            if variant in ("stdlib", "regengo"):
+                results[key][variant].append(ns_op)
 
     # Average the results for each benchmark
     averaged = {}
-    for name, data in results.items():
+    for key, data in results.items():
         if data["stdlib"] and data["regengo"]:
-            averaged[name] = {
+            averaged[key] = {
                 "stdlib": sum(data["stdlib"]) / len(data["stdlib"]),
                 "regengo": sum(data["regengo"]) / len(data["regengo"]),
             }

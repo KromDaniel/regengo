@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,138 @@ func TestReplaceDateFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkReplaceDateMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkReplaceDate(b *testing.B) {
+	inputs := replaceDateTestInputs
 
-func BenchmarkStdlibReplaceDateMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceDateRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = ReplaceDate{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceDateFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_, _ = ReplaceDate{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceDateRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = ReplaceDate{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *ReplaceDateResult
+					for b.Loop() {
+						result, _ = ReplaceDate{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibReplaceDateFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = replaceDateRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = ReplaceDate{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*ReplaceDateResult, 0, 100)
+					for b.Loop() {
+						results = ReplaceDate{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceDateFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *ReplaceDateResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			result, _ = ReplaceDate{}.FindStringReuse(input, result)
+	b.Run("Replace", func(b *testing.B) {
+		for j, template := range replaceDateTestReplacers {
+			template := template
+			stdlibTemplate := convertToStdlibTemplateReplaceDate(template)
+			b.Run(fmt.Sprintf("Template[%d]", j), func(b *testing.B) {
+				for i, input := range inputs {
+					input := input
+					inputBytes := []byte(input)
+					j := j
+					b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+						b.Run("stdlib", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								_ = replaceDateRegexp.ReplaceAllString(input, stdlibTemplate)
+							}
+						})
+						b.Run("regengo_runtime", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								_ = ReplaceDate{}.ReplaceAllString(input, template)
+							}
+						})
+						b.Run("regengo", func(b *testing.B) {
+							b.ReportAllocs()
+							for b.Loop() {
+								switch j {
+								case 0:
+									_ = ReplaceDate{}.ReplaceAllString0(input)
+								case 1:
+									_ = ReplaceDate{}.ReplaceAllString1(input)
+								case 2:
+									_ = ReplaceDate{}.ReplaceAllString2(input)
+								}
+							}
+						})
+						b.Run("regengo_append", func(b *testing.B) {
+							b.ReportAllocs()
+							buf := make([]byte, 0, 4096)
+							for b.Loop() {
+								switch j {
+								case 0:
+									buf = ReplaceDate{}.ReplaceAllBytesAppend0(inputBytes, buf[:0])
+								case 1:
+									buf = ReplaceDate{}.ReplaceAllBytesAppend1(inputBytes, buf[:0])
+								case 2:
+									buf = ReplaceDate{}.ReplaceAllBytesAppend2(inputBytes, buf[:0])
+								}
+							}
+						})
+					})
+				}
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkReplaceDateFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkReplaceDateFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*ReplaceDateResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			results = ReplaceDate{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibReplaceDateFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestReplaceDateFindReader(t *testing.T) {
@@ -386,129 +447,3 @@ func TestReplaceDateReplaceAllString2(t *testing.T) {
 		}
 	}
 }
-
-func BenchmarkStdlibReplaceDateReplaceAllString0(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceDate(replaceDateTestReplacers[0])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllStringRuntime0(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceDateTestReplacers[0]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllString0(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString0(input)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllBytesAppend0(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			buf = ReplaceDate{}.ReplaceAllBytesAppend0([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 0: $month/$day/$year
-
-func BenchmarkStdlibReplaceDateReplaceAllString1(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceDate(replaceDateTestReplacers[1])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllStringRuntime1(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceDateTestReplacers[1]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllString1(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString1(input)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllBytesAppend1(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			buf = ReplaceDate{}.ReplaceAllBytesAppend1([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 1: [DATE]
-
-func BenchmarkStdlibReplaceDateReplaceAllString2(b *testing.B) {
-	b.ReportAllocs()
-	stdlibTemplate := convertToStdlibTemplateReplaceDate(replaceDateTestReplacers[2])
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = replaceDateRegexp.ReplaceAllString(input, stdlibTemplate)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllStringRuntime2(b *testing.B) {
-	b.ReportAllocs()
-	replacer := replaceDateTestReplacers[2]
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString(input, replacer)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllString2(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			_ = ReplaceDate{}.ReplaceAllString2(input)
-		}
-	}
-}
-
-func BenchmarkReplaceDateReplaceAllBytesAppend2(b *testing.B) {
-	b.ReportAllocs()
-	buf := make([]byte, 0, 4096)
-	for i := 0; i < b.N; i++ {
-		for _, input := range replaceDateTestInputs {
-			buf = ReplaceDate{}.ReplaceAllBytesAppend2([]byte(input), buf)
-			buf = buf[:0]
-		}
-	}
-}
-
-// Template 2: $year

@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -89,78 +90,83 @@ func TestTNFAPathologicalFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTNFAPathologicalMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_ = TNFAPathological{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTNFAPathological(b *testing.B) {
+	inputs := tNFAPathologicalTestInputs
 
-func BenchmarkStdlibTNFAPathologicalMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_ = tNFAPathologicalRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tNFAPathologicalRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TNFAPathological{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTNFAPathologicalFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_, _ = TNFAPathological{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tNFAPathologicalRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TNFAPathological{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TNFAPathologicalResult
+					for b.Loop() {
+						result, _ = TNFAPathological{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTNFAPathologicalFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_ = tNFAPathologicalRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tNFAPathologicalRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TNFAPathological{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TNFAPathologicalResult, 0, 100)
+					for b.Loop() {
+						results = TNFAPathological{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTNFAPathologicalFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TNFAPathologicalResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			result, _ = TNFAPathological{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTNFAPathologicalFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_ = TNFAPathological{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTNFAPathologicalFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TNFAPathologicalResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			results = TNFAPathological{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTNFAPathologicalFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tNFAPathologicalTestInputs {
-			_ = tNFAPathologicalRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTNFAPathologicalFindReader(t *testing.T) {

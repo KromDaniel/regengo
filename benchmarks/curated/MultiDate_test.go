@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,83 @@ func TestMultiDateFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkMultiDateMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_ = MultiDate{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkMultiDate(b *testing.B) {
+	inputs := multiDateTestInputs
 
-func BenchmarkStdlibMultiDateMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_ = multiDateRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiDateRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = MultiDate{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkMultiDateFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_, _ = MultiDate{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiDateRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = MultiDate{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *MultiDateResult
+					for b.Loop() {
+						result, _ = MultiDate{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibMultiDateFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_ = multiDateRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = multiDateRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = MultiDate{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*MultiDateResult, 0, 100)
+					for b.Loop() {
+						results = MultiDate{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkMultiDateFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *MultiDateResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			result, _ = MultiDate{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkMultiDateFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_ = MultiDate{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkMultiDateFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*MultiDateResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			results = MultiDate{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibMultiDateFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range multiDateTestInputs {
-			_ = multiDateRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestMultiDateFindReader(t *testing.T) {

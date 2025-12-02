@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -107,78 +108,83 @@ func TestTDFASemVerFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTDFASemVerMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_ = TDFASemVer{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTDFASemVer(b *testing.B) {
+	inputs := tDFASemVerTestInputs
 
-func BenchmarkStdlibTDFASemVerMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_ = tDFASemVerRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFASemVerRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFASemVer{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFASemVerFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_, _ = TDFASemVer{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFASemVerRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TDFASemVer{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TDFASemVerResult
+					for b.Loop() {
+						result, _ = TDFASemVer{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTDFASemVerFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_ = tDFASemVerRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFASemVerRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFASemVer{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TDFASemVerResult, 0, 100)
+					for b.Loop() {
+						results = TDFASemVer{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFASemVerFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TDFASemVerResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			result, _ = TDFASemVer{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTDFASemVerFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_ = TDFASemVer{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTDFASemVerFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TDFASemVerResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			results = TDFASemVer{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTDFASemVerFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFASemVerTestInputs {
-			_ = tDFASemVerRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTDFASemVerFindReader(t *testing.T) {

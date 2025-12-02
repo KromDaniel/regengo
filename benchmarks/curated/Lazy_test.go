@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 )
@@ -33,20 +34,27 @@ func TestLazyMatchBytes(t *testing.T) {
 	}
 }
 
-func BenchmarkLazyMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range lazyTestInputs {
-			_ = Lazy{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkLazy(b *testing.B) {
+	inputs := lazyTestInputs
 
-func BenchmarkStdlibLazyMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range lazyTestInputs {
-			_ = lazyRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = lazyRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = Lazy{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
+	})
+
 }

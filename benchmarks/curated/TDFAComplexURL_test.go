@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -125,78 +126,83 @@ func TestTDFAComplexURLFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkTDFAComplexURLMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_ = TDFAComplexURL{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkTDFAComplexURL(b *testing.B) {
+	inputs := tDFAComplexURLTestInputs
 
-func BenchmarkStdlibTDFAComplexURLMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_ = tDFAComplexURLRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAComplexURLRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFAComplexURL{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFAComplexURLFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_, _ = TDFAComplexURL{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAComplexURLRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = TDFAComplexURL{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *TDFAComplexURLResult
+					for b.Loop() {
+						result, _ = TDFAComplexURL{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibTDFAComplexURLFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_ = tDFAComplexURLRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = tDFAComplexURLRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = TDFAComplexURL{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*TDFAComplexURLResult, 0, 100)
+					for b.Loop() {
+						results = TDFAComplexURL{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkTDFAComplexURLFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *TDFAComplexURLResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			result, _ = TDFAComplexURL{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkTDFAComplexURLFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_ = TDFAComplexURL{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkTDFAComplexURLFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*TDFAComplexURLResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			results = TDFAComplexURL{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibTDFAComplexURLFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range tDFAComplexURLTestInputs {
-			_ = tDFAComplexURLRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestTDFAComplexURLFindReader(t *testing.T) {

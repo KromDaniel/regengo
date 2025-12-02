@@ -17,23 +17,26 @@ import (
 	"strings"
 )
 
+// BenchResult holds a single benchmark result
 type BenchResult struct {
-	FullName    string
-	PatternName string
-	Method      string // MatchString, FindString, FindStringReuse, FindAllStringAppend, ReplaceAllString, etc.
-	IsStdlib    bool
-	NsOp        float64
-	BOp         int
-	Allocs      int
+	Pattern  string
+	Category string // Match, FindFirst, FindAll, Replace
+	Input    string
+	Variant  string // stdlib, regengo, regengo_reuse, regengo_append, regengo_runtime
+	Template string // for Replace category
+	NsOp     float64
+	BOp      int
+	Allocs   int
 }
 
+// PatternBenchmarks holds aggregated results for a pattern
 type PatternBenchmarks struct {
 	Name        string
 	Pattern     string
 	Category    string
 	Description string
 	Replacers   []string
-	Results     []BenchResult
+	Results     map[string]map[string]BenchResult // category -> variant -> averaged result
 }
 
 // PatternInfo holds pattern metadata
@@ -81,43 +84,38 @@ var categoryInfo = map[string]struct {
 // Category order for output
 var categoryOrder = []string{"match", "capture", "findall", "tdfa", "tnfa", "replace"}
 
-// Known pattern names in order of preference for extraction
-var knownPatterns = []string{
-	"TDFAPathological", "TDFANestedWord", "TDFAComplexURL", "TDFALogParser", "TDFASemVer",
-	"TNFAPathological",
-	"ReplaceEmail", "ReplaceDate", "ReplaceURL",
-	"DateCapture", "EmailCapture", "URLCapture",
-	"MultiDate", "MultiEmail",
-	"Email", "Greedy", "Lazy",
-}
+// benchmarkLineRe matches new nested benchmark output lines
+var benchmarkLineRe = regexp.MustCompile(
+	`^(Benchmark\S+)-\d+\s+\d+\s+([\d.]+)\s+ns/op\s+(\d+)\s+B/op\s+(\d+)\s+allocs/op`,
+)
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-
-	// Regex to parse benchmark lines
-	// Format: BenchmarkName-CPU  iterations  ns/op  B/op  allocs/op
-	benchRegex := regexp.MustCompile(`^(Benchmark\w+)-\d+\s+\d+\s+([\d.]+)\s+ns/op\s+(\d+)\s+B/op\s+(\d+)\s+allocs/op`)
 
 	var results []BenchResult
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		matches := benchRegex.FindStringSubmatch(line)
-		if matches == nil {
+		match := benchmarkLineRe.FindStringSubmatch(line)
+		if match == nil {
 			continue
 		}
 
-		fullName := matches[1]
-		nsOp, _ := strconv.ParseFloat(matches[2], 64)
-		bOp, _ := strconv.Atoi(matches[3])
-		allocs, _ := strconv.Atoi(matches[4])
+		fullName := match[1]
+		nsOp, _ := strconv.ParseFloat(match[2], 64)
+		bOp, _ := strconv.Atoi(match[3])
+		allocs, _ := strconv.Atoi(match[4])
 
 		result := parseBenchmarkName(fullName)
+		if result == nil {
+			continue
+		}
+
 		result.NsOp = nsOp
 		result.BOp = bOp
 		result.Allocs = allocs
 
-		results = append(results, result)
+		results = append(results, *result)
 	}
 
 	if len(results) == 0 {
@@ -126,55 +124,120 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Group by pattern name
-	patternGroups := make(map[string]*PatternBenchmarks)
-	for _, r := range results {
-		if _, ok := patternGroups[r.PatternName]; !ok {
-			info := patternMap[r.PatternName]
-			patternGroups[r.PatternName] = &PatternBenchmarks{
-				Name:        r.PatternName,
-				Pattern:     info.Pattern,
-				Category:    info.Category,
-				Description: info.Description,
-				Replacers:   info.Replacers,
-				Results:     []BenchResult{},
-			}
-		}
-		patternGroups[r.PatternName].Results = append(patternGroups[r.PatternName].Results, r)
-	}
+	// Group and average by pattern
+	patternGroups := aggregateResults(results)
 
 	// Generate detailed markdown output organized by category
 	generateDetailedMarkdown(patternGroups)
 }
 
-func parseBenchmarkName(fullName string) BenchResult {
-	result := BenchResult{FullName: fullName}
-
-	// Remove "Benchmark" prefix
+// parseBenchmarkName extracts components from nested benchmark name
+func parseBenchmarkName(fullName string) *BenchResult {
+	if !strings.HasPrefix(fullName, "Benchmark") {
+		return nil
+	}
 	name := strings.TrimPrefix(fullName, "Benchmark")
 
-	// Check if it's a stdlib benchmark
-	if strings.HasPrefix(name, "Stdlib") {
-		result.IsStdlib = true
-		name = strings.TrimPrefix(name, "Stdlib")
+	parts := strings.Split(name, "/")
+	if len(parts) < 4 {
+		return nil
 	}
 
-	// Extract pattern name
-	for _, pattern := range knownPatterns {
-		if strings.HasPrefix(name, pattern) {
-			result.PatternName = pattern
-			result.Method = strings.TrimPrefix(name, pattern)
-			break
-		}
+	result := &BenchResult{
+		Pattern: parts[0],
 	}
 
-	// If no pattern found, use the whole name
-	if result.PatternName == "" {
-		result.PatternName = name
-		result.Method = "Unknown"
+	// Handle different structures
+	// Match/FindFirst/FindAll: Pattern/Category/Input[i]/variant
+	// Replace: Pattern/Category/Template[j]/Input[i]/variant
+	if parts[1] == "Replace" && len(parts) >= 5 {
+		result.Category = parts[1]
+		result.Template = parts[2]
+		result.Input = parts[3]
+		result.Variant = parts[4]
+	} else if len(parts) >= 4 {
+		result.Category = parts[1]
+		result.Input = parts[2]
+		result.Variant = parts[3]
+	} else {
+		return nil
 	}
 
 	return result
+}
+
+// aggregateResults groups results by pattern and averages across inputs
+func aggregateResults(results []BenchResult) map[string]*PatternBenchmarks {
+	// First, group all results
+	type groupKey struct {
+		pattern  string
+		category string
+		variant  string
+		template string
+	}
+
+	groups := make(map[groupKey][]BenchResult)
+
+	for _, r := range results {
+		key := groupKey{
+			pattern:  r.Pattern,
+			category: r.Category,
+			variant:  r.Variant,
+			template: r.Template,
+		}
+		groups[key] = append(groups[key], r)
+	}
+
+	// Now average and organize by pattern
+	patternGroups := make(map[string]*PatternBenchmarks)
+
+	for key, resultList := range groups {
+		if _, ok := patternGroups[key.pattern]; !ok {
+			info := patternMap[key.pattern]
+			patternGroups[key.pattern] = &PatternBenchmarks{
+				Name:        key.pattern,
+				Pattern:     info.Pattern,
+				Category:    info.Category,
+				Description: info.Description,
+				Replacers:   info.Replacers,
+				Results:     make(map[string]map[string]BenchResult),
+			}
+		}
+
+		pg := patternGroups[key.pattern]
+
+		// Category key includes template for Replace
+		catKey := key.category
+		if key.template != "" {
+			catKey = key.category + "/" + key.template
+		}
+
+		if pg.Results[catKey] == nil {
+			pg.Results[catKey] = make(map[string]BenchResult)
+		}
+
+		// Average the results
+		var totalNs float64
+		var totalB, totalAllocs int
+		for _, r := range resultList {
+			totalNs += r.NsOp
+			totalB += r.BOp
+			totalAllocs += r.Allocs
+		}
+		n := len(resultList)
+
+		pg.Results[catKey][key.variant] = BenchResult{
+			Pattern:  key.pattern,
+			Category: key.category,
+			Variant:  key.variant,
+			Template: key.template,
+			NsOp:     totalNs / float64(n),
+			BOp:      totalB / n,
+			Allocs:   totalAllocs / n,
+		}
+	}
+
+	return patternGroups
 }
 
 func generateDetailedMarkdown(groups map[string]*PatternBenchmarks) {
@@ -232,7 +295,44 @@ func generateDetailedMarkdown(groups map[string]*PatternBenchmarks) {
 	fmt.Println()
 	fmt.Println("## Running Benchmarks")
 	fmt.Println()
-	fmt.Println("To run benchmarks yourself:")
+	fmt.Println("### Benchmark Structure")
+	fmt.Println()
+	fmt.Println("Benchmarks use a nested structure for clear comparison:")
+	fmt.Println()
+	fmt.Println("```")
+	fmt.Println("Benchmark{Pattern}/")
+	fmt.Println("├── Match/Input[i]/{stdlib,regengo}")
+	fmt.Println("├── FindFirst/Input[i]/{stdlib,regengo,regengo_reuse}")
+	fmt.Println("├── FindAll/Input[i]/{stdlib,regengo,regengo_append}")
+	fmt.Println("└── Replace/Template[j]/Input[i]/{stdlib,regengo_runtime,regengo,regengo_append}")
+	fmt.Println("```")
+	fmt.Println()
+	fmt.Println("### Running Specific Benchmarks")
+	fmt.Println()
+	fmt.Println("```bash")
+	fmt.Println("# Run all benchmarks for a pattern")
+	fmt.Println("go test ./benchmarks/curated/... -bench=\"BenchmarkDateCapture\" -benchmem")
+	fmt.Println()
+	fmt.Println("# Run only Match benchmarks")
+	fmt.Println("go test ./benchmarks/curated/... -bench=\"Match\" -benchmem")
+	fmt.Println()
+	fmt.Println("# Run only regengo_reuse variants")
+	fmt.Println("go test ./benchmarks/curated/... -bench=\"regengo_reuse\" -benchmem")
+	fmt.Println()
+	fmt.Println("# Run specific input")
+	fmt.Println("go test ./benchmarks/curated/... -bench=\"Input\\\\[0\\\\]\" -benchmem")
+	fmt.Println("```")
+	fmt.Println()
+	fmt.Println("### Aggregating Results")
+	fmt.Println()
+	fmt.Println("Use the aggregation script for summary statistics across all inputs:")
+	fmt.Println()
+	fmt.Println("```bash")
+	fmt.Println("# Aggregate results for a pattern")
+	fmt.Println("go test ./benchmarks/curated/... -bench=\"BenchmarkDateCapture\" -benchmem | go run scripts/curated/aggregate.go")
+	fmt.Println("```")
+	fmt.Println()
+	fmt.Println("### Make Targets")
 	fmt.Println()
 	fmt.Println("```bash")
 	fmt.Println("# Run benchmarks (generates and runs curated benchmarks)")
@@ -250,9 +350,13 @@ func generateDetailedMarkdown(groups map[string]*PatternBenchmarks) {
 	fmt.Println()
 	fmt.Println("## Regenerating Results")
 	fmt.Println()
-	fmt.Println("To regenerate these benchmark tables:")
+	fmt.Println("To regenerate benchmark files after code changes:")
 	fmt.Println()
 	fmt.Println("```bash")
+	fmt.Println("# Regenerate curated benchmark code")
+	fmt.Println("go run scripts/curated/generate.go scripts/curated/cases.go")
+	fmt.Println()
+	fmt.Println("# Or use make")
 	fmt.Println("make bench-format")
 	fmt.Println("```")
 }
@@ -269,204 +373,110 @@ func printPatternSection(group *PatternBenchmarks) {
 		fmt.Printf("**Pattern:**\n```regex\n%s\n```\n\n", group.Pattern)
 	}
 
-	// Build result map
-	stdlibResults := make(map[string]BenchResult)
-	regengoResults := make(map[string]BenchResult)
-
-	for _, r := range group.Results {
-		if r.IsStdlib {
-			stdlibResults[r.Method] = r
-		} else {
-			regengoResults[r.Method] = r
-		}
-	}
-
-	// Determine which comparison tables to show based on available results
-	hasMatch := len(stdlibResults["MatchString"].FullName) > 0 || len(regengoResults["MatchString"].FullName) > 0
-	hasFind := len(stdlibResults["FindStringSubmatch"].FullName) > 0 || len(regengoResults["FindString"].FullName) > 0
-	hasReplace := false
-	for method := range regengoResults {
-		if strings.HasPrefix(method, "Replace") {
-			hasReplace = true
-			break
-		}
-	}
+	// Print tables for each benchmark category
+	// Order: Match, FindFirst (FindString), FindAll, Replace
 
 	// MatchString section
-	if hasMatch {
-		printMethodTable("MatchString", stdlibResults, regengoResults)
+	if matchResults, ok := group.Results["Match"]; ok {
+		printComparisonTable("MatchString", matchResults, nil)
 	}
 
-	// FindString section
-	if hasFind {
-		printFindTable(stdlibResults, regengoResults)
+	// FindString section (FindFirst)
+	if findResults, ok := group.Results["FindFirst"]; ok {
+		printComparisonTable("FindString", findResults, []string{"stdlib", "regengo", "regengo_reuse"})
 	}
-
-	// Replace section
-	if hasReplace {
-		printReplaceTable(stdlibResults, regengoResults, group.Replacers)
-	}
-}
-
-func printMethodTable(method string, stdlibResults, regengoResults map[string]BenchResult) {
-	fmt.Printf("**%s:**\n\n", method)
-	fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
-	fmt.Println("|---------|------:|-----:|----------:|----------:|")
-
-	if std, ok := stdlibResults[method]; ok {
-		fmt.Printf("| stdlib | %.1f | %d | %d | - |\n", std.NsOp, std.BOp, std.Allocs)
-	}
-	if reg, ok := regengoResults[method]; ok {
-		speedup := "-"
-		if std, ok := stdlibResults[method]; ok && reg.NsOp > 0 {
-			ratio := std.NsOp / reg.NsOp
-			if ratio >= 1.0 {
-				speedup = fmt.Sprintf("**%.1fx faster**", ratio)
-			} else {
-				speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
-			}
-		}
-		fmt.Printf("| regengo | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-	}
-	fmt.Println()
-}
-
-func printFindTable(stdlibResults, regengoResults map[string]BenchResult) {
-	fmt.Println("**FindString:**")
-	fmt.Println()
-	fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
-	fmt.Println("|---------|------:|-----:|----------:|----------:|")
-
-	std, hasStd := stdlibResults["FindStringSubmatch"]
-	if hasStd {
-		fmt.Printf("| stdlib | %.1f | %d | %d | - |\n", std.NsOp, std.BOp, std.Allocs)
-	}
-
-	if reg, ok := regengoResults["FindString"]; ok {
-		speedup := "-"
-		if hasStd && reg.NsOp > 0 {
-			ratio := std.NsOp / reg.NsOp
-			if ratio >= 1.0 {
-				speedup = fmt.Sprintf("**%.1fx faster**", ratio)
-			} else {
-				speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
-			}
-		}
-		fmt.Printf("| regengo | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-	}
-
-	if reg, ok := regengoResults["FindStringReuse"]; ok {
-		speedup := "-"
-		if hasStd && reg.NsOp > 0 {
-			ratio := std.NsOp / reg.NsOp
-			if ratio >= 1.0 {
-				speedup = fmt.Sprintf("**%.1fx faster**", ratio)
-			} else {
-				speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
-			}
-		}
-		fmt.Printf("| regengo (reuse) | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-	}
-
-	fmt.Println()
 
 	// FindAllString section
-	regFindAll, hasFindAll := regengoResults["FindAllString"]
-	regFindAllAppend, hasFindAllAppend := regengoResults["FindAllStringAppend"]
-	stdAll, hasStdAll := stdlibResults["FindAllStringSubmatch"]
-
-	if hasFindAll || hasFindAllAppend {
-		fmt.Println("**FindAllString:**")
-		fmt.Println()
-		fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
-		fmt.Println("|---------|------:|-----:|----------:|----------:|")
-
-		if hasStdAll {
-			fmt.Printf("| stdlib | %.1f | %d | %d | - |\n", stdAll.NsOp, stdAll.BOp, stdAll.Allocs)
-		}
-
-		if hasFindAll {
-			speedup := "-"
-			if hasStdAll && regFindAll.NsOp > 0 {
-				ratio := stdAll.NsOp / regFindAll.NsOp
-				if ratio >= 1.0 {
-					speedup = fmt.Sprintf("**%.1fx faster**", ratio)
-				} else {
-					speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
-				}
-			}
-			fmt.Printf("| regengo | %.1f | %d | %d | %s |\n", regFindAll.NsOp, regFindAll.BOp, regFindAll.Allocs, speedup)
-		}
-
-		if hasFindAllAppend {
-			speedup := "-"
-			if hasStdAll && regFindAllAppend.NsOp > 0 {
-				ratio := stdAll.NsOp / regFindAllAppend.NsOp
-				if ratio >= 1.0 {
-					speedup = fmt.Sprintf("**%.1fx faster**", ratio)
-				} else {
-					speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
-				}
-			}
-			fmt.Printf("| regengo (reuse) | %.1f | %d | %d | %s |\n", regFindAllAppend.NsOp, regFindAllAppend.BOp, regFindAllAppend.Allocs, speedup)
-		}
-		fmt.Println()
+	if findAllResults, ok := group.Results["FindAll"]; ok {
+		printComparisonTable("FindAllString", findAllResults, []string{"stdlib", "regengo", "regengo_append"})
 	}
-}
 
-func printReplaceTable(stdlibResults, regengoResults map[string]BenchResult, replacers []string) {
-	// Print one table per template
+	// Replace sections (one per template)
 	for i := 0; i < 10; i++ {
-		stdMethod := fmt.Sprintf("ReplaceAllString%d", i)
-		std, hasStd := stdlibResults[stdMethod]
-		if !hasStd {
-			continue // No more templates
+		catKey := fmt.Sprintf("Replace/Template[%d]", i)
+		if replaceResults, ok := group.Results[catKey]; ok {
+			template := fmt.Sprintf("#%d", i)
+			if i < len(group.Replacers) {
+				template = fmt.Sprintf("`%s`", group.Replacers[i])
+			}
+			printReplaceTable(template, replaceResults)
 		}
-
-		template := fmt.Sprintf("#%d", i)
-		if i < len(replacers) {
-			template = fmt.Sprintf("`%s`", replacers[i])
-		}
-
-		fmt.Printf("**Replace %s:**\n\n", template)
-		fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
-		fmt.Println("|---------|------:|-----:|----------:|----------:|")
-
-		// Stdlib
-		fmt.Printf("| stdlib | %.1f | %d | %d | - |\n", std.NsOp, std.BOp, std.Allocs)
-
-		// Runtime replace
-		runtimeMethod := fmt.Sprintf("ReplaceAllStringRuntime%d", i)
-		if reg, ok := regengoResults[runtimeMethod]; ok {
-			speedup := calcSpeedup(std.NsOp, reg.NsOp)
-			fmt.Printf("| regengo | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-		}
-
-		// Precompiled
-		precompiledMethod := fmt.Sprintf("ReplaceAllString%d", i)
-		if reg, ok := regengoResults[precompiledMethod]; ok {
-			speedup := calcSpeedup(std.NsOp, reg.NsOp)
-			fmt.Printf("| regengo (precompiled) | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-		}
-
-		// Reuse (bytes append)
-		reuseMethod := fmt.Sprintf("ReplaceAllBytesAppend%d", i)
-		if reg, ok := regengoResults[reuseMethod]; ok {
-			speedup := calcSpeedup(std.NsOp, reg.NsOp)
-			fmt.Printf("| regengo (reuse) | %.1f | %d | %d | %s |\n", reg.NsOp, reg.BOp, reg.Allocs, speedup)
-		}
-
-		fmt.Println()
 	}
 }
 
-func calcSpeedup(stdNsOp, regNsOp float64) string {
-	if regNsOp <= 0 {
-		return "-"
+func printComparisonTable(title string, results map[string]BenchResult, variantOrder []string) {
+	fmt.Printf("**%s:**\n\n", title)
+	fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
+	fmt.Println("|---------|------:|-----:|----------:|----------:|")
+
+	if variantOrder == nil {
+		variantOrder = []string{"stdlib", "regengo", "regengo_reuse", "regengo_append"}
 	}
-	ratio := stdNsOp / regNsOp
-	if ratio >= 1.0 {
-		return fmt.Sprintf("**%.1fx faster**", ratio)
+
+	stdResult, hasStd := results["stdlib"]
+
+	for _, variant := range variantOrder {
+		r, ok := results[variant]
+		if !ok {
+			continue
+		}
+
+		speedup := "-"
+		if variant != "stdlib" && hasStd && r.NsOp > 0 {
+			ratio := stdResult.NsOp / r.NsOp
+			if ratio >= 1.0 {
+				speedup = fmt.Sprintf("**%.1fx faster**", ratio)
+			} else {
+				speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
+			}
+		}
+
+		displayName := variant
+		switch variant {
+		case "regengo_reuse":
+			displayName = "regengo (reuse)"
+		case "regengo_append":
+			displayName = "regengo (reuse)"
+		}
+
+		fmt.Printf("| %s | %.1f | %d | %d | %s |\n", displayName, r.NsOp, r.BOp, r.Allocs, speedup)
 	}
-	return fmt.Sprintf("**%.1fx slower**", 1/ratio)
+	fmt.Println()
+}
+
+func printReplaceTable(template string, results map[string]BenchResult) {
+	fmt.Printf("**Replace %s:**\n\n", template)
+	fmt.Println("| Variant | ns/op | B/op | allocs/op | vs stdlib |")
+	fmt.Println("|---------|------:|-----:|----------:|----------:|")
+
+	stdResult, hasStd := results["stdlib"]
+
+	variantOrder := []string{"stdlib", "regengo_runtime", "regengo", "regengo_append"}
+	displayNames := map[string]string{
+		"stdlib":          "stdlib",
+		"regengo_runtime": "regengo",
+		"regengo":         "regengo (precompiled)",
+		"regengo_append":  "regengo (reuse)",
+	}
+
+	for _, variant := range variantOrder {
+		r, ok := results[variant]
+		if !ok {
+			continue
+		}
+
+		speedup := "-"
+		if variant != "stdlib" && hasStd && r.NsOp > 0 {
+			ratio := stdResult.NsOp / r.NsOp
+			if ratio >= 1.0 {
+				speedup = fmt.Sprintf("**%.1fx faster**", ratio)
+			} else {
+				speedup = fmt.Sprintf("**%.1fx slower**", 1/ratio)
+			}
+		}
+
+		displayName := displayNames[variant]
+		fmt.Printf("| %s | %.1f | %d | %d | %s |\n", displayName, r.NsOp, r.BOp, r.Allocs, speedup)
+	}
+	fmt.Println()
 }

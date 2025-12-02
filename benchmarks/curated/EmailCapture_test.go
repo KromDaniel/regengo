@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,83 @@ func TestEmailCaptureFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkEmailCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_ = EmailCapture{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkEmailCapture(b *testing.B) {
+	inputs := emailCaptureTestInputs
 
-func BenchmarkStdlibEmailCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_ = emailCaptureRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = emailCaptureRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = EmailCapture{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkEmailCaptureFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_, _ = EmailCapture{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = emailCaptureRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = EmailCapture{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *EmailCaptureResult
+					for b.Loop() {
+						result, _ = EmailCapture{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibEmailCaptureFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_ = emailCaptureRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = emailCaptureRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = EmailCapture{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*EmailCaptureResult, 0, 100)
+					for b.Loop() {
+						results = EmailCapture{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkEmailCaptureFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *EmailCaptureResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			result, _ = EmailCapture{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkEmailCaptureFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_ = EmailCapture{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkEmailCaptureFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*EmailCaptureResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			results = EmailCapture{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibEmailCaptureFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range emailCaptureTestInputs {
-			_ = emailCaptureRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestEmailCaptureFindReader(t *testing.T) {

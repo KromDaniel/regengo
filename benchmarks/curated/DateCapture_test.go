@@ -1,6 +1,7 @@
 package curated
 
 import (
+	"fmt"
 	stream "github.com/KromDaniel/regengo/stream"
 	"regexp"
 	"strings"
@@ -95,78 +96,83 @@ func TestDateCaptureFindAllString(t *testing.T) {
 	}
 }
 
-func BenchmarkDateCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_ = DateCapture{}.MatchString(input)
-		}
-	}
-}
+func BenchmarkDateCapture(b *testing.B) {
+	inputs := dateCaptureTestInputs
 
-func BenchmarkStdlibDateCaptureMatchString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_ = dateCaptureRegexp.MatchString(input)
+	b.Run("Match", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = dateCaptureRegexp.MatchString(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = DateCapture{}.MatchString(input)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkDateCaptureFindString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_, _ = DateCapture{}.FindString(input)
+	b.Run("FindFirst", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = dateCaptureRegexp.FindStringSubmatch(input)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_, _ = DateCapture{}.FindString(input)
+					}
+				})
+				b.Run("regengo_reuse", func(b *testing.B) {
+					b.ReportAllocs()
+					var result *DateCaptureResult
+					for b.Loop() {
+						result, _ = DateCapture{}.FindStringReuse(input, result)
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkStdlibDateCaptureFindStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_ = dateCaptureRegexp.FindStringSubmatch(input)
+	b.Run("FindAll", func(b *testing.B) {
+		for i, input := range inputs {
+			input := input
+			b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+				b.Run("stdlib", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = dateCaptureRegexp.FindAllStringSubmatch(input, -1)
+					}
+				})
+				b.Run("regengo", func(b *testing.B) {
+					b.ReportAllocs()
+					for b.Loop() {
+						_ = DateCapture{}.FindAllString(input, -1)
+					}
+				})
+				b.Run("regengo_append", func(b *testing.B) {
+					b.ReportAllocs()
+					results := make([]*DateCaptureResult, 0, 100)
+					for b.Loop() {
+						results = DateCapture{}.FindAllStringAppend(input, -1, results[:0])
+					}
+				})
+			})
 		}
-	}
-}
+	})
 
-func BenchmarkDateCaptureFindStringReuse(b *testing.B) {
-	b.ReportAllocs()
-	var result *DateCaptureResult
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			result, _ = DateCapture{}.FindStringReuse(input, result)
-		}
-	}
-}
-
-func BenchmarkDateCaptureFindAllString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_ = DateCapture{}.FindAllString(input, -1)
-		}
-	}
-}
-
-func BenchmarkDateCaptureFindAllStringAppend(b *testing.B) {
-	b.ReportAllocs()
-	results := make([]*DateCaptureResult, 0, 100)
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			results = DateCapture{}.FindAllStringAppend(input, -1, results[:0])
-		}
-	}
-}
-
-func BenchmarkStdlibDateCaptureFindAllStringSubmatch(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for _, input := range dateCaptureTestInputs {
-			_ = dateCaptureRegexp.FindAllStringSubmatch(input, -1)
-		}
-	}
 }
 
 func TestDateCaptureFindReader(t *testing.T) {

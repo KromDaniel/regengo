@@ -618,7 +618,50 @@ URL redaction with selective capture group output
 
 ## Running Benchmarks
 
-To run benchmarks yourself:
+### Benchmark Structure
+
+Benchmarks use a nested structure for clear comparison:
+
+```
+Benchmark{Pattern}/
+├── Match/Input[i]/{stdlib,regengo}
+├── FindFirst/Input[i]/{stdlib,regengo,regengo_reuse}
+├── FindAll/Input[i]/{stdlib,regengo,regengo_append}
+└── Replace/Template[j]/Input[i]/{stdlib,regengo_runtime,regengo,regengo_append}
+```
+
+### Running Specific Benchmarks
+
+```bash
+# Run all benchmarks for a pattern
+go test ./benchmarks/curated/... -bench="BenchmarkDateCapture" -benchmem
+
+# Run only Match benchmarks
+go test ./benchmarks/curated/... -bench="Match" -benchmem
+
+# Run only regengo_reuse variants
+go test ./benchmarks/curated/... -bench="regengo_reuse" -benchmem
+
+# Run specific input
+go test ./benchmarks/curated/... -bench="Input\[0\]" -benchmem
+```
+
+### Aggregating Results
+
+Use the aggregation script for summary statistics across all inputs:
+
+```bash
+# Aggregate results for a pattern
+go test ./benchmarks/curated/... -bench="BenchmarkDateCapture" -benchmem | go run scripts/curated/aggregate.go
+
+# Example output:
+# Pattern: DateCapture
+#   Category: Match
+#     stdlib:            avg=   73.86 ns  min=   73.15  max=   74.28  allocs=0
+#     regengo:           avg=    3.91 ns  min=    3.86  max=    4.01  allocs=0  (18.9x faster)
+```
+
+### Make Targets
 
 ```bash
 # Run benchmarks (generates and runs curated benchmarks)
@@ -636,8 +679,12 @@ make bench-chart
 
 ## Regenerating Results
 
-To regenerate these benchmark tables:
+To regenerate benchmark files after code changes:
 
 ```bash
+# Regenerate curated benchmark code
+go run scripts/curated/generate.go scripts/curated/cases.go
+
+# Or use make
 make bench-format
 ```

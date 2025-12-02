@@ -17,6 +17,7 @@ func (c *Compiler) generateTestFile() error {
 
 	testFile.ImportName("testing", "testing")
 	testFile.ImportName("regexp", "regexp")
+	testFile.ImportName("fmt", "fmt")
 	testFile.Line()
 
 	// Create regexp variable for comparison (pattern-specific to avoid conflicts in same package)
@@ -35,6 +36,40 @@ func (c *Compiler) generateTestFile() error {
 	)
 	testFile.Line()
 
+	// Generate unit tests (unchanged)
+	c.generateUnitTests(testFile, regexpVarName, testInputsVarName)
+
+	// Generate nested benchmarks
+	c.generateNestedBenchmarks(testFile, regexpVarName, testInputsVarName)
+
+	// Add streaming tests if captures enabled
+	if c.config.WithCaptures {
+		c.generateStreamingTests(testFile, regexpVarName)
+
+		// Add replace tests if replacers are configured
+		if len(c.config.TestFileReplacers) > 0 {
+			c.generateReplaceTests(testFile, regexpVarName)
+		}
+	}
+
+	// Determine test file path
+	testFilePath := c.config.OutputFile
+	if len(testFilePath) > 3 && testFilePath[len(testFilePath)-3:] == ".go" {
+		testFilePath = testFilePath[:len(testFilePath)-3] + "_test.go"
+	} else {
+		testFilePath = testFilePath + "_test.go"
+	}
+
+	// Save test file
+	if err := testFile.Save(testFilePath); err != nil {
+		return fmt.Errorf("failed to save test file: %w", err)
+	}
+
+	return nil
+}
+
+// generateUnitTests generates the unit tests (unchanged from before).
+func (c *Compiler) generateUnitTests(testFile *jen.File, regexpVarName, testInputsVarName string) {
 	// Generate TestMatchString
 	testFile.Func().Id(fmt.Sprintf("Test%sMatchString", c.config.Name)).Params(
 		jen.Id("t").Op("*").Qual("testing", "T"),
@@ -201,149 +236,275 @@ func (c *Compiler) generateTestFile() error {
 		)
 		testFile.Line()
 	}
+}
 
-	// Generate BenchmarkMatchString
-	testFile.Func().Id(fmt.Sprintf("Benchmark%sMatchString", c.config.Name)).Params(
-		jen.Id("b").Op("*").Qual("testing", "B"),
-	).Block(
-		jen.Id("b").Dot("ReportAllocs").Call(),
-		jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-				jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("MatchString").Call(jen.Id("input")),
-			),
-		),
-	)
-	testFile.Line()
+// generateNestedBenchmarks generates a single Benchmark{Name} function with nested sub-benchmarks.
+func (c *Compiler) generateNestedBenchmarks(testFile *jen.File, regexpVarName, testInputsVarName string) {
+	resultTypeName := fmt.Sprintf("%sResult", c.config.Name)
 
-	// Generate BenchmarkStdlibMatchString for comparison
-	testFile.Func().Id(fmt.Sprintf("BenchmarkStdlib%sMatchString", c.config.Name)).Params(
-		jen.Id("b").Op("*").Qual("testing", "B"),
-	).Block(
-		jen.Id("b").Dot("ReportAllocs").Call(),
-		jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-			jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-				jen.Id("_").Op("=").Id(regexpVarName).Dot("MatchString").Call(jen.Id("input")),
-			),
-		),
-	)
-	testFile.Line()
+	// Build the benchmark function body
+	benchmarkBody := []jen.Code{
+		jen.Id("inputs").Op(":=").Id(testInputsVarName),
+		jen.Line(),
+	}
 
-	// Generate capture group benchmarks if applicable
+	// Match benchmarks (always generated)
+	benchmarkBody = append(benchmarkBody, c.generateMatchBenchmarks(regexpVarName)...)
+
+	// FindFirst and FindAll benchmarks (only if captures)
 	if c.config.WithCaptures {
-		// BenchmarkFindString
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sFindString", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op(",").Id("_").Op("=").Id(c.config.Name).Values().Dot("FindString").Call(jen.Id("input")),
-				),
-			),
-		)
-		testFile.Line()
+		benchmarkBody = append(benchmarkBody, c.generateFindFirstBenchmarks(regexpVarName, resultTypeName)...)
+		benchmarkBody = append(benchmarkBody, c.generateFindAllBenchmarks(regexpVarName, resultTypeName)...)
 
-		// BenchmarkStdlibFindStringSubmatch
-		testFile.Func().Id(fmt.Sprintf("BenchmarkStdlib%sFindStringSubmatch", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(regexpVarName).Dot("FindStringSubmatch").Call(jen.Id("input")),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkFindStringReuse - zero-alloc single match
-		resultTypeName := fmt.Sprintf("%sResult", c.config.Name)
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sFindStringReuse", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.Var().Id("result").Op("*").Id(resultTypeName),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.List(jen.Id("result"), jen.Id("_")).Op("=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
-						jen.Id("input"),
-						jen.Id("result"),
-					),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkFindAllString - multi-match (allocates new slice)
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sFindAllString", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("FindAllString").Call(
-						jen.Id("input"),
-						jen.Lit(-1),
-					),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkFindAllStringAppend - zero-alloc multi-match
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sFindAllStringAppend", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.Id("results").Op(":=").Make(jen.Index().Op("*").Id(resultTypeName), jen.Lit(0), jen.Lit(100)),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("results").Op("=").Id(c.config.Name).Values().Dot("FindAllStringAppend").Call(
-						jen.Id("input"),
-						jen.Lit(-1),
-						jen.Id("results").Index(jen.Op(":").Lit(0)),
-					),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkStdlibFindAllStringSubmatch - stdlib comparison for FindAll
-		testFile.Func().Id(fmt.Sprintf("BenchmarkStdlib%sFindAllStringSubmatch", c.config.Name)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(regexpVarName).Dot("FindAllStringSubmatch").Call(jen.Id("input"), jen.Lit(-1)),
-				),
-			),
-		)
-		testFile.Line()
-
-		// Add streaming tests
-		c.generateStreamingTests(testFile, regexpVarName)
-
-		// Add replace tests if replacers are configured
+		// Replace benchmarks (only if replacers configured)
 		if len(c.config.TestFileReplacers) > 0 {
-			c.generateReplaceTests(testFile, regexpVarName)
+			benchmarkBody = append(benchmarkBody, c.generateReplaceBenchmarks(regexpVarName)...)
 		}
 	}
 
-	// Determine test file path
-	testFilePath := c.config.OutputFile
-	if len(testFilePath) > 3 && testFilePath[len(testFilePath)-3:] == ".go" {
-		testFilePath = testFilePath[:len(testFilePath)-3] + "_test.go"
-	} else {
-		testFilePath = testFilePath + "_test.go"
-	}
+	testFile.Func().Id(fmt.Sprintf("Benchmark%s", c.config.Name)).Params(
+		jen.Id("b").Op("*").Qual("testing", "B"),
+	).Block(benchmarkBody...)
+	testFile.Line()
+}
 
-	// Save test file
-	if err := testFile.Save(testFilePath); err != nil {
-		return fmt.Errorf("failed to save test file: %w", err)
+// generateMatchBenchmarks generates the Match category benchmarks.
+func (c *Compiler) generateMatchBenchmarks(regexpVarName string) []jen.Code {
+	return []jen.Code{
+		jen.Id("b").Dot("Run").Call(
+			jen.Lit("Match"),
+			jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+				jen.For(jen.List(jen.Id("i"), jen.Id("input")).Op(":=").Range().Id("inputs")).Block(
+					jen.Id("input").Op(":=").Id("input"), // capture for closure
+					jen.Id("b").Dot("Run").Call(
+						jen.Qual("fmt", "Sprintf").Call(jen.Lit("Input[%d]"), jen.Id("i")),
+						jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+							// stdlib benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("stdlib"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op("=").Id(regexpVarName).Dot("MatchString").Call(jen.Id("input")),
+									),
+								),
+							),
+							// regengo benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("regengo"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("MatchString").Call(jen.Id("input")),
+									),
+								),
+							),
+						),
+					),
+				),
+			),
+		),
+		jen.Line(),
 	}
+}
 
-	return nil
+// generateFindFirstBenchmarks generates the FindFirst category benchmarks.
+func (c *Compiler) generateFindFirstBenchmarks(regexpVarName, resultTypeName string) []jen.Code {
+	return []jen.Code{
+		jen.Id("b").Dot("Run").Call(
+			jen.Lit("FindFirst"),
+			jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+				jen.For(jen.List(jen.Id("i"), jen.Id("input")).Op(":=").Range().Id("inputs")).Block(
+					jen.Id("input").Op(":=").Id("input"),
+					jen.Id("b").Dot("Run").Call(
+						jen.Qual("fmt", "Sprintf").Call(jen.Lit("Input[%d]"), jen.Id("i")),
+						jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+							// stdlib benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("stdlib"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op("=").Id(regexpVarName).Dot("FindStringSubmatch").Call(jen.Id("input")),
+									),
+								),
+							),
+							// regengo benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("regengo"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op(",").Id("_").Op("=").Id(c.config.Name).Values().Dot("FindString").Call(jen.Id("input")),
+									),
+								),
+							),
+							// regengo_reuse benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("regengo_reuse"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.Var().Id("result").Op("*").Id(resultTypeName),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.List(jen.Id("result"), jen.Id("_")).Op("=").Id(c.config.Name).Values().Dot("FindStringReuse").Call(
+											jen.Id("input"),
+											jen.Id("result"),
+										),
+									),
+								),
+							),
+						),
+					),
+				),
+			),
+		),
+		jen.Line(),
+	}
+}
+
+// generateFindAllBenchmarks generates the FindAll category benchmarks.
+func (c *Compiler) generateFindAllBenchmarks(regexpVarName, resultTypeName string) []jen.Code {
+	return []jen.Code{
+		jen.Id("b").Dot("Run").Call(
+			jen.Lit("FindAll"),
+			jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+				jen.For(jen.List(jen.Id("i"), jen.Id("input")).Op(":=").Range().Id("inputs")).Block(
+					jen.Id("input").Op(":=").Id("input"),
+					jen.Id("b").Dot("Run").Call(
+						jen.Qual("fmt", "Sprintf").Call(jen.Lit("Input[%d]"), jen.Id("i")),
+						jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+							// stdlib benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("stdlib"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op("=").Id(regexpVarName).Dot("FindAllStringSubmatch").Call(jen.Id("input"), jen.Lit(-1)),
+									),
+								),
+							),
+							// regengo benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("regengo"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("FindAllString").Call(jen.Id("input"), jen.Lit(-1)),
+									),
+								),
+							),
+							// regengo_append benchmark
+							jen.Id("b").Dot("Run").Call(
+								jen.Lit("regengo_append"),
+								jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+									jen.Id("b").Dot("ReportAllocs").Call(),
+									jen.Id("results").Op(":=").Make(jen.Index().Op("*").Id(resultTypeName), jen.Lit(0), jen.Lit(100)),
+									jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+										jen.Id("results").Op("=").Id(c.config.Name).Values().Dot("FindAllStringAppend").Call(
+											jen.Id("input"),
+											jen.Lit(-1),
+											jen.Id("results").Index(jen.Op(":").Lit(0)),
+										),
+									),
+								),
+							),
+						),
+					),
+				),
+			),
+		),
+		jen.Line(),
+	}
+}
+
+// generateReplaceBenchmarks generates the Replace category benchmarks.
+func (c *Compiler) generateReplaceBenchmarks(regexpVarName string) []jen.Code {
+	testReplacersVarName := fmt.Sprintf("%sTestReplacers", codegen.LowerFirst(c.config.Name))
+	convertFuncName := fmt.Sprintf("convertToStdlibTemplate%s", c.config.Name)
+
+	return []jen.Code{
+		jen.Id("b").Dot("Run").Call(
+			jen.Lit("Replace"),
+			jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+				jen.For(jen.List(jen.Id("j"), jen.Id("template")).Op(":=").Range().Id(testReplacersVarName)).Block(
+					jen.Id("template").Op(":=").Id("template"),
+					jen.Id("stdlibTemplate").Op(":=").Id(convertFuncName).Call(jen.Id("template")),
+					jen.Id("b").Dot("Run").Call(
+						jen.Qual("fmt", "Sprintf").Call(jen.Lit("Template[%d]"), jen.Id("j")),
+						jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+							jen.For(jen.List(jen.Id("i"), jen.Id("input")).Op(":=").Range().Id("inputs")).Block(
+								jen.Id("input").Op(":=").Id("input"),
+								jen.Id("inputBytes").Op(":=").Index().Byte().Call(jen.Id("input")),
+								jen.Id("j").Op(":=").Id("j"), // capture template index for closure
+								jen.Id("b").Dot("Run").Call(
+									jen.Qual("fmt", "Sprintf").Call(jen.Lit("Input[%d]"), jen.Id("i")),
+									jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+										// stdlib benchmark
+										jen.Id("b").Dot("Run").Call(
+											jen.Lit("stdlib"),
+											jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+												jen.Id("b").Dot("ReportAllocs").Call(),
+												jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+													jen.Id("_").Op("=").Id(regexpVarName).Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("stdlibTemplate")),
+												),
+											),
+										),
+										// regengo_runtime benchmark
+										jen.Id("b").Dot("Run").Call(
+											jen.Lit("regengo_runtime"),
+											jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+												jen.Id("b").Dot("ReportAllocs").Call(),
+												jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+													jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("template")),
+												),
+											),
+										),
+										// regengo (precompiled) benchmark - uses switch on j
+										jen.Id("b").Dot("Run").Call(
+											jen.Lit("regengo"),
+											jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+												jen.Id("b").Dot("ReportAllocs").Call(),
+												jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+													jen.Switch(jen.Id("j")).BlockFunc(func(g *jen.Group) {
+														for idx := range c.config.TestFileReplacers {
+															g.Case(jen.Lit(idx)).Block(
+																jen.Id("_").Op("=").Id(c.config.Name).Values().Dot(fmt.Sprintf("ReplaceAllString%d", idx)).Call(jen.Id("input")),
+															)
+														}
+													}),
+												),
+											),
+										),
+										// regengo_append benchmark - uses switch on j
+										jen.Id("b").Dot("Run").Call(
+											jen.Lit("regengo_append"),
+											jen.Func().Params(jen.Id("b").Op("*").Qual("testing", "B")).Block(
+												jen.Id("b").Dot("ReportAllocs").Call(),
+												jen.Id("buf").Op(":=").Make(jen.Index().Byte(), jen.Lit(0), jen.Lit(4096)),
+												jen.For(jen.Id("b").Dot("Loop").Call()).Block(
+													jen.Switch(jen.Id("j")).BlockFunc(func(g *jen.Group) {
+														for idx := range c.config.TestFileReplacers {
+															g.Case(jen.Lit(idx)).Block(
+																jen.Id("buf").Op("=").Id(c.config.Name).Values().Dot(fmt.Sprintf("ReplaceAllBytesAppend%d", idx)).Call(
+																	jen.Id("inputBytes"),
+																	jen.Id("buf").Index(jen.Op(":").Lit(0)),
+																),
+															)
+														}
+													}),
+												),
+											),
+										),
+									),
+								),
+							),
+						),
+					),
+				),
+			),
+		),
+		jen.Line(),
+	}
 }
 
 // generateStreamingTests generates streaming API tests for the test file.
@@ -683,83 +844,6 @@ func (c *Compiler) generateReplaceTests(testFile *jen.File, regexpVarName string
 				),
 			),
 		)
-		testFile.Line()
-	}
-
-	// Generate Replace benchmarks
-	c.generateReplaceBenchmarks(testFile, regexpVarName, replacers)
-}
-
-// generateReplaceBenchmarks generates Replace API benchmarks for the test file.
-func (c *Compiler) generateReplaceBenchmarks(testFile *jen.File, regexpVarName string, replacers []string) {
-	// Pattern-specific variable names
-	testInputsVarName := fmt.Sprintf("%sTestInputs", codegen.LowerFirst(c.config.Name))
-	testReplacersVarName := fmt.Sprintf("%sTestReplacers", codegen.LowerFirst(c.config.Name))
-	convertFuncName := fmt.Sprintf("convertToStdlibTemplate%s", c.config.Name)
-
-	// Generate benchmarks for each replacer template
-	for i, replacer := range replacers {
-		// BenchmarkStdlibReplaceAllStringN - stdlib benchmark per template
-		testFile.Func().Id(fmt.Sprintf("BenchmarkStdlib%sReplaceAllString%d", c.config.Name, i)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.Id("stdlibTemplate").Op(":=").Id(convertFuncName).Call(jen.Id(testReplacersVarName).Index(jen.Lit(i))),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(regexpVarName).Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("stdlibTemplate")),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkReplaceAllStringRuntimeN - regengo runtime Replace per template
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sReplaceAllStringRuntime%d", c.config.Name, i)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.Id("replacer").Op(":=").Id(testReplacersVarName).Index(jen.Lit(i)),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(c.config.Name).Values().Dot("ReplaceAllString").Call(jen.Id("input"), jen.Id("replacer")),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkReplaceAllStringN - pre-compiled benchmark
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sReplaceAllString%d", c.config.Name, i)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("_").Op("=").Id(c.config.Name).Values().Dot(fmt.Sprintf("ReplaceAllString%d", i)).Call(jen.Id("input")),
-				),
-			),
-		)
-		testFile.Line()
-
-		// BenchmarkReplaceAllBytesAppendN - reuse benchmark
-		testFile.Func().Id(fmt.Sprintf("Benchmark%sReplaceAllBytesAppend%d", c.config.Name, i)).Params(
-			jen.Id("b").Op("*").Qual("testing", "B"),
-		).Block(
-			jen.Id("b").Dot("ReportAllocs").Call(),
-			jen.Id("buf").Op(":=").Make(jen.Index().Byte(), jen.Lit(0), jen.Lit(4096)),
-			jen.For(jen.Id("i").Op(":=").Lit(0), jen.Id("i").Op("<").Id("b").Dot("N"), jen.Id("i").Op("++")).Block(
-				jen.For(jen.List(jen.Id("_"), jen.Id("input")).Op(":=").Range().Id(testInputsVarName)).Block(
-					jen.Id("buf").Op("=").Id(c.config.Name).Values().Dot(fmt.Sprintf("ReplaceAllBytesAppend%d", i)).Call(
-						jen.Index().Byte().Parens(jen.Id("input")),
-						jen.Id("buf"),
-					),
-					jen.Id("buf").Op("=").Id("buf").Index(jen.Op(":").Lit(0)),
-				),
-			),
-		)
-		testFile.Line()
-
-		// Add comment with the template for reference
-		testFile.Comment(fmt.Sprintf("Template %d: %s", i, replacer))
 		testFile.Line()
 	}
 }
