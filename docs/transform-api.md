@@ -282,13 +282,24 @@ r := CompiledEmail.NewTransformReader(file, cfg, onMatch)
 
 ## Performance
 
-### Benchmarks vs stdlib
+### Streaming Benchmarks
 
-| Operation | Regengo | Stdlib | Speedup |
-|-----------|---------|--------|---------|
-| Replace (1000 matches) | 460μs @ 94 MB/s | 1235μs @ 35 MB/s | **2.7x** |
-| Transform (1000 matches) | 480μs @ 89 MB/s | 1495μs @ 29 MB/s | **3.1x** |
-| Select (1000 matches) | 455μs @ 94 MB/s | 1400μs @ 31 MB/s | **3.1x** |
+Benchmarks are available in [`benchmarks/streams/`](../benchmarks/streams/):
+
+| Benchmark | Throughput | Notes |
+|-----------|------------|-------|
+| ReplaceReader (1KB) | ~40 MB/s | Small input overhead |
+| ReplaceReader (1MB) | ~90 MB/s | Steady-state throughput |
+| ReplaceReader (10MB) | ~95 MB/s | Large input |
+| Pipeline (2-stage) | ~70 MB/s | Email + IP replacement |
+| Pipeline (5-stage) | ~40 MB/s | Multi-stage pipeline |
+
+Run benchmarks:
+```bash
+go test -bench=. ./benchmarks/streams/...
+```
+
+**Note:** These are baseline benchmarks for tracking regressions. stdlib `regexp` doesn't have streaming transform methods, so direct comparison isn't possible. For in-memory Replace benchmarks (where stdlib comparison is valid), see [`benchmarks/curated/`](../benchmarks/curated/).
 
 ### High-Throughput: Pooled Transformer
 
