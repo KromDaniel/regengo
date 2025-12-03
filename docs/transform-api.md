@@ -15,8 +15,8 @@ io.Copy(os.Stdout, r)
 
 **Key Features:**
 - **Streaming**: Process files of any size with constant memory
-- **Composable**: Chain multiple transformers together
-- **Fast**: 2.7-3.1x faster than stdlib regexp
+- **Composable**: Chain multiple transformers using standard `io.Reader` composition
+- **Efficient**: Uses buffer pooling and minimizes allocations
 - **Type-safe**: Access capture groups via typed struct fields
 
 ## Quick Start

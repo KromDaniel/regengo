@@ -262,7 +262,7 @@ See [Streaming API Guide](docs/streaming.md) for details.
 
 Transform streams by replacing, filtering, or modifying pattern matches. Returns an `io.Reader` for standard Go composition with `io.Copy`, `io.MultiReader`, HTTP handlers, etc.
 
-**2.7-3.1x faster than stdlib regexp** for streaming transformations.
+**Memory-efficient**: Process arbitrarily large files with constant memory usage.
 
 ```go
 // Redact all emails in a stream
