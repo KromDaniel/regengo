@@ -37,6 +37,7 @@ Regengo is a **compile-time finite state machine generator** for regular express
 - [Replace API](#replace-api)
 - [Performance](#performance)
 - [Streaming API](#streaming-api)
+- [Transform API](#transform-api)
 - [CLI Reference](#cli-reference)
 - [Documentation](#documentation)
 - [API Comparison](#api-comparison)
@@ -119,6 +120,12 @@ func (Date) FindAllBytesAppend(input []byte, n int, s []*DateBytesResult) []*Dat
 func (Date) FindReader(r io.Reader, cfg stream.Config, onMatch func(stream.Match[*DateBytesResult]) bool) error
 func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
 func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, int64, error)
+
+// Transform (io.Reader-based streaming transformation)
+func (Date) NewTransformReader(r io.Reader, cfg stream.TransformConfig, onMatch func(*DateBytesResult, func([]byte))) io.Reader
+func (Date) ReplaceReader(r io.Reader, template string) io.Reader
+func (Date) SelectReader(r io.Reader, pred func(*DateBytesResult) bool) io.Reader
+func (Date) RejectReader(r io.Reader, pred func(*DateBytesResult) bool) io.Reader
 
 // Replace (runtime template parsing)
 func (Date) ReplaceAllString(input string, template string) string
@@ -251,6 +258,78 @@ err := CompiledDate.FindReader(file, stream.Config{}, func(m stream.Match[*DateB
 
 See [Streaming API Guide](docs/streaming.md) for details.
 
+## Transform API
+
+Transform streams by replacing, filtering, or modifying pattern matches. Returns an `io.Reader` for standard Go composition with `io.Copy`, `io.MultiReader`, HTTP handlers, etc.
+
+**2.7-3.1x faster than stdlib regexp** for streaming transformations.
+
+```go
+// Redact all emails in a stream
+file, _ := os.Open("data.log")
+masked := CompiledEmail.ReplaceReader(file, "[REDACTED]")
+io.Copy(os.Stdout, masked)
+
+// Chain multiple transformations
+var r io.Reader = file
+r = CompiledEmail.ReplaceReader(r, "[EMAIL]")
+r = CompiledIP.ReplaceReader(r, "[IP]")
+r = stream.LineFilter(r, func(line []byte) bool {
+    return !bytes.HasPrefix(line, []byte("DEBUG"))
+})
+io.Copy(os.Stdout, r)
+```
+
+### Transform Methods
+
+| Method | Description |
+|--------|-------------|
+| `NewTransformReader(r, cfg, fn)` | Full control: emit 0, 1, or N outputs per match |
+| `ReplaceReader(r, template)` | Replace matches with template (`$name`, `$1`, `$0`) |
+| `SelectReader(r, pred)` | Output only matches where predicate returns true |
+| `RejectReader(r, pred)` | Remove matches where predicate returns true |
+
+### Advanced: Custom Transformations
+
+```go
+// Multi-emit: expand each match into multiple outputs
+r := CompiledEmail.NewTransformReader(input, stream.DefaultTransformConfig(),
+    func(m *EmailBytesResult, emit func([]byte)) {
+        emit([]byte("Name: "))
+        emit(m.Name)
+        emit([]byte(", Domain: "))
+        emit(m.Domain)
+        emit([]byte("\n"))
+    })
+
+// Filter (drop): don't call emit to remove matches
+r := CompiledEmail.NewTransformReader(input, stream.DefaultTransformConfig(),
+    func(m *EmailBytesResult, emit func([]byte)) {
+        if !bytes.HasSuffix(m.Domain, []byte("spam.com")) {
+            emit(m.Match) // keep non-spam
+        }
+        // spam emails are dropped
+    })
+```
+
+### Line Helpers
+
+Generic line-based utilities that work with any `io.Reader`:
+
+```go
+// Filter lines containing "ERROR"
+r := stream.LineFilter(file, func(line []byte) bool {
+    return bytes.Contains(line, []byte("ERROR"))
+})
+
+// Prefix each line with timestamp
+r := stream.LineTransform(file, func(line []byte) []byte {
+    return append([]byte(time.Now().Format(time.RFC3339)+" "), line...)
+})
+```
+
+See [Transform API Guide](docs/transform-api.md) for complete documentation.
+
 ## CLI Reference
 
 ```
@@ -286,6 +365,7 @@ Info:
 - [API Comparison](docs/api-comparison.md) - Full regengo vs stdlib reference
 - [Replace API](docs/replace-api.md) - String replacement with captures
 - [Streaming API](docs/streaming.md) - Processing large files and streams
+- [Transform API](docs/transform-api.md) - Stream transformation with io.Reader composition
 - [Analysis & Complexity](docs/analysis.md) - Engine selection and guarantees
 - [Unicode Support](docs/unicode.md) - Unicode character classes
 - [Detailed Benchmarks](docs/benchmarks.md) - Complete performance data
@@ -311,6 +391,9 @@ Regengo returns typed structs with named fields instead of `[]string` slices—a
 | `ReplaceAllString(s, t)` | `ReplaceAllString(s, t)` | Runtime template |
 | `ReplaceAllString(s, t)` | `ReplaceAllString0(s)` | Pre-compiled (3x faster) |
 | - | `ReplaceAllBytesAppend(...)` | Zero-alloc replace |
+| - | `ReplaceReader(r, t)` | Stream transform (3x faster) |
+| - | `SelectReader(r, pred)` | Extract matches from stream |
+| - | `RejectReader(r, pred)` | Remove matches from stream |
 
 See [Full API Comparison](docs/api-comparison.md) for complete reference with examples.
 

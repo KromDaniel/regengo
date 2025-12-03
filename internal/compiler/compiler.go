@@ -327,6 +327,9 @@ func (c *Compiler) Generate() error {
 		// Generate streaming methods (FindReader, etc.)
 		c.generateStreamingMethods()
 
+		// Generate transform methods (NewTransformReader, ReplaceReader, etc.)
+		c.generateTransformMethods()
+
 		// Generate Replace methods (ReplaceAllString, ReplaceAllBytes, etc.)
 		if err := c.generateReplaceMethods(); err != nil {
 			return fmt.Errorf("failed to generate replace methods: %w", err)
