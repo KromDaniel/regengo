@@ -284,49 +284,10 @@ io.Copy(os.Stdout, r)
 
 | Method | Description |
 |--------|-------------|
-| `NewTransformReader(r, cfg, fn)` | Full control: emit 0, 1, or N outputs per match |
 | `ReplaceReader(r, template)` | Replace matches with template (`$name`, `$1`, `$0`) |
 | `SelectReader(r, pred)` | Output only matches where predicate returns true |
 | `RejectReader(r, pred)` | Remove matches where predicate returns true |
-
-### Advanced: Custom Transformations
-
-```go
-// Multi-emit: expand each match into multiple outputs
-r := CompiledEmail.NewTransformReader(input, stream.DefaultTransformConfig(),
-    func(m *EmailBytesResult, emit func([]byte)) {
-        emit([]byte("Name: "))
-        emit(m.Name)
-        emit([]byte(", Domain: "))
-        emit(m.Domain)
-        emit([]byte("\n"))
-    })
-
-// Filter (drop): don't call emit to remove matches
-r := CompiledEmail.NewTransformReader(input, stream.DefaultTransformConfig(),
-    func(m *EmailBytesResult, emit func([]byte)) {
-        if !bytes.HasSuffix(m.Domain, []byte("spam.com")) {
-            emit(m.Match) // keep non-spam
-        }
-        // spam emails are dropped
-    })
-```
-
-### Line Helpers
-
-Generic line-based utilities that work with any `io.Reader`:
-
-```go
-// Filter lines containing "ERROR"
-r := stream.LineFilter(file, func(line []byte) bool {
-    return bytes.Contains(line, []byte("ERROR"))
-})
-
-// Prefix each line with timestamp
-r := stream.LineTransform(file, func(line []byte) []byte {
-    return append([]byte(time.Now().Format(time.RFC3339)+" "), line...)
-})
-```
+| `NewTransformReader(r, cfg, fn)` | Full control: emit 0, 1, or N outputs per match |
 
 See [Transform API Guide](docs/transform-api.md) for complete documentation.
 
