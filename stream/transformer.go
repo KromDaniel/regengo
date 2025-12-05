@@ -30,11 +30,6 @@ type Processor func(data []byte, isEOF bool, onMatch TransformFunc, emitNonMatch
 type TransformConfig struct {
 	Config
 
-	// MaxOutputBuffer limits the internal output buffer size.
-	// If exceeded, Read will block until the buffer is drained.
-	// Default: 0 (unlimited, grows as needed).
-	MaxOutputBuffer int
-
 	// Context for cancellation support.
 	// Default: nil (no cancellation).
 	Context context.Context
@@ -43,9 +38,8 @@ type TransformConfig struct {
 // DefaultTransformConfig returns a TransformConfig with sensible defaults.
 func DefaultTransformConfig() TransformConfig {
 	return TransformConfig{
-		Config:          DefaultConfig(),
-		MaxOutputBuffer: 0,
-		Context:         nil,
+		Config:  DefaultConfig(),
+		Context: nil,
 	}
 }
 

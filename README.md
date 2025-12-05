@@ -352,7 +352,7 @@ Regengo returns typed structs with named fields instead of `[]string` slices—a
 | `ReplaceAllString(s, t)` | `ReplaceAllString(s, t)` | Runtime template |
 | `ReplaceAllString(s, t)` | `ReplaceAllString0(s)` | Pre-compiled (3x faster) |
 | - | `ReplaceAllBytesAppend(...)` | Zero-alloc replace |
-| - | `ReplaceReader(r, t)` | Stream transform (3x faster) |
+| - | `ReplaceReader(r, t)` | Stream transform |
 | - | `SelectReader(r, pred)` | Extract matches from stream |
 | - | `RejectReader(r, pred)` | Remove matches from stream |
 

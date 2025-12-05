@@ -129,9 +129,8 @@ ctx, cancel := context.WithCancel(context.Background())
 defer cancel()
 
 cfg := stream.TransformConfig{
-    Context:         ctx,        // Enable cancellation
-    BufferSize:      256 * 1024, // 256KB input buffer
-    MaxOutputBuffer: 0,          // Unlimited output buffer
+    Context:    ctx,        // Enable cancellation
+    BufferSize: 256 * 1024, // 256KB input buffer
 }
 
 r := CompiledEmail.NewTransformReader(file, cfg, onMatchCallback)
@@ -155,6 +154,5 @@ r = stream.LineFilter(r, func(line []byte) bool {
 
 *   **Throughput:** ~90 MB/s for typical replacement operations.
 *   **Memory:** Constant memory usage regardless of input size.
-*   **Pooling:** Internal buffers are pooled and reused.
 
 For benchmarks, see [`benchmarks/streams/`](../benchmarks/streams/).
