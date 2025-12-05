@@ -59,11 +59,10 @@ func BenchmarkPipeline_ThreeStage(b *testing.B) {
 		)
 		// Stage 2: redact IPs
 		r2 := testdata.CompiledIPv4Pattern.ReplaceReader(r1, "[IP]")
-		// Stage 3: select only redacted content (transform that keeps everything)
-		r3 := testdata.CompiledEmailPattern.SelectReader(r2,
-			func(m *testdata.EmailPatternBytesResult) bool {
-				return true
-			})
+		// Stage 3: filter lines (using LineFilter for third stage)
+		r3 := stream.LineFilter(r2, func(line []byte) bool {
+			return len(line) > 0 // keep non-empty lines
+		})
 
 		_, _ = io.Copy(io.Discard, r3)
 	}
