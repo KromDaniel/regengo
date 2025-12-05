@@ -150,6 +150,8 @@ r = stream.LineFilter(r, func(line []byte) bool {
 })
 ```
 
+**Warning:** These helpers buffer entire lines in memory. For files with very long lines (e.g., minified JSON, single-line logs), this can cause high memory usage. Use pattern-based transforms (`ReplaceReader`, etc.) for memory-bounded processing of such files.
+
 ## Performance
 
 *   **Throughput:** ~90 MB/s for typical replacement operations.
