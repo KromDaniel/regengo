@@ -1140,6 +1140,271 @@ func (TDFAPathological) copyBytesResult(src *TDFAPathologicalBytesResult) *TDFAP
 	return dst
 }
 
+// NewTransformReader returns an io.Reader that transforms matches in the input stream.
+//
+// The onMatch callback is called for each match. Use emit to output replacement bytes.
+// If emit is not called, the match is dropped (filter behavior).
+// Non-matching segments are automatically passed through to output.
+//
+// Example usage:
+//
+//	r := pattern.NewTransformReader(input, stream.DefaultTransformConfig(),
+//	    func(m *PatternBytesResult, emit func([]byte)) {
+//	        emit([]byte("REDACTED"))
+//	    })
+//	io.Copy(os.Stdout, r)
+func (TDFAPathological) NewTransformReader(r io.Reader, cfg stream.TransformConfig, onMatch func(match *TDFAPathologicalBytesResult, emit func([]byte))) io.Reader {
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = 65536
+	}
+	if cfg.MaxLeftover == 0 {
+		cfg.MaxLeftover = 1048576
+	}
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return TDFAPathological{}.processTransform(data, isEOF, onMatch, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processTransform processes data for transformation.
+func (TDFAPathological) processTransform(data []byte, isEOF bool, onMatch func(match *TDFAPathologicalBytesResult, emit func([]byte)), emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &TDFAPathologicalBytesResult{}
+
+	for {
+		result, ok := TDFAPathological{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			// No more matches
+			if isEOF {
+				if processed < len(data) {
+					emitOut(data[processed:])
+				}
+				return len(data)
+			}
+			// Keep potential partial match data
+			safePoint := len(data) - 104857
+			if safePoint < processed {
+				safePoint = processed
+			}
+			if safePoint > processed {
+				emitOut(data[processed:safePoint])
+			}
+			return safePoint
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := processed + matchIdx
+		matchEnd := matchStart + len(result.Match)
+
+		if matchStart > processed {
+			emitOut(data[processed:matchStart])
+		}
+
+		onMatch(result, emitOut)
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
+// ReplaceReader returns an io.Reader that replaces all matches with the template.
+//
+// Template syntax:
+//
+//	$0 or ${0}: full match
+//	$1, $2, ...: capture group by index
+//	$name or ${name}: capture group by name
+//	$$: literal dollar sign
+//
+// Example:
+//
+//	r := pattern.ReplaceReader(input, "[$1]")
+//	io.Copy(os.Stdout, r)
+func (TDFAPathological) ReplaceReader(r io.Reader, template string) io.Reader {
+	parsed, err := replace.Parse(template)
+	if err != nil {
+		return &tDFAPathologicalTransformErrReader{err: err}
+	}
+
+	captureNames := map[string]int{"outer": 1, "inner": 2}
+	resolved, err := parsed.ValidateAndResolve(captureNames, 2)
+	if err != nil {
+		return &tDFAPathologicalTransformErrReader{err: err}
+	}
+
+	return TDFAPathological{}.NewTransformReader(r, stream.DefaultTransformConfig(), func(m *TDFAPathologicalBytesResult, emit func([]byte)) {
+		result := make([]byte, 0, len(template)+64)
+		for _, seg := range resolved {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, m.Match...)
+			case replace.SegmentCaptureIndex:
+				capture := (TDFAPathological{}).getCaptureByIndex(m, seg.CaptureIndex)
+				if capture != nil {
+					result = append(result, capture...)
+				}
+			}
+		}
+		emit(result)
+	})
+}
+
+// tDFAPathologicalTransformErrReader is a reader that always returns an error.
+type tDFAPathologicalTransformErrReader struct {
+	err error
+}
+
+func (r *tDFAPathologicalTransformErrReader) Read(p []byte) (int, error) {
+	return 0, r.err
+}
+
+// getCaptureByIndex returns the capture group value by its index.
+func (TDFAPathological) getCaptureByIndex(m *TDFAPathologicalBytesResult, index int) []byte {
+	switch index {
+	case 0:
+		return m.Match
+	case 1:
+		return m.Outer
+	case 2:
+		return m.Inner
+	default:
+		return nil
+	}
+}
+
+// SelectReader returns an io.Reader that outputs only matches satisfying the predicate.
+// Non-matching segments are dropped. Only matches where pred returns true are output.
+//
+// Example - extract all email addresses:
+//
+//	r := emailPattern.SelectReader(input, func(m *EmailBytesResult) bool {
+//	    return true // Keep all matches
+//	})
+func (TDFAPathological) SelectReader(r io.Reader, pred func(*TDFAPathologicalBytesResult) bool) io.Reader {
+	cfg := stream.DefaultTransformConfig()
+	cfg.MaxLeftover = 1048576
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return TDFAPathological{}.processSelect(data, isEOF, pred, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processSelect processes data for select filtering.
+func (TDFAPathological) processSelect(data []byte, isEOF bool, pred func(*TDFAPathologicalBytesResult) bool, emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &TDFAPathologicalBytesResult{}
+
+	for {
+		result, ok := TDFAPathological{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			if isEOF {
+				return len(data)
+			}
+			return processed
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchEnd := processed + matchIdx + len(result.Match)
+
+		if pred(result) {
+			emitOut(result.Match)
+		}
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
+// RejectReader returns an io.Reader that removes matches satisfying the predicate.
+// Non-matching segments pass through. Matches where pred returns true are dropped.
+//
+// Example - remove all sensitive data:
+//
+//	r := sensitivePattern.RejectReader(input, func(m *SensitiveBytesResult) bool {
+//	    return true // Remove all matches
+//	})
+func (TDFAPathological) RejectReader(r io.Reader, pred func(*TDFAPathologicalBytesResult) bool) io.Reader {
+	cfg := stream.DefaultTransformConfig()
+	cfg.MaxLeftover = 1048576
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return TDFAPathological{}.processReject(data, isEOF, pred, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processReject processes data for reject filtering.
+func (TDFAPathological) processReject(data []byte, isEOF bool, pred func(*TDFAPathologicalBytesResult) bool, emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &TDFAPathologicalBytesResult{}
+
+	for {
+		result, ok := TDFAPathological{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			if isEOF {
+				if processed < len(data) {
+					emitOut(data[processed:])
+				}
+				return len(data)
+			}
+			safePoint := len(data) - 104857
+			if safePoint < processed {
+				safePoint = processed
+			}
+			if safePoint > processed {
+				emitOut(data[processed:safePoint])
+			}
+			return safePoint
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := processed + matchIdx
+		matchEnd := matchStart + len(result.Match)
+
+		if matchStart > processed {
+			emitOut(data[processed:matchStart])
+		}
+
+		if !pred(result) {
+			emitOut(result.Match)
+		}
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
 // CaptureByIndex returns the capture group value by its 0-based index.
 // Index 0 returns the full match, 1+ returns capture groups.
 func (r *TDFAPathologicalResult) CaptureByIndex(idx int) string {

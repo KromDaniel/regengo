@@ -2,8 +2,11 @@ package testdata
 
 import (
 	"bytes"
+	"fmt"
+	replace "github.com/KromDaniel/regengo/replace"
 	stream "github.com/KromDaniel/regengo/stream"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -873,4 +876,694 @@ func (DigitsPattern) copyBytesResult(src *DigitsPatternBytesResult) *DigitsPatte
 	// Copy Match slice
 	dst.Match = append([]byte{}, src.Match...)
 	return dst
+}
+
+// NewTransformReader returns an io.Reader that transforms matches in the input stream.
+//
+// The onMatch callback is called for each match. Use emit to output replacement bytes.
+// If emit is not called, the match is dropped (filter behavior).
+// Non-matching segments are automatically passed through to output.
+//
+// Example usage:
+//
+//	r := pattern.NewTransformReader(input, stream.DefaultTransformConfig(),
+//	    func(m *PatternBytesResult, emit func([]byte)) {
+//	        emit([]byte("REDACTED"))
+//	    })
+//	io.Copy(os.Stdout, r)
+func (DigitsPattern) NewTransformReader(r io.Reader, cfg stream.TransformConfig, onMatch func(match *DigitsPatternBytesResult, emit func([]byte))) io.Reader {
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = 65536
+	}
+	if cfg.MaxLeftover == 0 {
+		cfg.MaxLeftover = 1048576
+	}
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return DigitsPattern{}.processTransform(data, isEOF, onMatch, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processTransform processes data for transformation.
+func (DigitsPattern) processTransform(data []byte, isEOF bool, onMatch func(match *DigitsPatternBytesResult, emit func([]byte)), emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &DigitsPatternBytesResult{}
+
+	for {
+		result, ok := DigitsPattern{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			// No more matches
+			if isEOF {
+				if processed < len(data) {
+					emitOut(data[processed:])
+				}
+				return len(data)
+			}
+			// Keep potential partial match data
+			safePoint := len(data) - 104857
+			if safePoint < processed {
+				safePoint = processed
+			}
+			if safePoint > processed {
+				emitOut(data[processed:safePoint])
+			}
+			return safePoint
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := processed + matchIdx
+		matchEnd := matchStart + len(result.Match)
+
+		if matchStart > processed {
+			emitOut(data[processed:matchStart])
+		}
+
+		onMatch(result, emitOut)
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
+// ReplaceReader returns an io.Reader that replaces all matches with the template.
+//
+// Template syntax:
+//
+//	$0 or ${0}: full match
+//	$1, $2, ...: capture group by index
+//	$name or ${name}: capture group by name
+//	$$: literal dollar sign
+//
+// Example:
+//
+//	r := pattern.ReplaceReader(input, "[$1]")
+//	io.Copy(os.Stdout, r)
+func (DigitsPattern) ReplaceReader(r io.Reader, template string) io.Reader {
+	parsed, err := replace.Parse(template)
+	if err != nil {
+		return &digitsPatternTransformErrReader{err: err}
+	}
+
+	captureNames := map[string]int{}
+	resolved, err := parsed.ValidateAndResolve(captureNames, 1)
+	if err != nil {
+		return &digitsPatternTransformErrReader{err: err}
+	}
+
+	return DigitsPattern{}.NewTransformReader(r, stream.DefaultTransformConfig(), func(m *DigitsPatternBytesResult, emit func([]byte)) {
+		result := make([]byte, 0, len(template)+64)
+		for _, seg := range resolved {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, m.Match...)
+			case replace.SegmentCaptureIndex:
+				capture := (DigitsPattern{}).getCaptureByIndex(m, seg.CaptureIndex)
+				if capture != nil {
+					result = append(result, capture...)
+				}
+			}
+		}
+		emit(result)
+	})
+}
+
+// digitsPatternTransformErrReader is a reader that always returns an error.
+type digitsPatternTransformErrReader struct {
+	err error
+}
+
+func (r *digitsPatternTransformErrReader) Read(p []byte) (int, error) {
+	return 0, r.err
+}
+
+// getCaptureByIndex returns the capture group value by its index.
+func (DigitsPattern) getCaptureByIndex(m *DigitsPatternBytesResult, index int) []byte {
+	switch index {
+	case 0:
+		return m.Match
+	default:
+		return nil
+	}
+}
+
+// SelectReader returns an io.Reader that outputs only matches satisfying the predicate.
+// Non-matching segments are dropped. Only matches where pred returns true are output.
+//
+// Example - extract all email addresses:
+//
+//	r := emailPattern.SelectReader(input, func(m *EmailBytesResult) bool {
+//	    return true // Keep all matches
+//	})
+func (DigitsPattern) SelectReader(r io.Reader, pred func(*DigitsPatternBytesResult) bool) io.Reader {
+	cfg := stream.DefaultTransformConfig()
+	cfg.MaxLeftover = 1048576
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return DigitsPattern{}.processSelect(data, isEOF, pred, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processSelect processes data for select filtering.
+func (DigitsPattern) processSelect(data []byte, isEOF bool, pred func(*DigitsPatternBytesResult) bool, emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &DigitsPatternBytesResult{}
+
+	for {
+		result, ok := DigitsPattern{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			if isEOF {
+				return len(data)
+			}
+			return processed
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchEnd := processed + matchIdx + len(result.Match)
+
+		if pred(result) {
+			emitOut(result.Match)
+		}
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
+// RejectReader returns an io.Reader that removes matches satisfying the predicate.
+// Non-matching segments pass through. Matches where pred returns true are dropped.
+//
+// Example - remove all sensitive data:
+//
+//	r := sensitivePattern.RejectReader(input, func(m *SensitiveBytesResult) bool {
+//	    return true // Remove all matches
+//	})
+func (DigitsPattern) RejectReader(r io.Reader, pred func(*DigitsPatternBytesResult) bool) io.Reader {
+	cfg := stream.DefaultTransformConfig()
+	cfg.MaxLeftover = 1048576
+
+	processor := func(data []byte, isEOF bool, _ stream.TransformFunc, emitOut func([]byte)) int {
+		return DigitsPattern{}.processReject(data, isEOF, pred, emitOut)
+	}
+
+	return stream.NewTransformer(r, cfg, processor, func(_ []byte, emit func([]byte)) {})
+}
+
+// processReject processes data for reject filtering.
+func (DigitsPattern) processReject(data []byte, isEOF bool, pred func(*DigitsPatternBytesResult) bool, emitOut func([]byte)) int {
+	processed := 0
+	reuseResult := &DigitsPatternBytesResult{}
+
+	for {
+		result, ok := DigitsPattern{}.FindBytesReuse(data[processed:], reuseResult)
+		if !ok {
+			if isEOF {
+				if processed < len(data) {
+					emitOut(data[processed:])
+				}
+				return len(data)
+			}
+			safePoint := len(data) - 104857
+			if safePoint < processed {
+				safePoint = processed
+			}
+			if safePoint > processed {
+				emitOut(data[processed:safePoint])
+			}
+			return safePoint
+		}
+
+		matchIdx := bytes.Index(data[processed:], result.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := processed + matchIdx
+		matchEnd := matchStart + len(result.Match)
+
+		if matchStart > processed {
+			emitOut(data[processed:matchStart])
+		}
+
+		if !pred(result) {
+			emitOut(result.Match)
+		}
+
+		if len(result.Match) > 0 {
+			processed = matchEnd
+		} else {
+			processed++
+		}
+	}
+	return processed
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *DigitsPatternResult) CaptureByIndex(idx int) string {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Group1
+	default:
+		return ""
+	}
+}
+
+// CaptureByIndex returns the capture group value by its 0-based index.
+// Index 0 returns the full match, 1+ returns capture groups.
+func (r *DigitsPatternBytesResult) CaptureByIndex(idx int) []byte {
+	switch idx {
+	case 0:
+		return r.Match
+	case 1:
+		return r.Group1
+	default:
+		return nil
+	}
+}
+
+// ReplaceAllString replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) ReplaceAllString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+	var r DigitsPatternResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := DigitsPattern{}.FindStringReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := strings.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result.WriteString(input[lastEnd:matchStart])
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result.WriteString(seg.Literal)
+			case replace.SegmentFullMatch:
+				result.WriteString(match.Match)
+			case replace.SegmentCaptureIndex:
+				result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+			case replace.SegmentCaptureName:
+				// No named captures in pattern
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result.WriteString(input[lastEnd:])
+	return result.String()
+}
+
+// ReplaceAllBytes replaces all matches in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) ReplaceAllBytes(input []byte, template string) []byte {
+	return DigitsPattern{}.ReplaceAllBytesAppend(input, template, nil)
+}
+
+// ReplaceAllBytesAppend replaces all matches and appends to buf.
+// If buf has sufficient capacity, no allocation occurs.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) ReplaceAllBytesAppend(input []byte, template string, buf []byte) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
+	}
+
+	result := buf[:0]
+	lastEnd := 0
+	var r DigitsPatternBytesResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := DigitsPattern{}.FindBytesReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := bytes.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		matchStart := offset + matchIdx
+		matchEnd := matchStart + len(match.Match)
+
+		result = append(result, input[lastEnd:matchStart]...)
+
+		for _, seg := range tmpl.Segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, match.Match...)
+			case replace.SegmentCaptureIndex:
+				result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+			case replace.SegmentCaptureName:
+				// No named captures in pattern
+			}
+		}
+
+		lastEnd = matchEnd
+		if len(match.Match) > 0 {
+			remaining = input[matchEnd:]
+			offset = matchEnd
+		} else {
+			if matchEnd < len(input) {
+				remaining = input[matchEnd+1:]
+				offset = matchEnd + 1
+			} else {
+				break
+			}
+		}
+	}
+
+	result = append(result, input[lastEnd:]...)
+	return result
+}
+
+// ReplaceFirstString replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) ReplaceFirstString(input string, template string) string {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
+	}
+
+	var r DigitsPatternResult
+	match, ok := DigitsPattern{}.FindStringReuse(input, &r)
+	if !ok {
+		return input
+	}
+
+	matchIdx := strings.Index(input, match.Match)
+	if matchIdx < 0 {
+		return input
+	}
+
+	var result strings.Builder
+	result.WriteString(input[:matchIdx])
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result.WriteString(seg.Literal)
+		case replace.SegmentFullMatch:
+			result.WriteString(match.Match)
+		case replace.SegmentCaptureIndex:
+			result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+		case replace.SegmentCaptureName:
+			// No named captures in pattern
+		}
+	}
+
+	result.WriteString(input[matchIdx+len(match.Match):])
+	return result.String()
+}
+
+// ReplaceFirstBytes replaces only the first match in input with the template expansion.
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) ReplaceFirstBytes(input []byte, template string) []byte {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		panic(fmt.Sprintf("regengo: invalid replace template: %v", err))
+	}
+
+	var r DigitsPatternBytesResult
+	match, ok := DigitsPattern{}.FindBytesReuse(input, &r)
+	if !ok {
+		return append([]byte{}, input...)
+	}
+
+	matchIdx := bytes.Index(input, match.Match)
+	if matchIdx < 0 {
+		return append([]byte{}, input...)
+	}
+
+	var result []byte
+	result = append(result, input[:matchIdx]...)
+
+	for _, seg := range tmpl.Segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result = append(result, seg.Literal...)
+		case replace.SegmentFullMatch:
+			result = append(result, match.Match...)
+		case replace.SegmentCaptureIndex:
+			result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+		case replace.SegmentCaptureName:
+			// No named captures in pattern
+		}
+	}
+
+	result = append(result, input[matchIdx+len(match.Match):]...)
+	return result
+}
+
+// DigitsPatternReplaceTemplate holds a pre-compiled replace template for the DigitsPattern pattern.
+// Use CompileReplaceTemplate to create one, then call its Replace methods.
+type DigitsPatternReplaceTemplate struct {
+	original string
+	segments []replace.Segment
+}
+
+// CompileReplaceTemplate parses and validates a replace template.
+// Returns an error if the template syntax is invalid or references non-existent captures.
+// The compiled template can be reused for multiple replacements without re-parsing.
+//
+// Template syntax: $0 (full match), $1/$2 (by index), $name (by name), $$ (literal $)
+func (DigitsPattern) CompileReplaceTemplate(template string) (*DigitsPatternReplaceTemplate, error) {
+	tmpl, err := replace.Parse(template)
+	if err != nil {
+		return nil, err
+	}
+
+	captureNames := map[string]int{}
+
+	resolved, err := tmpl.ValidateAndResolve(captureNames, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DigitsPatternReplaceTemplate{
+		original: template,
+		segments: resolved,
+	}, nil
+}
+
+// String returns the original template string.
+func (t *DigitsPatternReplaceTemplate) String() string {
+	return t.original
+}
+
+// ReplaceAllString replaces all matches in input using this compiled template.
+func (t *DigitsPatternReplaceTemplate) ReplaceAllString(input string) string {
+	var result strings.Builder
+	lastEnd := 0
+	var r DigitsPatternResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := DigitsPattern{}.FindStringReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := strings.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		absMatchStart := offset + matchIdx
+		absMatchEnd := absMatchStart + len(match.Match)
+
+		result.WriteString(input[lastEnd:absMatchStart])
+
+		for _, seg := range t.segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result.WriteString(seg.Literal)
+			case replace.SegmentFullMatch:
+				result.WriteString(match.Match)
+			case replace.SegmentCaptureIndex:
+				result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+			}
+		}
+
+		lastEnd = absMatchEnd
+		remaining = input[absMatchEnd:]
+		offset = absMatchEnd
+	}
+
+	result.WriteString(input[lastEnd:])
+	return result.String()
+}
+
+// ReplaceAllBytes replaces all matches in input using this compiled template.
+func (t *DigitsPatternReplaceTemplate) ReplaceAllBytes(input []byte) []byte {
+	return t.ReplaceAllBytesAppend(input, nil)
+}
+
+// ReplaceAllBytesAppend replaces all matches and appends to buf.
+// If buf has sufficient capacity, no allocation occurs.
+func (t *DigitsPatternReplaceTemplate) ReplaceAllBytesAppend(input []byte, buf []byte) []byte {
+	result := buf[:0]
+	lastEnd := 0
+	var r DigitsPatternBytesResult
+
+	remaining := input
+	offset := 0
+
+	for {
+		match, ok := DigitsPattern{}.FindBytesReuse(remaining, &r)
+		if !ok {
+			break
+		}
+
+		matchIdx := bytes.Index(remaining, match.Match)
+		if matchIdx < 0 {
+			break
+		}
+
+		absMatchStart := offset + matchIdx
+		absMatchEnd := absMatchStart + len(match.Match)
+
+		result = append(result, input[lastEnd:absMatchStart]...)
+
+		for _, seg := range t.segments {
+			switch seg.Type {
+			case replace.SegmentLiteral:
+				result = append(result, seg.Literal...)
+			case replace.SegmentFullMatch:
+				result = append(result, match.Match...)
+			case replace.SegmentCaptureIndex:
+				result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+			}
+		}
+
+		lastEnd = absMatchEnd
+		remaining = input[absMatchEnd:]
+		offset = absMatchEnd
+	}
+
+	result = append(result, input[lastEnd:]...)
+	return result
+}
+
+// ReplaceFirstString replaces only the first match using this compiled template.
+func (t *DigitsPatternReplaceTemplate) ReplaceFirstString(input string) string {
+	var r DigitsPatternResult
+	match, ok := DigitsPattern{}.FindStringReuse(input, &r)
+	if !ok {
+		return input
+	}
+
+	matchIdx := strings.Index(input, match.Match)
+	if matchIdx < 0 {
+		return input
+	}
+
+	var result strings.Builder
+	result.WriteString(input[:matchIdx])
+
+	for _, seg := range t.segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result.WriteString(seg.Literal)
+		case replace.SegmentFullMatch:
+			result.WriteString(match.Match)
+		case replace.SegmentCaptureIndex:
+			result.WriteString(match.CaptureByIndex(seg.CaptureIndex))
+		}
+	}
+
+	result.WriteString(input[matchIdx+len(match.Match):])
+	return result.String()
+}
+
+// ReplaceFirstBytes replaces only the first match using this compiled template.
+func (t *DigitsPatternReplaceTemplate) ReplaceFirstBytes(input []byte) []byte {
+	var r DigitsPatternBytesResult
+	match, ok := DigitsPattern{}.FindBytesReuse(input, &r)
+	if !ok {
+		return append([]byte{}, input...)
+	}
+
+	matchIdx := bytes.Index(input, match.Match)
+	if matchIdx < 0 {
+		return append([]byte{}, input...)
+	}
+
+	var result []byte
+	result = append(result, input[:matchIdx]...)
+
+	for _, seg := range t.segments {
+		switch seg.Type {
+		case replace.SegmentLiteral:
+			result = append(result, seg.Literal...)
+		case replace.SegmentFullMatch:
+			result = append(result, match.Match...)
+		case replace.SegmentCaptureIndex:
+			result = append(result, match.CaptureByIndex(seg.CaptureIndex)...)
+		}
+	}
+
+	result = append(result, input[matchIdx+len(match.Match):]...)
+	return result
 }
