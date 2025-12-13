@@ -107,7 +107,7 @@ func Compile(opts Options) error {
 	}
 
 	// Auto-detect capture groups
-	hasCaptures := prog.NumCap > 2 // NumCap > 2 means there are user-defined capture groups (0 and 1 are full match)
+	hasCaptures := prog.NumCap > compiler.ImplicitCaptureCount // User-defined capture groups exist
 
 	// Set default for GenerateTestFile
 	generateTestFile := opts.GenerateTestFile

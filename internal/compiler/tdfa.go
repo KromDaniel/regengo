@@ -79,38 +79,59 @@ func NewTDFAGenerator(c *Compiler) *TDFAGenerator {
 	return gen
 }
 
-// CanUseTDFA returns true if the pattern can use Tagged DFA.
-func (g *TDFAGenerator) CanUseTDFA() bool {
+// CanUseTDFA checks if TDFA can be used for this pattern.
+// Returns (canUse, info) where info is a status message for logging.
+func (g *TDFAGenerator) CanUseTDFA() (bool, string) {
 	// Check for unsupported instructions (e.g. word boundaries)
 	for _, inst := range g.prog.Inst {
 		if inst.Op == syntax.InstEmptyWidth {
 			// We only support BeginText (^) and EndText ($) for now
 			if syntax.EmptyOp(inst.Arg) != syntax.EmptyBeginText && syntax.EmptyOp(inst.Arg) != syntax.EmptyEndText {
-				g.compiler.logger.Log("TDFA unsupported empty width op: %v", inst.Arg)
-				return false
+				return false, fmt.Sprintf("TDFA unsupported empty width op: %v", inst.Arg)
 			}
 		}
 	}
 
 	// Build TDFA and check if state count is acceptable
 	if err := g.buildTDFA(); err != nil {
-		g.compiler.logger.Log("TDFA construction failed: %v", err)
-		return false
+		return false, fmt.Sprintf("TDFA construction failed: %v", err)
 	}
 
 	if len(g.states) > g.maxStates {
-		g.compiler.logger.Log("TDFA has too many states (%d > %d), falling back", len(g.states), g.maxStates)
-		return false
+		return false, fmt.Sprintf("TDFA has too many states (%d > %d), falling back", len(g.states), g.maxStates)
 	}
 
-	g.compiler.logger.Log("TDFA constructed with %d states", len(g.states))
-	return true
+	return true, fmt.Sprintf("TDFA constructed with %d states", len(g.states))
 }
 
 // buildTDFA constructs the Tagged DFA from the NFA.
 func (g *TDFAGenerator) buildTDFA() error {
-	// 1. Create startStateBegin (at index 0)
+	// Initialize start states
+	g.initializeStartStates()
+
+	// Build initial worklist from start states
+	initialWorklist := []int{g.startStateBegin}
+	if g.startStateAny != g.startStateBegin {
+		initialWorklist = append(initialWorklist, g.startStateAny)
+	}
+
+	// Build DFA states using worklist algorithm
+	if err := g.processWorklist(initialWorklist); err != nil {
+		return err
+	}
+
+	// Compute accept states and actions
+	g.computeAcceptStates()
+
+	return nil
+}
+
+// initializeStartStates creates the initial TDFA start states.
+// Creates startStateBegin (anchored at text start) and startStateAny (can start anywhere).
+func (g *TDFAGenerator) initializeStartStates() {
 	startNFA := []NFAStateWithActions{{ID: int(g.prog.Start), Actions: nil}}
+
+	// Create startStateBegin (at index 0)
 	startNFASetBegin := g.epsilonClosureWithCaptures(startNFA, true, syntax.EmptyBeginText)
 
 	if len(startNFASetBegin) > 0 {
@@ -119,7 +140,6 @@ func (g *TDFAGenerator) buildTDFA() error {
 		g.initialTagsBegin = nil
 	}
 
-	// Create start state begin
 	startStateBegin := &TDFAState{
 		ID:     0,
 		NFASet: startNFASetBegin,
@@ -133,15 +153,12 @@ func (g *TDFAGenerator) buildTDFA() error {
 	g.startStateBegin = 0
 
 	// Check if start state begin is accepting
-	for _, nfaState := range startNFASetBegin {
-		if g.prog.Inst[nfaState.ID].Op == syntax.InstMatch {
-			startStateBegin.IsAccept = true
-			g.acceptStates[0] = true
-			break
-		}
+	if g.isAcceptingNFASet(startNFASetBegin) {
+		startStateBegin.IsAccept = true
+		g.acceptStates[0] = true
 	}
 
-	// 2. Create startStateAny
+	// Create startStateAny
 	startNFASetAny := g.epsilonClosureWithCaptures(startNFA, true, 0)
 
 	if len(startNFASetAny) > 0 {
@@ -156,7 +173,7 @@ func (g *TDFAGenerator) buildTDFA() error {
 		g.startStateAny = idx
 	} else {
 		// Create new state
-		idx = len(g.states)
+		idx := len(g.states)
 		startStateAny := &TDFAState{
 			ID:     idx,
 			NFASet: startNFASetAny,
@@ -169,20 +186,19 @@ func (g *TDFAGenerator) buildTDFA() error {
 		g.startStateAny = idx
 
 		// Check acceptance
-		for _, nfaState := range startNFASetAny {
-			if g.prog.Inst[nfaState.ID].Op == syntax.InstMatch {
-				startStateAny.IsAccept = true
-				g.acceptStates[idx] = true
-				break
-			}
+		if g.isAcceptingNFASet(startNFASetAny) {
+			startStateAny.IsAccept = true
+			g.acceptStates[idx] = true
 		}
 	}
+}
 
-	// Process states using worklist algorithm
-	worklist := []int{0}
-	if g.startStateAny != 0 {
-		worklist = append(worklist, g.startStateAny)
-	}
+// processWorklist runs the TDFA construction worklist algorithm.
+// Explores all reachable DFA states starting from the given initial worklist.
+// This signature allows testing the worklist algorithm in isolation.
+func (g *TDFAGenerator) processWorklist(initialWorklist []int) error {
+	worklist := make([]int, len(initialWorklist))
+	copy(worklist, initialWorklist)
 	processed := make(map[int]bool)
 
 	for len(worklist) > 0 {
@@ -225,12 +241,9 @@ func (g *TDFAGenerator) buildTDFA() error {
 				}
 
 				// Check if accepting
-				for _, nfaState := range nextNFASet {
-					if g.prog.Inst[nfaState.ID].Op == syntax.InstMatch {
-						nextState.IsAccept = true
-						g.acceptStates[nextStateIdx] = true
-						break
-					}
+				if g.isAcceptingNFASet(nextNFASet) {
+					nextState.IsAccept = true
+					g.acceptStates[nextStateIdx] = true
 				}
 
 				g.states = append(g.states, nextState)
@@ -248,16 +261,20 @@ func (g *TDFAGenerator) buildTDFA() error {
 		}
 	}
 
+	return nil
+}
+
+// computeAcceptStates determines which states are accepting and computes their actions.
+// Handles both regular accept states and end-of-text (EOT) accept states.
+func (g *TDFAGenerator) computeAcceptStates() {
 	// Compute acceptStatesEOT and acceptActions
 	for i, state := range g.states {
-		// Check EOT acceptance
-		// We use a temporary closure with EmptyEndText
+		// Check EOT acceptance using a temporary closure with EmptyEndText
 		closure := g.epsilonClosureWithCaptures(state.NFASet, true, syntax.EmptyEndText)
 		for _, s := range closure {
 			if g.prog.Inst[s.ID].Op == syntax.InstMatch {
 				g.acceptStatesEOT[i] = true
 				// Collect pending tag actions for this accept state
-				// These are actions that need to be applied when accepting
 				if len(s.Actions) > 0 {
 					g.acceptActions[i] = g.compactActions(s.Actions)
 				}
@@ -285,8 +302,16 @@ func (g *TDFAGenerator) buildTDFA() error {
 			}
 		}
 	}
+}
 
-	return nil
+// isAcceptingNFASet checks if the given NFA state set contains an accepting state.
+func (g *TDFAGenerator) isAcceptingNFASet(nfaSet []NFAStateWithActions) bool {
+	for _, nfaState := range nfaSet {
+		if g.prog.Inst[nfaState.ID].Op == syntax.InstMatch {
+			return true
+		}
+	}
+	return false
 }
 
 // getPossibleChars returns all possible input characters from the given NFA states.
@@ -297,17 +322,17 @@ func (g *TDFAGenerator) getPossibleChars(nfaSet []NFAStateWithActions) []byte {
 		inst := g.prog.Inst[state.ID]
 		switch inst.Op {
 		case syntax.InstRune1:
-			if len(inst.Rune) > 0 && inst.Rune[0] < 128 {
+			if len(inst.Rune) > 0 && inst.Rune[0] < MaxASCIIRune {
 				charSet[byte(inst.Rune[0])] = true
 			}
 		case syntax.InstRune:
 			// Character class - add all characters in ranges
 			for i := 0; i < len(inst.Rune); i += 2 {
 				lo, hi := inst.Rune[i], inst.Rune[i+1]
-				if lo < 128 {
+				if lo < MaxASCIIRune {
 					end := hi
-					if end >= 128 {
-						end = 127
+					if end >= MaxASCIIRune {
+						end = MaxASCIIRune - 1
 					}
 					for c := lo; c <= end; c++ {
 						charSet[byte(c)] = true
@@ -316,11 +341,11 @@ func (g *TDFAGenerator) getPossibleChars(nfaSet []NFAStateWithActions) []byte {
 			}
 		case syntax.InstRuneAny:
 			// Match any - add all printable ASCII for now
-			for c := byte(0); c < 128; c++ {
+			for c := byte(0); c < MaxASCIIRune; c++ {
 				charSet[c] = true
 			}
 		case syntax.InstRuneAnyNotNL:
-			for c := byte(0); c < 128; c++ {
+			for c := byte(0); c < MaxASCIIRune; c++ {
 				if c != '\n' {
 					charSet[c] = true
 				}
@@ -348,7 +373,7 @@ func (g *TDFAGenerator) computeTransition(nfaSet []NFAStateWithActions, c byte) 
 		case syntax.InstRune1:
 			if len(inst.Rune) > 0 {
 				r := inst.Rune[0]
-				if r < 128 && byte(r) == c {
+				if r < MaxASCIIRune && byte(r) == c {
 					matches = true
 				}
 			}
@@ -584,30 +609,30 @@ func (g *TDFAGenerator) GenerateFindFunction(isBytes bool) ([]jen.Code, error) {
 func (g *TDFAGenerator) generateTransitionTable() jen.Code {
 	numStates := len(g.states)
 
-	// Build transition table as [numStates][128]int where -1 means no transition
+	// Build transition table as [numStates][MaxASCIIRune]int where -1 means no transition
 	rowValues := make([]jen.Code, numStates)
 
 	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
-		// Build row for this state - 128 entries for ASCII
-		entries := make([]jen.Code, 128)
-		for i := 0; i < 128; i++ {
+		// Build row for this state - MaxASCIIRune entries for ASCII
+		entries := make([]jen.Code, MaxASCIIRune)
+		for i := 0; i < MaxASCIIRune; i++ {
 			entries[i] = jen.Lit(-1)
 		}
 
 		// Fill in actual transitions
 		if stateIdx < len(g.transitions) {
 			for c, nextState := range g.transitions[stateIdx] {
-				if int(c) < 128 {
+				if int(c) < MaxASCIIRune {
 					entries[int(c)] = jen.Lit(nextState)
 				}
 			}
 		}
 
-		rowValues[stateIdx] = jen.Index(jen.Lit(128)).Int().Values(entries...)
+		rowValues[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Int().Values(entries...)
 	}
 
 	return jen.Comment("TDFA transition table [state][char] -> next state (-1 = no transition)").Line().
-		Var().Id(g.getVarName("transitions")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Int().Values(rowValues...)
+		Var().Id(g.getVarName("transitions")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Int().Values(rowValues...)
 }
 
 // generateLocalTagState generates the local tag variables.
@@ -634,23 +659,23 @@ func (g *TDFAGenerator) generateTagActionTables() []jen.Code {
 	// Generate action count table: tagActionCount[state][char] = number of actions
 	countRows := make([]jen.Code, numStates)
 	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
-		entries := make([]jen.Code, 128)
-		for i := 0; i < 128; i++ {
+		entries := make([]jen.Code, MaxASCIIRune)
+		for i := 0; i < MaxASCIIRune; i++ {
 			entries[i] = jen.Lit(0)
 		}
 		if stateIdx < len(g.tagActions) {
 			for c, actions := range g.tagActions[stateIdx] {
-				if int(c) < 128 {
+				if int(c) < MaxASCIIRune {
 					entries[int(c)] = jen.Lit(len(actions))
 				}
 			}
 		}
-		countRows[stateIdx] = jen.Index(jen.Lit(128)).Int().Values(entries...)
+		countRows[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Int().Values(entries...)
 	}
 
 	code := []jen.Code{
 		jen.Comment("Tag action counts [state][char] -> number of actions").Line().
-			Var().Id(g.getVarName("tagActionCount")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Int().Values(countRows...),
+			Var().Id(g.getVarName("tagActionCount")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Int().Values(countRows...),
 	}
 
 	// Generate tag action table: tagActionTags[state][char][actionIdx] = tag index
@@ -659,10 +684,10 @@ func (g *TDFAGenerator) generateTagActionTables() []jen.Code {
 	offsetRows := make([]jen.Code, numStates)
 
 	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
-		charTagEntries := make([]jen.Code, 128)
-		charOffsetEntries := make([]jen.Code, 128)
+		charTagEntries := make([]jen.Code, MaxASCIIRune)
+		charOffsetEntries := make([]jen.Code, MaxASCIIRune)
 
-		for i := 0; i < 128; i++ {
+		for i := 0; i < MaxASCIIRune; i++ {
 			// Initialize with zeros
 			tagActionEntries := make([]jen.Code, maxActions)
 			offsetActionEntries := make([]jen.Code, maxActions)
@@ -687,15 +712,15 @@ func (g *TDFAGenerator) generateTagActionTables() []jen.Code {
 			charOffsetEntries[i] = jen.Index(jen.Lit(maxActions)).Int().Values(offsetActionEntries...)
 		}
 
-		tagRows[stateIdx] = jen.Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(charTagEntries...)
-		offsetRows[stateIdx] = jen.Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(charOffsetEntries...)
+		tagRows[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Index(jen.Lit(maxActions)).Int().Values(charTagEntries...)
+		offsetRows[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Index(jen.Lit(maxActions)).Int().Values(charOffsetEntries...)
 	}
 
 	code = append(code,
 		jen.Comment("Tag action tags [state][char][actionIdx] -> tag index").Line().
-			Var().Id(g.getVarName("tagActionTags")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(tagRows...),
+			Var().Id(g.getVarName("tagActionTags")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Index(jen.Lit(maxActions)).Int().Values(tagRows...),
 		jen.Comment("Tag action offsets [state][char][actionIdx] -> offset").Line().
-			Var().Id(g.getVarName("tagActionOffsets")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(128)).Index(jen.Lit(maxActions)).Int().Values(offsetRows...),
+			Var().Id(g.getVarName("tagActionOffsets")).Op("=").Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Index(jen.Lit(maxActions)).Int().Values(offsetRows...),
 	)
 
 	return code
@@ -947,7 +972,7 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 		jen.Line(),
 		jen.For(jen.Id("i").Op(":=").Id("start"), jen.Id("i").Op("<").Id(codegen.InputLenName), jen.Id("i").Op("++")).Block(
 			jen.Id("c").Op(":=").Add(inputAccess),
-			jen.If(jen.Id("c").Op(">=").Lit(128)).Block(
+			jen.If(jen.Id("c").Op(">=").Lit(MaxASCIIRune)).Block(
 				jen.Break(), // Non-ASCII, exit
 			),
 			jen.Line(),

@@ -127,8 +127,8 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.For(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
 				jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
 				jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-				// Check entry type: 2 = capture restore, 0 = Alt backtrack
-				jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(2)).Block(
+				// Check entry type: StackEntryPerCaptureRestore = capture restore, StackEntryAlt = Alt backtrack
+				jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(StackEntryPerCaptureRestore)).Block(
 					// Per-capture restore: captures[index] = oldValue
 					jen.Id(codegen.CapturesName).Index(jen.Id("last").Index(jen.Lit(1))).Op("=").Id("last").Index(jen.Lit(0)),
 					jen.Continue(), // Keep processing stack
@@ -152,8 +152,8 @@ func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
 			// Restore capture state from checkpoint stack only if this backtrack point had a checkpoint
-			// (indicated by last[2] == 1, selective checkpointing optimization)
-			jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(1).Op("&&").Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
+			// (indicated by last[2] == StackEntryCheckpoint, selective checkpointing optimization)
+			jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(StackEntryCheckpoint).Op("&&").Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
 				jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
 				jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
 				jen.Copy(jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
