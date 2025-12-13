@@ -43,55 +43,40 @@ func (c *Compiler) generateCaptureFunctions() error {
 
 // generateCaptureStruct generates the Match struct with string fields.
 func (c *Compiler) generateCaptureStruct(structName string) {
-	// Add warning comment if there are repeating captures
-	if c.hasRepeatingCaptures {
-		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
-		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
-		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
-		c.file.Comment("Optional groups (?) return empty string when not matched.")
-		c.file.Line()
-	}
-
-	fields := []jen.Code{
-		jen.Id("Match").String().Comment("Full match"),
-	}
-
-	usedNames := make(map[string]bool)
-	usedNames["Match"] = true // Reserve for full match
-
-	// Add fields for each capture group (skip group 0 which is the full match)
-	for i := 1; i < len(c.captureNames); i++ {
-		fieldName := c.captureNames[i]
-		if fieldName == "" {
-			fieldName = fmt.Sprintf("Group%d", i)
-		} else {
-			fieldName = codegen.UpperFirst(fieldName)
-		}
-		// Handle collisions by adding group number suffix
-		if usedNames[fieldName] {
-			fieldName = fmt.Sprintf("%s%d", fieldName, i)
-		}
-		usedNames[fieldName] = true
-		fields = append(fields, jen.Id(fieldName).String())
-	}
-
-	c.file.Type().Id(structName).Struct(fields...)
-	c.file.Line()
+	c.generateCaptureStructGeneric(structName, false)
 }
 
 // generateCaptureStructBytes generates the Match struct with []byte fields for BytesView.
 func (c *Compiler) generateCaptureStructBytes(structName string) {
+	c.generateCaptureStructGeneric(structName, true)
+}
+
+// generateCaptureStructGeneric is the unified implementation for both string and bytes capture structs.
+// When isBytes is true, generates []byte fields; otherwise generates string fields.
+func (c *Compiler) generateCaptureStructGeneric(structName string, isBytes bool) {
 	// Add warning comment if there are repeating captures
 	if c.hasRepeatingCaptures {
 		c.file.Comment("Note: This pattern contains capture groups in repeating/optional context.")
 		c.file.Comment("Go's regex engine captures only the LAST match from repeating groups (* + {n,m}).")
 		c.file.Comment("For example: (\\w)+ matching 'abc' captures 'c', not ['a','b','c'].")
-		c.file.Comment("Optional groups (?) return empty slice when not matched.")
+		if isBytes {
+			c.file.Comment("Optional groups (?) return empty slice when not matched.")
+		} else {
+			c.file.Comment("Optional groups (?) return empty string when not matched.")
+		}
 		c.file.Line()
 	}
 
+	// Helper to create the appropriate field type
+	fieldType := func() *jen.Statement {
+		if isBytes {
+			return jen.Index().Byte()
+		}
+		return jen.String()
+	}
+
 	fields := []jen.Code{
-		jen.Id("Match").Index().Byte().Comment("Full match"),
+		jen.Id("Match").Add(fieldType()).Comment("Full match"),
 	}
 
 	usedNames := make(map[string]bool)
@@ -110,7 +95,7 @@ func (c *Compiler) generateCaptureStructBytes(structName string) {
 			fieldName = fmt.Sprintf("%s%d", fieldName, i)
 		}
 		usedNames[fieldName] = true
-		fields = append(fields, jen.Id(fieldName).Index().Byte())
+		fields = append(fields, jen.Id(fieldName).Add(fieldType()))
 	}
 
 	c.file.Type().Id(structName).Struct(fields...)
@@ -134,8 +119,8 @@ func (c *Compiler) generateCaptureInst(label *jen.Statement, inst *syntax.Inst) 
 					jen.Id(codegen.StackName),
 					jen.Index(jen.Lit(3)).Int().Values(
 						jen.Id(codegen.CapturesName).Index(jen.Lit(captureIdx)), // old value
-						jen.Lit(captureIdx), // capture index
-						jen.Lit(2),          // type=2 means capture restore
+						jen.Lit(captureIdx),                  // capture index
+						jen.Lit(StackEntryPerCaptureRestore), // type = per-capture restore
 					),
 				),
 				// Set new capture value
