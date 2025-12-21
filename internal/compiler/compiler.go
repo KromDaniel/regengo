@@ -49,6 +49,7 @@ type Compiler struct {
 	useThompsonForMatch        bool                // True if Thompson NFA should be used for Match functions
 	useTNFAForCaptures         bool                // True if TNFA/memoization should be used for Find functions
 	useTDFAForCaptures         bool                // True if Tagged DFA should be used for Find functions
+	tdfaInfo                   string              // TDFA status message for logging (set during analysis)
 	altsNeedingCheckpoint      map[int]bool        // Alt instructions that need capture checkpointing
 	usePerCaptureCheckpointing bool                // True to use stdlib-style per-capture saves instead of array copying
 	hasWordBoundary            bool                // True if the pattern uses \b or \B word boundaries
@@ -89,8 +90,64 @@ func New(config Config) *Compiler {
 	return compiler
 }
 
-// analyzeAndLog performs complexity analysis and logs the results if verbose mode is enabled.
-func (c *Compiler) analyzeAndLog() {
+// analyze performs pattern complexity analysis and determines engine selection.
+// This is a pure analysis method with no logging side effects.
+// Returns true if TDFA was forced but couldn't be used (for warning purposes).
+func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
+	// Perform comprehensive complexity analysis
+	c.complexity = analyzeComplexity(c.config.Program, c.config.RegexAST)
+
+	// Perform match length analysis for streaming API
+	if c.config.RegexAST != nil {
+		c.matchLength = AnalyzeMatchLength(c.config.RegexAST)
+	}
+
+	// Determine if Thompson NFA should be used for Match functions
+	// Note: UseThompsonNFA already accounts for end anchor ($ prevents Thompson)
+	c.useThompsonForMatch = c.config.ForceThompson || c.complexity.UseThompsonNFA
+
+	// If catastrophic risk but can't use Thompson NFA (e.g., has end anchor), enable memoization
+	if c.complexity.HasCatastrophicRisk && !c.useThompsonForMatch {
+		c.useMemoization = true
+	}
+
+	// Determine capture engine selection
+	// Priority: TDFA > TNFA/memoization > simple backtracking
+	if c.config.WithCaptures && (c.complexity.HasCatastrophicRisk || c.config.ForceTDFA) {
+		// Try TDFA first for patterns with catastrophic risk or when forced
+		tdfaGen := NewTDFAGenerator(c)
+		if tdfaGen != nil {
+			canUseTDFA, tdfaInfo := tdfaGen.CanUseTDFA()
+			c.tdfaInfo = tdfaInfo
+			if canUseTDFA {
+				c.useTDFAForCaptures = true
+				c.complexity.UseTDFA = true
+			} else if c.config.ForceTDFA {
+				// TDFA was forced but can't be used - flag for warning
+				tdfaForcedButUnavailable = true
+				c.useTNFAForCaptures = true
+			} else {
+				// Fall back to TNFA/memoization
+				c.useTNFAForCaptures = true
+			}
+		} else if c.config.ForceTDFA {
+			// TDFA generator couldn't be created but was forced
+			tdfaForcedButUnavailable = true
+			c.useTNFAForCaptures = true
+		} else {
+			// Fall back to TNFA/memoization
+			c.useTNFAForCaptures = true
+		}
+	} else if c.config.ForceTNFA {
+		c.useTNFAForCaptures = true
+	}
+
+	return tdfaForcedButUnavailable
+}
+
+// logAnalysisResults logs the analysis results if verbose mode is enabled.
+// This method only performs logging, no state mutations.
+func (c *Compiler) logAnalysisResults(tdfaForcedButUnavailable bool) {
 	c.logger.Section("Pattern Analysis")
 	c.logger.Log("Pattern: %s", c.config.Pattern)
 
@@ -98,12 +155,8 @@ func (c *Compiler) analyzeAndLog() {
 		c.logger.Log("NFA states: %d", len(c.config.Program.Inst))
 	}
 
-	// Perform comprehensive analysis
-	c.complexity = analyzeComplexity(c.config.Program, c.config.RegexAST)
-
-	// Perform match length analysis for streaming API
+	// Log match length analysis
 	if c.config.RegexAST != nil {
-		c.matchLength = AnalyzeMatchLength(c.config.RegexAST)
 		c.logger.Log("Min match length: %d bytes", c.matchLength.MinMatchLen)
 		if c.matchLength.MaxMatchLen == -1 {
 			c.logger.Log("Max match length: unbounded")
@@ -119,40 +172,13 @@ func (c *Compiler) analyzeAndLog() {
 	c.logger.Log("Needs backtracking: %v", c.needsBacktracking)
 	c.logger.Log("Is anchored: %v", c.isAnchored)
 
-	// Determine engine selection based on analysis and user overrides
+	// Log engine selection decisions
 	c.logger.Section("Engine Selection")
 
-	// Determine if Thompson NFA should be used for Match functions
-	// Note: UseThompsonNFA already accounts for end anchor ($ prevents Thompson)
-	c.useThompsonForMatch = c.config.ForceThompson || c.complexity.UseThompsonNFA
-
-	// If catastrophic risk but can't use Thompson NFA (e.g., has end anchor), enable memoization
-	if c.complexity.HasCatastrophicRisk && !c.useThompsonForMatch {
-		c.useMemoization = true
-	}
-	fmt.Printf("DEBUG: Analyze %s: Catastrophic=%v, Thompson=%v, Memoization=%v\n", c.config.Name, c.complexity.HasCatastrophicRisk, c.useThompsonForMatch, c.useMemoization)
-
-	// Determine capture engine selection
-	// Priority: TDFA > TNFA/memoization > simple backtracking
-	if c.config.WithCaptures && (c.complexity.HasCatastrophicRisk || c.config.ForceTDFA) {
-		// Try TDFA first for patterns with catastrophic risk or when forced
-		tdfaGen := NewTDFAGenerator(c)
-		if tdfaGen != nil && tdfaGen.CanUseTDFA() {
-			c.useTDFAForCaptures = true
-			c.complexity.UseTDFA = true
-		} else if c.config.ForceTDFA {
-			// TDFA was forced but can't be used - warn and fall back
-			c.logger.Log("Warning: TDFA forced but pattern exceeds state threshold, falling back")
-			c.useTNFAForCaptures = true
-		} else {
-			// Fall back to TNFA/memoization
-			c.useTNFAForCaptures = true
-		}
-	} else if c.config.ForceTNFA {
-		c.useTNFAForCaptures = true
+	if tdfaForcedButUnavailable {
+		c.logger.Log("Warning: TDFA forced but pattern exceeds state threshold, falling back")
 	}
 
-	// Log engine selection decisions
 	if c.config.ForceThompson {
 		c.logger.Log("Match engine: Thompson NFA (forced by user)")
 	} else if c.complexity.HasEndAnchor && (c.complexity.HasCatastrophicRisk || c.complexity.HasNestedLoops) {
@@ -173,6 +199,10 @@ func (c *Compiler) analyzeAndLog() {
 		} else {
 			c.logger.Log("Capture engine: Backtracking with checkpoints")
 		}
+		// Log TDFA status if available
+		if c.tdfaInfo != "" {
+			c.logger.Log("%s", c.tdfaInfo)
+		}
 		// Log per-capture checkpointing decision
 		c.logger.Log("Alts needing checkpoint: %d (threshold: %d)", len(c.altsNeedingCheckpoint), PerCaptureCheckpointThreshold)
 		if c.usePerCaptureCheckpointing {
@@ -181,6 +211,13 @@ func (c *Compiler) analyzeAndLog() {
 			c.logger.Log("Using array checkpointing (simple, few checkpoints needed)")
 		}
 	}
+}
+
+// analyzeAndLog performs complexity analysis and logs the results if verbose mode is enabled.
+// This is the orchestrator that calls analyze() and logAnalysisResults().
+func (c *Compiler) analyzeAndLog() {
+	tdfaForcedButUnavailable := c.analyze()
+	c.logAnalysisResults(tdfaForcedButUnavailable)
 }
 
 // NewCompiler is an alias for New for backward compatibility.
@@ -726,7 +763,7 @@ func (c *Compiler) findRequiredPrefix() (byte, bool) {
 			continue
 		case syntax.InstRune1:
 			// Found a single rune literal
-			if len(inst.Rune) == 1 && inst.Rune[0] < 128 {
+			if len(inst.Rune) == 1 && inst.Rune[0] < MaxASCIIRune {
 				return byte(inst.Rune[0]), true
 			}
 			return 0, false
@@ -772,9 +809,9 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 	// Only add stack initialization if backtracking is needed
 	if c.needsBacktracking {
 		// Determine stack entry size - must match pool if shared
-		stackSize := 2
+		stackSize := StackEntrySizeDefault
 		if c.config.WithCaptures && !c.useTDFAForCaptures {
-			stackSize = 3
+			stackSize = StackEntrySizeWithCaptures
 		}
 
 		// Add stack initialization (pooled or regular)

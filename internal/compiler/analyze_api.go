@@ -47,7 +47,7 @@ func AnalyzePattern(pattern string, tdfaThreshold int) (*AnalysisResult, error) 
 	complexity := analyzeComplexity(prog, regexAST)
 
 	// Determine if pattern has captures
-	hasCaptures := prog.NumCap > 2
+	hasCaptures := prog.NumCap > ImplicitCaptureCount
 
 	// Derive feature labels from pattern
 	featureLabels := deriveFeatureLabels(pattern, prog, regexAST)
@@ -88,7 +88,7 @@ func deriveFeatureLabels(pattern string, prog *syntax.Prog, ast *syntax.Regexp) 
 	}
 
 	// Captures: pattern has named capture groups
-	if prog.NumCap > 2 {
+	if prog.NumCap > ImplicitCaptureCount {
 		labels = append(labels, "Captures")
 	}
 

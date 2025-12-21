@@ -23,12 +23,12 @@ func (c *Compiler) generateFindStringFunction(structName string) error {
 
 	// Generate FindString that calls FindStringReuse
 	c.file.Func().
-		Params(jen.Id("recv").Id(c.config.Name)).
+		Params(jen.Id("r").Id(c.config.Name)).
 		Id("FindString").
 		Params(jen.Id(codegen.InputName).String()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(
-			jen.Return(jen.Id("recv").Dot("FindStringReuse").Call(
+			jen.Return(jen.Id("r").Dot("FindStringReuse").Call(
 				jen.Id(codegen.InputName),
 				jen.Nil(),
 			)),
@@ -52,12 +52,12 @@ func (c *Compiler) generateFindBytesFunction(structName string) error {
 
 	// Generate FindBytes that calls FindBytesReuse
 	c.file.Func().
-		Params(jen.Id("recv").Id(c.config.Name)).
+		Params(jen.Id("r").Id(c.config.Name)).
 		Id("FindBytes").
 		Params(jen.Id(codegen.InputName).Index().Byte()).
 		Params(jen.Op("*").Id(structName), jen.Bool()).
 		Block(
-			jen.Return(jen.Id("recv").Dot("FindBytesReuse").Call(
+			jen.Return(jen.Id("r").Dot("FindBytesReuse").Call(
 				jen.Id(codegen.InputName),
 				jen.Nil(),
 			)),
@@ -137,169 +137,24 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	// Set generatingBytes flag for instruction generation
 	c.generatingBytes = isBytes
 
+	// Build initial code
 	code := []jen.Code{
-		// Handle n parameter
-		jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-			jen.Return(jen.Id("s")),
-		),
-		// Use provided slice
+		jen.If(jen.Id("n").Op("==").Lit(0)).Block(jen.Return(jen.Id("s"))),
 		jen.Id("result").Op(":=").Id("s"),
-		// Initialize length
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
-		// Initialize search start position
 		jen.Id("searchStart").Op(":=").Lit(0),
 	}
 
-	// Initialize stacks outside the loop (Optimization: Hoist allocations)
-	// Uses [3]int for stack entries to support selective checkpointing: [offset, instruction, type]
-	if c.needsBacktracking {
-		if c.config.UsePool {
-			// Per-capture mode doesn't need captureStack (captures saved on main stack)
-			if !c.usePerCaptureCheckpointing {
-				code = append(code, c.generatePooledCaptureStackInit()...)
-			}
-			code = append(code, c.generatePooledStackInitWithCaptures()...)
-		} else {
-			// Per-capture mode doesn't need captureStack
-			if !c.usePerCaptureCheckpointing {
-				code = append(code,
-					jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)),
-				)
-			}
-			code = append(code,
-				jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(3)).Int(), jen.Lit(0), jen.Lit(32)),
-			)
-		}
-	}
+	// Initialize stacks and memoization
+	code = append(code, c.generateFindAllStackInit(numCaptures)...)
+	code = append(code, c.generateMemoizationInit()...)
 
-	// Initialize memoization bit-vector if needed (Optimization: Avoid exponential backtracking)
-	// Uses bit-vector instead of map for O(1) check/set with zero allocations per operation
-	if c.useMemoization {
-		if c.config.UsePool {
-			code = append(code, c.generatePooledVisitedInit()...)
-		} else {
-			numInst := len(c.config.Program.Inst)
-			code = append(code,
-				// visitedSize = numInst * (l + 1) bits, rounded up to uint32 words
-				jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
-				jen.Id(codegen.VisitedName).Op(":=").Make(jen.Index().Uint32(), jen.Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32)),
-			)
-		}
-	}
-
-	// Build the loop body statements
-	loopBody := []jen.Code{
-		// Check if we've found enough matches
-		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
-			jen.Break(),
-		),
-	}
-
-	// Optimization: If anchored, we only run once at offset 0
-	if c.isAnchored {
-		loopBody = append(loopBody,
-			jen.If(jen.Id("searchStart").Op(">").Lit(0)).Block(
-				jen.Break(),
-			),
-		)
-	}
-
-	loopBody = append(loopBody,
-		// Check if we've reached end of input
-		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(
-			jen.Break(),
-		),
-		// Initialize offset
-		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
-		// Initialize captures array (stack-allocated)
-		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
-	)
-
-	// Reset stacks inside the loop
-	if c.needsBacktracking {
-		// Per-capture mode doesn't use captureStack
-		if !c.usePerCaptureCheckpointing {
-			loopBody = append(loopBody,
-				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
-			)
-		}
-		loopBody = append(loopBody,
-			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
-		)
-	}
-
-	// Continue with matching logic
-	loopBody = append(loopBody,
-		// Set captures[0] to mark start of match attempt
-		jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id("searchStart"),
-		// Initialize next instruction
-		jen.Id(codegen.NextInstructionName).Op(":=").Lit(int(c.config.Program.Start)),
-		jen.Goto().Id(codegen.StepSelectName),
-	)
-
-	// Add backtracking logic that continues to next position on failure
-	// Only if backtracking is needed
-	if c.needsBacktracking {
-		// Per-capture checkpointing mode: loop to process capture restores
-		if c.usePerCaptureCheckpointing {
-			loopBody = append(loopBody,
-				jen.Id(codegen.TryFallbackName).Op(":"),
-				jen.For(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
-					jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-					jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-					// Check entry type: 2 = capture restore, 0 = Alt backtrack
-					jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(2)).Block(
-						// Per-capture restore: captures[index] = oldValue
-						jen.Id(codegen.CapturesName).Index(jen.Id("last").Index(jen.Lit(1))).Op("=").Id("last").Index(jen.Lit(0)),
-						jen.Continue(), // Keep processing stack
-					),
-					// Alt backtrack point (type=0): set offset and instruction, jump to selector
-					jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
-					jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
-					jen.Goto().Id(codegen.StepSelectName),
-				),
-				// Stack empty - try next search position
-				jen.Id("searchStart").Op("++"),
-				jen.Continue(),
-			)
-		} else {
-			// Array checkpointing mode
-			loopBody = append(loopBody,
-				jen.Id(codegen.TryFallbackName).Op(":"),
-				jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
-					jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-					jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
-					jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
-					jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
-					// Restore captures from checkpoint only if this backtrack point had a checkpoint
-					// (selective checkpointing optimization: last[2] == 1 means checkpoint exists)
-					jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(1).Op("&&").Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
-						jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
-						jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
-						jen.Copy(jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
-						jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
-					),
-					jen.Goto().Id(codegen.StepSelectName),
-				).Else().Block(
-					// No match at this position, try next
-					jen.Id("searchStart").Op("++"),
-					jen.Continue(),
-				),
-			)
-		}
-	} else {
-		// For patterns without backtracking, just move to next position on failure
-		loopBody = append(loopBody,
-			jen.Id(codegen.TryFallbackName).Op(":"),
-			jen.Id("searchStart").Op("++"),
-			jen.Continue(),
-		)
-	}
-
-	// Add step selector
+	// Build the loop body
+	loopBody := c.generateFindAllLoopSetup(numCaptures)
+	loopBody = append(loopBody, c.generateFindAllBacktrackLogic()...)
 	loopBody = append(loopBody, c.generateStepSelector()...)
 
-	// Generate instructions with captures - with slice reuse
+	// Generate instructions with captures
 	instructions, err := c.generateInstructionsForFindAllAppend(structName, isBytes)
 	if err != nil {
 		return nil, err
@@ -313,6 +168,156 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	)
 
 	return code, nil
+}
+
+// generateFindAllStackInit generates stack initialization code for FindAll functions.
+// Handles both pooled and non-pooled modes, and per-capture vs array checkpointing.
+func (c *Compiler) generateFindAllStackInit(numCaptures int) []jen.Code {
+	if !c.needsBacktracking {
+		return nil
+	}
+
+	var code []jen.Code
+	if c.config.UsePool {
+		// Per-capture mode doesn't need captureStack (captures saved on main stack)
+		if !c.usePerCaptureCheckpointing {
+			code = append(code, c.generatePooledCaptureStackInit()...)
+		}
+		code = append(code, c.generatePooledStackInitWithCaptures()...)
+	} else {
+		// Per-capture mode doesn't need captureStack
+		if !c.usePerCaptureCheckpointing {
+			code = append(code,
+				jen.Id("captureStack").Op(":=").Make(jen.Index().Int(), jen.Lit(0), jen.Lit(16*numCaptures)),
+			)
+		}
+		code = append(code,
+			jen.Id(codegen.StackName).Op(":=").Make(jen.Index().Index(jen.Lit(StackEntrySizeWithCaptures)).Int(), jen.Lit(0), jen.Lit(32)),
+		)
+	}
+	return code
+}
+
+// generateMemoizationInit generates memoization bit-vector initialization if needed.
+func (c *Compiler) generateMemoizationInit() []jen.Code {
+	if !c.useMemoization {
+		return nil
+	}
+
+	if c.config.UsePool {
+		return c.generatePooledVisitedInit()
+	}
+
+	numInst := len(c.config.Program.Inst)
+	return []jen.Code{
+		jen.Id("visitedSize").Op(":=").Lit(numInst).Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)),
+		jen.Id(codegen.VisitedName).Op(":=").Make(jen.Index().Uint32(), jen.Parens(jen.Id("visitedSize").Op("+").Lit(31)).Op("/").Lit(32)),
+	}
+}
+
+// generateFindAllLoopSetup generates the loop body setup for FindAll functions.
+// Includes match count check, anchored check, offset initialization, and stack resets.
+func (c *Compiler) generateFindAllLoopSetup(numCaptures int) []jen.Code {
+	loopBody := []jen.Code{
+		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
+			jen.Break(),
+		),
+	}
+
+	if c.isAnchored {
+		loopBody = append(loopBody,
+			jen.If(jen.Id("searchStart").Op(">").Lit(0)).Block(jen.Break()),
+		)
+	}
+
+	loopBody = append(loopBody,
+		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(jen.Break()),
+		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
+		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
+	)
+
+	// Reset stacks inside the loop
+	if c.needsBacktracking {
+		if !c.usePerCaptureCheckpointing {
+			loopBody = append(loopBody,
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)),
+			)
+		}
+		loopBody = append(loopBody,
+			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Lit(0)),
+		)
+	}
+
+	loopBody = append(loopBody,
+		jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id("searchStart"),
+		jen.Id(codegen.NextInstructionName).Op(":=").Lit(int(c.config.Program.Start)),
+		jen.Goto().Id(codegen.StepSelectName),
+	)
+
+	return loopBody
+}
+
+// generateFindAllBacktrackLogic generates the backtracking/fallback logic for FindAll.
+// Handles per-capture checkpointing, array checkpointing, and no-backtracking modes.
+func (c *Compiler) generateFindAllBacktrackLogic() []jen.Code {
+	if !c.needsBacktracking {
+		return []jen.Code{
+			jen.Id(codegen.TryFallbackName).Op(":"),
+			jen.Id("searchStart").Op("++"),
+			jen.Continue(),
+		}
+	}
+
+	if c.usePerCaptureCheckpointing {
+		return c.generatePerCaptureBacktrack()
+	}
+	return c.generateArrayCheckpointBacktrack()
+}
+
+// generatePerCaptureBacktrack generates backtrack logic for per-capture checkpointing mode.
+func (c *Compiler) generatePerCaptureBacktrack() []jen.Code {
+	return []jen.Code{
+		jen.Id(codegen.TryFallbackName).Op(":"),
+		jen.For(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+			jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			// Check entry type: StackEntryPerCaptureRestore = capture restore, StackEntryAlt = Alt backtrack
+			jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(StackEntryPerCaptureRestore)).Block(
+				jen.Id(codegen.CapturesName).Index(jen.Id("last").Index(jen.Lit(1))).Op("=").Id("last").Index(jen.Lit(0)),
+				jen.Continue(),
+			),
+			// Alt backtrack point
+			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+			jen.Goto().Id(codegen.StepSelectName),
+		),
+		jen.Id("searchStart").Op("++"),
+		jen.Continue(),
+	}
+}
+
+// generateArrayCheckpointBacktrack generates backtrack logic for array checkpointing mode.
+func (c *Compiler) generateArrayCheckpointBacktrack() []jen.Code {
+	return []jen.Code{
+		jen.Id(codegen.TryFallbackName).Op(":"),
+		jen.If(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
+			jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			jen.Id(codegen.OffsetName).Op("=").Id("last").Index(jen.Lit(0)),
+			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
+			jen.Id(codegen.StackName).Op("=").Id(codegen.StackName).Index(jen.Empty(), jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
+			// Restore captures from checkpoint (selective checkpointing)
+			jen.If(jen.Id("last").Index(jen.Lit(2)).Op("==").Lit(StackEntryCheckpoint).Op("&&").Len(jen.Id("captureStack")).Op(">").Lit(0)).Block(
+				jen.Id("n").Op(":=").Len(jen.Id(codegen.CapturesName)),
+				jen.Id("top").Op(":=").Len(jen.Id("captureStack")).Op("-").Id("n"),
+				jen.Copy(jen.Id(codegen.CapturesName).Index(jen.Empty(), jen.Empty()), jen.Id("captureStack").Index(jen.Id("top"), jen.Empty())),
+				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
+			),
+			jen.Goto().Id(codegen.StepSelectName),
+		).Else().Block(
+			jen.Id("searchStart").Op("++"),
+			jen.Continue(),
+		),
+	}
 }
 
 // generateInstructionsForFindAllAppend generates instructions with slice reuse for FindAllAppend.

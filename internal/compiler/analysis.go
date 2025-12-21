@@ -290,7 +290,7 @@ func analyzeComplexity(prog *syntax.Prog, ast *syntax.Regexp) ComplexityAnalysis
 	analysis.EstimatedNFAStates = len(prog.Inst)
 
 	// Check for captures
-	analysis.HasCaptures = prog.NumCap > 2
+	analysis.HasCaptures = prog.NumCap > ImplicitCaptureCount
 
 	// Check for end anchor ($) in program - Thompson NFA doesn't handle this yet
 	analysis.HasEndAnchor = hasEndAnchor(prog)
