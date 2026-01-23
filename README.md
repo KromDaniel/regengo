@@ -225,14 +225,15 @@ See [Replace API Guide](docs/replace-api.md) for complete documentation.
 
 ## Performance
 
-Regengo consistently outperforms Go's standard `regexp` package:
+Regengo consistently outperforms Go's standard `regexp` package (Apple M4 Pro):
 
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
-| Date `\d{4}-\d{2}-\d{2}` | FindString | 105 ns | 7 ns | **14x faster** |
-| Multi-date extraction | FindAllString | 431 ns | 49 ns | **8.9x faster** |
-| Email validation | MatchString | 1554 ns | 507 ns | **3x faster** |
-| Log parser | FindString | 399 ns | 121 ns | **3.3x faster** |
+| Date `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})` | MatchString | 202 ns | 12 ns | **17x faster** |
+| Date (same) | FindString | 293 ns | 56 ns | **5.2x faster** |
+| Multi-date extraction | FindAllString | 1315 ns | 204 ns | **6.5x faster** |
+| Email validation | MatchString | 1428 ns | 494 ns | **2.9x faster** |
+| Log parser | FindString | 1114 ns | 331 ns | **3.4x faster** |
 
 <p align="center">
   <img src="assets/benchmark_chart.png" alt="Performance comparison chart" width="700">
@@ -243,6 +244,8 @@ Regengo consistently outperforms Go's standard `regexp` package:
 See [Detailed Benchmarks](docs/benchmarks.md) for complete results.
 
 ## Streaming API
+
+> **Note:** Streaming methods are generated for patterns with capture groups.
 
 Process any `io.Reader` with constant memory. Unlike Go's `regexp.FindReaderIndex` which only finds the first match, Regengo finds **all matches** in a stream—handling buffering and cross-boundary matches automatically. Matches are delivered via callback, avoiding slice allocations and enabling true streaming semantics.
 
@@ -259,6 +262,8 @@ err := CompiledDate.FindReader(file, stream.Config{}, func(m stream.Match[*DateB
 See [Streaming API Guide](docs/streaming.md) for details.
 
 ## Transform API
+
+> **Note:** Transform methods are generated for patterns with capture groups.
 
 Transform streams by replacing, filtering, or modifying pattern matches. Returns an `io.Reader` for standard Go composition with `io.Copy`, `io.MultiReader`, HTTP handlers, etc.
 
