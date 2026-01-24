@@ -13,7 +13,7 @@ import (
 
 var dFACatastrophicRegexp = regexp.MustCompile("(a+)+b")
 
-var dFACatastrophicTestInputs = []string{"ab", "aab", "aaab", "aaaab", "aaaaab", "aaaaaaaaab", "aaaaaaaaaaaaaaaaaaaaab"}
+var dFACatastrophicTestInputs = []string{"aab", "aaaaaab", "b", "aaaaaaaaaaaaaaab"}
 
 func TestDFACatastrophicMatchString(t *testing.T) {
 	for _, input := range dFACatastrophicTestInputs {

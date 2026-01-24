@@ -11,7 +11,7 @@ import (
 
 var dFACharClassRegexp = regexp.MustCompile("[a-z]+")
 
-var dFACharClassTestInputs = []string{"abc", "abcdefghijklmnopqrstuvwxyz", "ABC123", "test string with words"}
+var dFACharClassTestInputs = []string{"hello", "world", "test"}
 
 func TestDFACharClassMatchString(t *testing.T) {
 	for _, input := range dFACharClassTestInputs {

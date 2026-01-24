@@ -237,9 +237,27 @@ func (g *DFAGenerator) GenerateTables() {
 	g.compiler.file.Add(g.generateAcceptStatesEOT())
 }
 
+// getOptimalIntType returns the name of the smallest integer type that can hold the state count.
+// This optimization significantly reduces binary size:
+// - int8 for <= 127 states: ~8KB for 500 states max
+// - int16 for <= 32767 states: ~128KB for 500 states max
+// - int for larger: ~512KB for 500 states max
+func (g *DFAGenerator) getOptimalIntType() string {
+	numStates := len(g.states)
+	if numStates <= 127 {
+		return "int8"
+	}
+	if numStates <= 32767 {
+		return "int16"
+	}
+	return "int"
+}
+
 // generateTransitionTable generates the DFA transition table as a 2D array.
+// Uses the smallest integer type that can represent the state count to minimize binary size.
 func (g *DFAGenerator) generateTransitionTable() jen.Code {
 	numStates := len(g.states)
+	intType := g.getOptimalIntType()
 	rowValues := make([]jen.Code, numStates)
 
 	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
@@ -256,12 +274,12 @@ func (g *DFAGenerator) generateTransitionTable() jen.Code {
 			}
 		}
 
-		rowValues[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Int().Values(entries...)
+		rowValues[stateIdx] = jen.Index(jen.Lit(MaxASCIIRune)).Id(intType).Values(entries...)
 	}
 
 	return jen.Comment("DFA transition table [state][char] -> next state (-1 = no transition)").Line().
 		Var().Id(g.getVarName("dfaTransitions")).Op("=").
-		Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Int().Values(rowValues...)
+		Index(jen.Lit(numStates)).Index(jen.Lit(MaxASCIIRune)).Id(intType).Values(rowValues...)
 }
 
 // generateAcceptStates generates the accept states check as a boolean array.
@@ -323,7 +341,7 @@ func (g *DFAGenerator) GenerateMatchFunction(isBytes bool) []jen.Code {
 			jen.Break(), // No transition
 		),
 		jen.Line(),
-		jen.Id("state").Op("=").Id("nextState"),
+		jen.Id("state").Op("=").Int().Call(jen.Id("nextState")), // Cast to int for smaller table types
 		jen.If(jen.Id(g.getVarName("dfaAcceptStates")).Index(jen.Id("state"))).Block(
 			jen.Return(jen.True()),
 		),

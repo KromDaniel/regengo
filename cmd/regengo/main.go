@@ -193,8 +193,9 @@ Options:
       Max TDFA states before falling back to other engines (default: 500)
       Higher values allow more complex patterns to use TDFA
   -force-dfa
-      Force pure DFA for match functions (O(n) per start position)
+      Prefer pure DFA for match functions (O(n) per start position)
       Only supports ASCII patterns without . (dot) or word boundaries
+      Falls back to Thompson NFA if pattern is incompatible
   -dfa-threshold int
       Max DFA states before falling back to Thompson NFA (default: 500)
   -replacer string

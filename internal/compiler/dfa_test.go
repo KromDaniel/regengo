@@ -269,3 +269,56 @@ func TestDFAGenerator_Transitions(t *testing.T) {
 		t.Error("Expected state after 'ab' to be accepting")
 	}
 }
+
+func TestDFAGenerator_GetOptimalIntType(t *testing.T) {
+	tests := []struct {
+		name      string
+		numStates int
+		wantType  string
+	}{
+		{
+			name:      "small DFA uses int8",
+			numStates: 10,
+			wantType:  "int8",
+		},
+		{
+			name:      "max int8 boundary",
+			numStates: 127,
+			wantType:  "int8",
+		},
+		{
+			name:      "just over int8 uses int16",
+			numStates: 128,
+			wantType:  "int16",
+		},
+		{
+			name:      "medium DFA uses int16",
+			numStates: 500,
+			wantType:  "int16",
+		},
+		{
+			name:      "max int16 boundary",
+			numStates: 32767,
+			wantType:  "int16",
+		},
+		{
+			name:      "just over int16 uses int",
+			numStates: 32768,
+			wantType:  "int",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a generator with a specific number of states
+			gen := &DFAGenerator{
+				states: make([]*DFAState, tt.numStates),
+			}
+
+			gotType := gen.getOptimalIntType()
+			if gotType != tt.wantType {
+				t.Errorf("getOptimalIntType() for %d states = %q, want %q", tt.numStates, gotType, tt.wantType)
+			}
+		})
+	}
+}
