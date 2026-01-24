@@ -10,26 +10,28 @@
       "test日本語test"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
     ]
   },
   {
-    "pattern": "<(?P<element>(?P<name>[\\w-]+)(?:\\s+(?P<attr>[\\w-]+)=\"(?P<value>[^\"]*)\")*\\s*/?)>",
+    "pattern": "\u003c(?P\u003celement\u003e(?P\u003cname\u003e[\\w-]+)(?:\\s+(?P\u003cattr\u003e[\\w-]+)=\"(?P\u003cvalue\u003e[^\"]*)\")*\\s*/?)\u003e",
     "inputs": [
-      "<div class=\"test\">",
-      "<input type=\"text\" name=\"field\"/>",
-      "<br/>",
+      "\u003cdiv class=\"test\"\u003e",
+      "\u003cinput type=\"text\" name=\"field\"/\u003e",
+      "\u003cbr/\u003e",
       "not html",
-      "<a href=\"url\">"
+      "\u003ca href=\"url\"\u003e"
     ],
     "feature_labels": [
       "Captures",
       "CharClass",
       "NonCapturing",
-      "Quantifiers"
+      "Quantifiers",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "TDFA",
@@ -43,7 +45,7 @@
     ]
   },
   {
-    "pattern": "(?P<words>(?P<word>\\w+\\s*){2})(?P<end>\\w+)",
+    "pattern": "(?P\u003cwords\u003e(?P\u003cword\u003e\\w+\\s*){2})(?P\u003cend\u003e\\w+)",
     "inputs": [
       "hello world foo",
       "a b c",
@@ -77,7 +79,8 @@
       "cafés"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -246,7 +249,7 @@
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>w+)+)x",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003ew+)+)x",
     "inputs": [
       "wwwwwwwwwx",
       "wwwwwwwwwwwwwwwwx",
@@ -259,8 +262,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -270,7 +273,7 @@
     ]
   },
   {
-    "pattern": "(?P<match>(?:a|aa)+)end",
+    "pattern": "(?P\u003cmatch\u003e(?:a|aa)+)end",
     "inputs": [
       "aaaaend",
       "aaaaaaaaend",
@@ -295,7 +298,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<part>(?:u+)+){3})end",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cpart\u003e(?:u+)+){3})end",
     "inputs": [
       "uuuuuuuuuuuuend",
       "uuuuuuend",
@@ -319,7 +322,7 @@
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>e+)+)f",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003ee+)+)f",
     "inputs": [
       "eeeeeeeeeef",
       "eeeeeeeeeeeeeeeeef",
@@ -332,8 +335,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -343,7 +346,7 @@
     ]
   },
   {
-    "pattern": "v?(?P<version>(?P<major>\\d+)\\.(?P<minor>\\d+)(?:\\.(?P<patch>\\d+))?)(?P<suffix>-[\\w.]+)?",
+    "pattern": "v?(?P\u003cversion\u003e(?P\u003cmajor\u003e\\d+)\\.(?P\u003cminor\u003e\\d+)(?:\\.(?P\u003cpatch\u003e\\d+))?)(?P\u003csuffix\u003e-[\\w.]+)?",
     "inputs": [
       "v1.0.0",
       "2.1",
@@ -358,8 +361,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -369,7 +372,7 @@
     ]
   },
   {
-    "pattern": "(?P<protocol>https?)://(?P<host>[\\w.-]+)(?::(?P<port>\\d{1,5}))?(?P<path>(?:/[\\w.-]+)*)(?:\\?(?P<query>[\\w=&.-]+))?",
+    "pattern": "(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e[\\w.-]+)(?::(?P\u003cport\u003e\\d{1,5}))?(?P\u003cpath\u003e(?:/[\\w.-]+)*)(?:\\?(?P\u003cquery\u003e[\\w=\u0026.-]+))?",
     "inputs": [
       "https://example.com/path?key=value",
       "http://api.test.com:8080/v1/users",
@@ -384,8 +387,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -395,7 +398,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<part>(?:d+)+){1})end",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cpart\u003e(?:d+)+){1})end",
     "inputs": [
       "dddend",
       "ddddddend",
@@ -436,7 +439,7 @@
     ]
   },
   {
-    "pattern": "^(?P<emoji>😀)$",
+    "pattern": "^(?P\u003cemoji\u003e😀)$",
     "inputs": [
       "😀",
       "😀😀",
@@ -448,7 +451,8 @@
     "feature_labels": [
       "Anchored",
       "Captures",
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -461,7 +465,7 @@
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>a+)+)b",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003ea+)+)b",
     "inputs": [
       "aaaaaaaaaab",
       "aaaaaaaaaaaaaaaaab",
@@ -474,8 +478,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -485,14 +489,14 @@
     ]
   },
   {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P\u003cid\u003e[1-9]\\d{3,5})(?:\\?(?P\u003cparams\u003e[a-z]+=[0-9]{2}(?:\u0026[a-z]+=[0-9]{2}){0,0}))?$",
     "inputs": [
       "/api/v1/metrics/devices/profiles/1021?page=03",
       "/api/v1/metrics/devices/profiles/1021",
       "/API/v1/metrics/devices/profiles/1021?page=03",
       "/api/v1/metrics/devices/profiles/ID1021?page=03",
       "/api/v1/metrics/devices/profiles?page=03",
-      "/api/v1/metrics/devices/profiles/1021?page=03&extra=99"
+      "/api/v1/metrics/devices/profiles/1021?page=03\u0026extra=99"
     ],
     "feature_labels": [
       "Anchored",
@@ -502,7 +506,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -513,14 +517,14 @@
     ]
   },
   {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,0}))?$",
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){3}/(?P\u003cid\u003e[1-9]\\d{3,5})(?:\\?(?P\u003cparams\u003e[a-z]+=[0-9]{2}(?:\u0026[a-z]+=[0-9]{2}){0,0}))?$",
     "inputs": [
       "/api/v1/metrics/devices/profiles/1105?page=15",
       "/api/v1/metrics/devices/profiles/1105",
       "/API/v1/metrics/devices/profiles/1105?page=15",
       "/api/v1/metrics/devices/profiles/ID1105?page=15",
       "/api/v1/metrics/devices/profiles?page=15",
-      "/api/v1/metrics/devices/profiles/1105?page=15&extra=99"
+      "/api/v1/metrics/devices/profiles/1105?page=15\u0026extra=99"
     ],
     "feature_labels": [
       "Anchored",
@@ -530,7 +534,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -617,9 +621,9 @@
     ]
   },
   {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){3}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "pattern": "^(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e(?:[a-z0-9-]+\\.){3}[a-z]{2,})(?P\u003cpath\u003e(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P\u003cquery\u003e[a-z0-9=\u0026_-]{4,8}))?$",
     "inputs": [
-      "https://sub8.sub9.sub10.com/iota/kappa?id=8&ref",
+      "https://sub8.sub9.sub10.com/iota/kappa?id=8\u0026ref",
       "http://sub8.sub9.sub10.com/iota/kappa",
       "sub8.sub9.sub10.com/iota/kappa",
       "https://sub8_sub9_sub10_com/iota/kappa",
@@ -634,7 +638,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -645,7 +649,7 @@
     ]
   },
   {
-    "pattern": "(?P<match>(?:l|ll)+)finish",
+    "pattern": "(?P\u003cmatch\u003e(?:l|ll)+)finish",
     "inputs": [
       "lllfinish",
       "llllllllfinish",
@@ -670,7 +674,7 @@
     ]
   },
   {
-    "pattern": "(?P<g1>(?P<g2>b{2})+)(?P<g3>c+)",
+    "pattern": "(?P\u003cg1\u003e(?P\u003cg2\u003eb{2})+)(?P\u003cg3\u003ec+)",
     "inputs": [
       "bbbbcc",
       "bbbbbbc",
@@ -693,7 +697,7 @@
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>f+)+)g",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003ef+)+)g",
     "inputs": [
       "fffffffffffg",
       "ffffffffffffffffffffffg",
@@ -706,8 +710,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ],
     "replacers": [
       "REDACTED",
@@ -717,7 +721,7 @@
     ]
   },
   {
-    "pattern": "(?P<word>café|thé)",
+    "pattern": "(?P\u003cword\u003ecafé|thé)",
     "inputs": [
       "café",
       "thé",
@@ -729,7 +733,8 @@
     "feature_labels": [
       "Alternation",
       "Captures",
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -742,14 +747,14 @@
     ]
   },
   {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P\u003cid\u003e[1-9]\\d{3,5})(?:\\?(?P\u003cparams\u003e[a-z]+=[0-9]{2}(?:\u0026[a-z]+=[0-9]{2}){0,1}))?$",
     "inputs": [
-      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18",
+      "/api/v1/logs/audits/events/alerts/1049?size=12\u0026tag=18",
       "/api/v1/logs/audits/events/alerts/1049",
-      "/API/v1/logs/audits/events/alerts/1049?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts/ID1049?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts?size=12&tag=18",
-      "/api/v1/logs/audits/events/alerts/1049?size=12&tag=18&extra=99"
+      "/API/v1/logs/audits/events/alerts/1049?size=12\u0026tag=18",
+      "/api/v1/logs/audits/events/alerts/ID1049?size=12\u0026tag=18",
+      "/api/v1/logs/audits/events/alerts?size=12\u0026tag=18",
+      "/api/v1/logs/audits/events/alerts/1049?size=12\u0026tag=18\u0026extra=99"
     ],
     "feature_labels": [
       "Anchored",
@@ -759,7 +764,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -770,14 +775,14 @@
     ]
   },
   {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,1}))?$",
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){4}/(?P\u003cid\u003e[1-9]\\d{3,5})(?:\\?(?P\u003cparams\u003e[a-z]+=[0-9]{2}(?:\u0026[a-z]+=[0-9]{2}){0,1}))?$",
     "inputs": [
-      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30",
+      "/api/v1/logs/audits/events/alerts/1133?size=24\u0026tag=30",
       "/api/v1/logs/audits/events/alerts/1133",
-      "/API/v1/logs/audits/events/alerts/1133?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts/ID1133?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts?size=24&tag=30",
-      "/api/v1/logs/audits/events/alerts/1133?size=24&tag=30&extra=99"
+      "/API/v1/logs/audits/events/alerts/1133?size=24\u0026tag=30",
+      "/api/v1/logs/audits/events/alerts/ID1133?size=24\u0026tag=30",
+      "/api/v1/logs/audits/events/alerts?size=24\u0026tag=30",
+      "/api/v1/logs/audits/events/alerts/1133?size=24\u0026tag=30\u0026extra=99"
     ],
     "feature_labels": [
       "Anchored",
@@ -787,7 +792,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -900,7 +905,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<part>(?:k+)+){2})end",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cpart\u003e(?:k+)+){2})end",
     "inputs": [
       "kkkkkkkkkend",
       "kkkkend",
@@ -934,7 +939,8 @@
       "漢"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -1043,14 +1049,14 @@
     ]
   },
   {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}\u0026){1}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "ggg=18&hhh=19",
-      "hhh=19&ggg=18",
-      "ggg=18&hhh=19&",
-      "ggg:18&hhh=19",
-      "GGG=18&HHH=19",
-      "ggg=18&&hhh=19"
+      "ggg=18\u0026hhh=19",
+      "hhh=19\u0026ggg=18",
+      "ggg=18\u0026hhh=19\u0026",
+      "ggg:18\u0026hhh=19",
+      "GGG=18\u0026HHH=19",
+      "ggg=18\u0026\u0026hhh=19"
     ],
     "feature_labels": [
       "Anchored",
@@ -1062,14 +1068,14 @@
     ]
   },
   {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){1}[a-z]{3}=[0-9]{2}$",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}\u0026){1}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "ggg=54&hhh=55",
-      "hhh=55&ggg=54",
-      "ggg=54&hhh=55&",
-      "ggg:54&hhh=55",
-      "GGG=54&HHH=55",
-      "ggg=54&&hhh=55"
+      "ggg=54\u0026hhh=55",
+      "hhh=55\u0026ggg=54",
+      "ggg=54\u0026hhh=55\u0026",
+      "ggg:54\u0026hhh=55",
+      "GGG=54\u0026HHH=55",
+      "ggg=54\u0026\u0026hhh=55"
     ],
     "feature_labels": [
       "Anchored",
@@ -1081,7 +1087,7 @@
     ]
   },
   {
-    "pattern": "(?P<result>(?:p+|q+|j+){1})k",
+    "pattern": "(?P\u003cresult\u003e(?:p+|q+|j+){1})k",
     "inputs": [
       "pppk",
       "qqqk",
@@ -1106,7 +1112,7 @@
     ]
   },
   {
-    "pattern": "(?P<card>(?P<issuer>4\\d{3}|5[1-5]\\d{2}|3[47]\\d{2}|6(?:011|5\\d{2}))[\\s-]?(?P<digits>(?:\\d{4}[\\s-]?){3}|\\d{6}[\\s-]?\\d{5}))",
+    "pattern": "(?P\u003ccard\u003e(?P\u003cissuer\u003e4\\d{3}|5[1-5]\\d{2}|3[47]\\d{2}|6(?:011|5\\d{2}))[\\s-]?(?P\u003cdigits\u003e(?:\\d{4}[\\s-]?){3}|\\d{6}[\\s-]?\\d{5}))",
     "inputs": [
       "4111-1111-1111-1111",
       "5500 0000 0000 0004",
@@ -1132,7 +1138,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "201-101-1001",
       "555-123-9876 x888",
@@ -1158,7 +1164,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "204-104-1004",
       "555-123-9876 x888",
@@ -1184,7 +1190,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "207-107-1007",
       "555-123-9876 x888",
@@ -1210,7 +1216,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "210-110-1010",
       "555-123-9876 x888",
@@ -1236,7 +1242,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "213-113-1013",
       "555-123-9876 x888",
@@ -1262,7 +1268,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "216-116-1016",
       "555-123-9876 x888",
@@ -1288,7 +1294,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "219-119-1019",
       "555-123-9876 x888",
@@ -1314,7 +1320,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "222-122-1022",
       "555-123-9876 x888",
@@ -1340,7 +1346,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "225-125-1025",
       "555-123-9876 x888",
@@ -1366,7 +1372,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "228-128-1028",
       "555-123-9876 x888",
@@ -1392,7 +1398,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "231-131-1031",
       "555-123-9876 x888",
@@ -1418,7 +1424,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "234-134-1034",
       "555-123-9876 x888",
@@ -1444,7 +1450,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "237-137-1037",
       "555-123-9876 x888",
@@ -1470,7 +1476,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "240-140-1040",
       "555-123-9876 x888",
@@ -1496,7 +1502,7 @@
     ]
   },
   {
-    "pattern": "^(?P<area>\\d{3})-(?P<prefix>\\d{3})-(?P<line>\\d{4})(?: x(?P<ext>\\d{3}))?$",
+    "pattern": "^(?P\u003carea\u003e\\d{3})-(?P\u003cprefix\u003e\\d{3})-(?P\u003cline\u003e\\d{4})(?: x(?P\u003cext\u003e\\d{3}))?$",
     "inputs": [
       "243-143-1043",
       "555-123-9876 x888",
@@ -1522,9 +1528,9 @@
     ]
   },
   {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "pattern": "^(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P\u003cpath\u003e(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P\u003cquery\u003e[a-z0-9=\u0026_-]{4,8}))?$",
     "inputs": [
-      "https://sub4.sub5.com/epsilon/zeta?id=4&ref",
+      "https://sub4.sub5.com/epsilon/zeta?id=4\u0026ref",
       "http://sub4.sub5.com/epsilon/zeta",
       "sub4.sub5.com/epsilon/zeta",
       "https://sub4_sub5_com/epsilon/zeta",
@@ -1539,7 +1545,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -1550,9 +1556,9 @@
     ]
   },
   {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "pattern": "^(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e(?:[a-z0-9-]+\\.){2}[a-z]{2,})(?P\u003cpath\u003e(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P\u003cquery\u003e[a-z0-9=\u0026_-]{4,8}))?$",
     "inputs": [
-      "https://sub16.sub17.com/eta/theta?id=16&re",
+      "https://sub16.sub17.com/eta/theta?id=16\u0026re",
       "http://sub16.sub17.com/eta/theta",
       "sub16.sub17.com/eta/theta",
       "https://sub16_sub17_com/eta/theta",
@@ -1567,7 +1573,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ],
     "replacers": [
@@ -1732,7 +1738,7 @@
     ]
   },
   {
-    "pattern": "(?P<result>(?:a+|b+|g+){3})h",
+    "pattern": "(?P\u003cresult\u003e(?:a+|b+|g+){3})h",
     "inputs": [
       "aaabbggh",
       "abgh",
@@ -1757,7 +1763,7 @@
     ]
   },
   {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "pattern": "^(?P\u003cyear\u003e\\d{4})-(?P\u003cmonth\u003e0[1-9]|1[0-2])-(?P\u003cday\u003e0[1-9]|[12]\\d|3[01])T(?P\u003chour\u003e[01]\\d|2[0-3]):(?P\u003cminute\u003e[0-5]\\d):(?P\u003csecond\u003e[0-5]\\d)(?:\\.(?P\u003cfraction\u003e\\d{3}))?(?:Z|(?P\u003czone\u003e[+-][01]\\d:[0-5]\\d))$",
     "inputs": [
       "2024-11-23T16:45:30Z",
       "2023-01-02T03:04:05.777+02:00",
@@ -1785,7 +1791,7 @@
     ]
   },
   {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{3}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "pattern": "^(?P\u003cyear\u003e\\d{4})-(?P\u003cmonth\u003e0[1-9]|1[0-2])-(?P\u003cday\u003e0[1-9]|[12]\\d|3[01])T(?P\u003chour\u003e[01]\\d|2[0-3]):(?P\u003cminute\u003e[0-5]\\d):(?P\u003csecond\u003e[0-5]\\d)(?:\\.(?P\u003cfraction\u003e\\d{3}))?(?:Z|(?P\u003czone\u003e[+-][01]\\d:[0-5]\\d))$",
     "inputs": [
       "2024-11-23T16:45:30Z",
       "2023-01-02T03:04:05.777+02:00",
@@ -1813,7 +1819,7 @@
     ]
   },
   {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "pattern": "^(?P\u003cyear\u003e\\d{4})-(?P\u003cmonth\u003e0[1-9]|1[0-2])-(?P\u003cday\u003e0[1-9]|[12]\\d|3[01])T(?P\u003chour\u003e[01]\\d|2[0-3]):(?P\u003cminute\u003e[0-5]\\d):(?P\u003csecond\u003e[0-5]\\d)(?:\\.(?P\u003cfraction\u003e\\d{2}))?(?:Z|(?P\u003czone\u003e[+-][01]\\d:[0-5]\\d))$",
     "inputs": [
       "2024-11-23T16:45:30Z",
       "2023-01-02T03:04:05.77+02:00",
@@ -1841,7 +1847,7 @@
     ]
   },
   {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{2}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "pattern": "^(?P\u003cyear\u003e\\d{4})-(?P\u003cmonth\u003e0[1-9]|1[0-2])-(?P\u003cday\u003e0[1-9]|[12]\\d|3[01])T(?P\u003chour\u003e[01]\\d|2[0-3]):(?P\u003cminute\u003e[0-5]\\d):(?P\u003csecond\u003e[0-5]\\d)(?:\\.(?P\u003cfraction\u003e\\d{2}))?(?:Z|(?P\u003czone\u003e[+-][01]\\d:[0-5]\\d))$",
     "inputs": [
       "2024-11-23T16:45:30Z",
       "2023-01-02T03:04:05.77+02:00",
@@ -1984,7 +1990,7 @@
     ]
   },
   {
-    "pattern": "(?P<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(?P<ms>\\d{3}))?(?P<tz>Z|[+-]\\d{2}:\\d{2})?\\s+\\[(?P<level>\\w+)\\]\\s+(?P<message>.+)",
+    "pattern": "(?P\u003ctimestamp\u003e\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(?P\u003cms\u003e\\d{3}))?(?P\u003ctz\u003eZ|[+-]\\d{2}:\\d{2})?\\s+\\[(?P\u003clevel\u003e\\w+)\\]\\s+(?P\u003cmessage\u003e.+)",
     "inputs": [
       "2024-01-15T10:30:45.123Z [INFO] Server started",
       "2024-01-15T10:30:45 [ERROR] Failed",
@@ -2106,7 +2112,7 @@
     ]
   },
   {
-    "pattern": "(?P<email>(?P<local>[\\w.+-]+)@(?P<domain>[\\w.-]+)\\.(?P<tld>[a-z]{2,}))",
+    "pattern": "(?P\u003cemail\u003e(?P\u003clocal\u003e[\\w.+-]+)@(?P\u003cdomain\u003e[\\w.-]+)\\.(?P\u003ctld\u003e[a-z]{2,}))",
     "inputs": [
       "user@example.com",
       "john.doe+tag@sub.example.co.uk",
@@ -2124,7 +2130,7 @@
     ]
   },
   {
-    "pattern": "(?P<scheme>https?)://(?P<auth>(?P<user>[\\w.-]+)(?::(?P<pass>[\\w.-]+))?@)?(?P<host>[\\w.-]+)(?::(?P<port>\\d+))?(?P<path>/[\\w./-]*)?",
+    "pattern": "(?P\u003cscheme\u003ehttps?)://(?P\u003cauth\u003e(?P\u003cuser\u003e[\\w.-]+)(?::(?P\u003cpass\u003e[\\w.-]+))?@)?(?P\u003chost\u003e[\\w.-]+)(?::(?P\u003cport\u003e\\d+))?(?P\u003cpath\u003e/[\\w./-]*)?",
     "inputs": [
       "https://example.com",
       "http://user:pass@api.example.com:8080/path",
@@ -2139,12 +2145,12 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
-    "pattern": "(?P<user>[\\w.%+-]+)@(?P<subdomain>(?:[\\w-]+\\.)*)?(?P<domain>[\\w-]+)\\.(?P<tld>[a-z]{2,6})",
+    "pattern": "(?P\u003cuser\u003e[\\w.%+-]+)@(?P\u003csubdomain\u003e(?:[\\w-]+\\.)*)?(?P\u003cdomain\u003e[\\w-]+)\\.(?P\u003ctld\u003e[a-z]{2,6})",
     "inputs": [
       "user@example.com",
       "test@sub.domain.example.com",
@@ -2159,12 +2165,12 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
-    "pattern": "(?P<match>(?:b|bb)+)stop",
+    "pattern": "(?P\u003cmatch\u003e(?:b|bb)+)stop",
     "inputs": [
       "bbbstop",
       "bbbbbbbbstop",
@@ -2183,19 +2189,20 @@
     ]
   },
   {
-    "pattern": "<(?P<tag>[\\w-]+)(?:\\s+(?P<attrs>(?:[\\w-]+=\"[^\"]*\"\\s*)*))?(?P<close>/?)>",
+    "pattern": "\u003c(?P\u003ctag\u003e[\\w-]+)(?:\\s+(?P\u003cattrs\u003e(?:[\\w-]+=\"[^\"]*\"\\s*)*))?(?P\u003cclose\u003e/?)\u003e",
     "inputs": [
-      "<div class=\"container\">",
-      "<input/>",
-      "<a href=\"url\" target=\"_blank\">",
+      "\u003cdiv class=\"container\"\u003e",
+      "\u003cinput/\u003e",
+      "\u003ca href=\"url\" target=\"_blank\"\u003e",
       "not a tag",
-      "<span>"
+      "\u003cspan\u003e"
     ],
     "feature_labels": [
       "Captures",
       "CharClass",
       "NonCapturing",
-      "Quantifiers"
+      "Quantifiers",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "TDFA",
@@ -2203,7 +2210,7 @@
     ]
   },
   {
-    "pattern": "(?P<g1>(?P<g2>y{2})+)(?P<g3>z+)",
+    "pattern": "(?P\u003cg1\u003e(?P\u003cg2\u003ey{2})+)(?P\u003cg3\u003ez+)",
     "inputs": [
       "yyyyzz",
       "yyyyyyyyzzz",
@@ -2249,7 +2256,8 @@
       "NAÏVE"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -2283,7 +2291,8 @@
       "hello$world"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -2383,7 +2392,7 @@
     ]
   },
   {
-    "pattern": "\\[(?P<level>\\w+)\\]\\s+(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+-\\s+(?P<logger>[\\w.]+)\\s+-\\s+(?P<message>.*)",
+    "pattern": "\\[(?P\u003clevel\u003e\\w+)\\]\\s+(?P\u003ctimestamp\u003e\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+-\\s+(?P\u003clogger\u003e[\\w.]+)\\s+-\\s+(?P\u003cmessage\u003e.*)",
     "inputs": [
       "[INFO] 2024-01-15 10:30:45 - app.Service - Started",
       "[ERROR] 2024-01-15 10:30:45 - db.Pool - Failed",
@@ -2401,7 +2410,7 @@
     ]
   },
   {
-    "pattern": "(?P<result>(?:q+|r+|s+){2})t",
+    "pattern": "(?P\u003cresult\u003e(?:q+|r+|s+){2})t",
     "inputs": [
       "qqrrt",
       "ssqqt",
@@ -2636,7 +2645,7 @@
     ]
   },
   {
-    "pattern": "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(?:-(?P<prerelease>[\\w.-]+))?(?:\\+(?P<build>[\\w.-]+))?",
+    "pattern": "(?P\u003cmajor\u003e\\d+)\\.(?P\u003cminor\u003e\\d+)\\.(?P\u003cpatch\u003e\\d+)(?:-(?P\u003cprerelease\u003e[\\w.-]+))?(?:\\+(?P\u003cbuild\u003e[\\w.-]+))?",
     "inputs": [
       "1.0.0",
       "2.1.3-alpha.1",
@@ -2651,8 +2660,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
@@ -2758,7 +2767,7 @@
     ]
   },
   {
-    "pattern": "(?P<g1>(?P<g2>c{3})+)(?P<g3>d+)",
+    "pattern": "(?P\u003cg1\u003e(?P\u003cg2\u003ec{3})+)(?P\u003cg3\u003ed+)",
     "inputs": [
       "ccccccddd",
       "cccccccccddd",
@@ -2775,7 +2784,7 @@
     ]
   },
   {
-    "pattern": "^(?P<year>\\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>0[1-9]|[12]\\d|3[01])T(?P<hour>[01]\\d|2[0-3]):(?P<minute>[0-5]\\d):(?P<second>[0-5]\\d)(?:\\.(?P<fraction>\\d{1}))?(?:Z|(?P<zone>[+-][01]\\d:[0-5]\\d))$",
+    "pattern": "^(?P\u003cyear\u003e\\d{4})-(?P\u003cmonth\u003e0[1-9]|1[0-2])-(?P\u003cday\u003e0[1-9]|[12]\\d|3[01])T(?P\u003chour\u003e[01]\\d|2[0-3]):(?P\u003cminute\u003e[0-5]\\d):(?P\u003csecond\u003e[0-5]\\d)(?:\\.(?P\u003cfraction\u003e\\d{1}))?(?:Z|(?P\u003czone\u003e[+-][01]\\d:[0-5]\\d))$",
     "inputs": [
       "2024-11-23T16:45:30Z",
       "2023-01-02T03:04:05.7+02:00",
@@ -2807,21 +2816,22 @@
       "über cool"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
     ]
   },
   {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}\u0026){3}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "ccc=06&ddd=07&eee=08&fff=09",
-      "fff=09&eee=08&ddd=07&ccc=06",
-      "ccc=06&ddd=07&eee=08&fff=09&",
-      "ccc:06&ddd=07&eee=08&fff=09",
-      "CCC=06&DDD=07&EEE=08&FFF=09",
-      "ccc=06&&ddd=07&eee=08&fff=09"
+      "ccc=06\u0026ddd=07\u0026eee=08\u0026fff=09",
+      "fff=09\u0026eee=08\u0026ddd=07\u0026ccc=06",
+      "ccc=06\u0026ddd=07\u0026eee=08\u0026fff=09\u0026",
+      "ccc:06\u0026ddd=07\u0026eee=08\u0026fff=09",
+      "CCC=06\u0026DDD=07\u0026EEE=08\u0026FFF=09",
+      "ccc=06\u0026\u0026ddd=07\u0026eee=08\u0026fff=09"
     ],
     "feature_labels": [
       "Anchored",
@@ -2833,14 +2843,14 @@
     ]
   },
   {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){3}[a-z]{3}=[0-9]{2}$",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}\u0026){3}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "ccc=42&ddd=43&eee=44&fff=45",
-      "fff=45&eee=44&ddd=43&ccc=42",
-      "ccc=42&ddd=43&eee=44&fff=45&",
-      "ccc:42&ddd=43&eee=44&fff=45",
-      "CCC=42&DDD=43&EEE=44&FFF=45",
-      "ccc=42&&ddd=43&eee=44&fff=45"
+      "ccc=42\u0026ddd=43\u0026eee=44\u0026fff=45",
+      "fff=45\u0026eee=44\u0026ddd=43\u0026ccc=42",
+      "ccc=42\u0026ddd=43\u0026eee=44\u0026fff=45\u0026",
+      "ccc:42\u0026ddd=43\u0026eee=44\u0026fff=45",
+      "CCC=42\u0026DDD=43\u0026EEE=44\u0026FFF=45",
+      "ccc=42\u0026\u0026ddd=43\u0026eee=44\u0026fff=45"
     ],
     "feature_labels": [
       "Anchored",
@@ -2954,14 +2964,14 @@
     ]
   },
   {
-    "pattern": "^(?:[a-z]{3}=[0-9]{2}&){2}[a-z]{3}=[0-9]{2}$",
+    "pattern": "^(?:[a-z]{3}=[0-9]{2}\u0026){2}[a-z]{3}=[0-9]{2}$",
     "inputs": [
-      "kkk=30&lll=31&aaa=32",
-      "aaa=32&lll=31&kkk=30",
-      "kkk=30&lll=31&aaa=32&",
-      "kkk:30&lll=31&aaa=32",
-      "KKK=30&LLL=31&AAA=32",
-      "kkk=30&&lll=31&aaa=32"
+      "kkk=30\u0026lll=31\u0026aaa=32",
+      "aaa=32\u0026lll=31\u0026kkk=30",
+      "kkk=30\u0026lll=31\u0026aaa=32\u0026",
+      "kkk:30\u0026lll=31\u0026aaa=32",
+      "KKK=30\u0026LLL=31\u0026AAA=32",
+      "kkk=30\u0026\u0026lll=31\u0026aaa=32"
     ],
     "feature_labels": [
       "Anchored",
@@ -3075,7 +3085,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<name>[\\w.+-]+)@(?P<host>[\\w.-]+))(?P<extra>\\s.*)?",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cname\u003e[\\w.+-]+)@(?P\u003chost\u003e[\\w.-]+))(?P\u003cextra\u003e\\s.*)?",
     "inputs": [
       "user@example.com",
       "test@domain.org extra text",
@@ -3094,7 +3104,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<ip>(?:\\d{1,3}\\.){3}\\d{1,3})(?:/(?P<cidr>\\d{1,2}))?)",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cip\u003e(?:\\d{1,3}\\.){3}\\d{1,3})(?:/(?P\u003ccidr\u003e\\d{1,2}))?)",
     "inputs": [
       "192.168.0.0/24",
       "10.0.0.0/8",
@@ -3109,12 +3119,12 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
-    "pattern": "(?P<word>\\b\\w+\\b)",
+    "pattern": "(?P\u003cword\u003e\\b\\w+\\b)",
     "inputs": [
       "hello",
       "hello world",
@@ -3134,7 +3144,7 @@
     ]
   },
   {
-    "pattern": "(?P<g1>(?P<g2>x{1})+)(?P<g3>y+)",
+    "pattern": "(?P\u003cg1\u003e(?P\u003cg2\u003ex{1})+)(?P\u003cg3\u003ey+)",
     "inputs": [
       "xxxyy",
       "xxxxxyyy",
@@ -3151,7 +3161,7 @@
     ]
   },
   {
-    "pattern": "(?P<g1>(?P<g2>o{1})+)(?P<g3>p+)",
+    "pattern": "(?P\u003cg1\u003e(?P\u003cg2\u003eo{1})+)(?P\u003cg3\u003ep+)",
     "inputs": [
       "ooopp",
       "ooooooooppp",
@@ -3168,7 +3178,7 @@
     ]
   },
   {
-    "pattern": "(?P<match>(?:v|vv)+)done",
+    "pattern": "(?P\u003cmatch\u003e(?:v|vv)+)done",
     "inputs": [
       "vvvdone",
       "vvvvvvvvdone",
@@ -3187,7 +3197,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<proto>https?|ftp)://(?P<host>[\\w.-]+)(?P<port>:\\d+)?(?P<path>/[\\w./-]*)?)(?P<extra>.*)?",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cproto\u003ehttps?|ftp)://(?P\u003chost\u003e[\\w.-]+)(?P\u003cport\u003e:\\d+)?(?P\u003cpath\u003e/[\\w./-]*)?)(?P\u003cextra\u003e.*)?",
     "inputs": [
       "https://example.com/path extra",
       "ftp://files.server.com:21/pub",
@@ -3207,9 +3217,9 @@
     ]
   },
   {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "pattern": "^(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P\u003cpath\u003e(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P\u003cquery\u003e[a-z0-9=\u0026_-]{4,8}))?$",
     "inputs": [
-      "https://sub0.com/alpha/beta?id=0&ref",
+      "https://sub0.com/alpha/beta?id=0\u0026ref",
       "http://sub0.com/alpha/beta",
       "sub0.com/alpha/beta",
       "https://sub0_com/alpha/beta",
@@ -3224,14 +3234,14 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TDFA"
     ]
   },
   {
-    "pattern": "^(?P<protocol>https?)://(?P<host>(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P<path>(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P<query>[a-z0-9=&_-]{4,8}))?$",
+    "pattern": "^(?P\u003cprotocol\u003ehttps?)://(?P\u003chost\u003e(?:[a-z0-9-]+\\.){1}[a-z]{2,})(?P\u003cpath\u003e(?:/[a-z0-9._-]{2,}){2})(?:\\?(?P\u003cquery\u003e[a-z0-9=\u0026_-]{4,8}))?$",
     "inputs": [
-      "https://sub12.com/gamma/delta?id=12&re",
+      "https://sub12.com/gamma/delta?id=12\u0026re",
       "http://sub12.com/gamma/delta",
       "sub12.com/gamma/delta",
       "https://sub12_com/gamma/delta",
@@ -3246,7 +3256,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TDFA"
     ]
   },
@@ -3268,7 +3278,7 @@
     ]
   },
   {
-    "pattern": "(?P<currency>€)(?P<amount>[0-9]+)",
+    "pattern": "(?P\u003ccurrency\u003e€)(?P\u003camount\u003e[0-9]+)",
     "inputs": [
       "€100",
       "€50",
@@ -3281,14 +3291,15 @@
       "Captures",
       "CharClass",
       "Multibyte",
-      "Quantifiers"
+      "Quantifiers",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>m+)+)n",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003em+)+)n",
     "inputs": [
       "mmmmmmmmmn",
       "mmmmmmmmmmmmmmmmn",
@@ -3301,12 +3312,12 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
-    "pattern": "(?P<words>(?P<word>\\w+\\s+){5})(?P<end>\\w+)",
+    "pattern": "(?P\u003cwords\u003e(?P\u003cword\u003e\\w+\\s+){5})(?P\u003cend\u003e\\w+)",
     "inputs": [
       "a b c d e f",
       "one two three four five six",
@@ -3334,7 +3345,8 @@
       "100€"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -3351,7 +3363,8 @@
       "βγ"
     ],
     "feature_labels": [
-      "Multibyte"
+      "Multibyte",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "Backtracking"
@@ -3553,7 +3566,7 @@
     ]
   },
   {
-    "pattern": "(?P<full>(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+))(?P<pre>-(?:alpha|beta|rc)\\.?\\d*)?(?P<meta>\\+[\\w.]+)?",
+    "pattern": "(?P\u003cfull\u003e(?P\u003cmajor\u003e\\d+)\\.(?P\u003cminor\u003e\\d+)\\.(?P\u003cpatch\u003e\\d+))(?P\u003cpre\u003e-(?:alpha|beta|rc)\\.?\\d*)?(?P\u003cmeta\u003e\\+[\\w.]+)?",
     "inputs": [
       "1.0.0",
       "2.1.3-alpha.1",
@@ -3569,8 +3582,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
@@ -3650,7 +3663,7 @@
     ]
   },
   {
-    "pattern": "(?P<result>(?:x+|y+|c+){2})z",
+    "pattern": "(?P\u003cresult\u003e(?:x+|y+|c+){2})z",
     "inputs": [
       "xxccz",
       "yyyxxxz",
@@ -3669,7 +3682,7 @@
     ]
   },
   {
-    "pattern": "(?P<uuid>(?P<time_low>[0-9a-f]{8})-(?P<time_mid>[0-9a-f]{4})-(?P<version>[0-9a-f]{4})-(?P<variant>[0-9a-f]{4})-(?P<node>[0-9a-f]{12}))",
+    "pattern": "(?P\u003cuuid\u003e(?P\u003ctime_low\u003e[0-9a-f]{8})-(?P\u003ctime_mid\u003e[0-9a-f]{4})-(?P\u003cversion\u003e[0-9a-f]{4})-(?P\u003cvariant\u003e[0-9a-f]{4})-(?P\u003cnode\u003e[0-9a-f]{12}))",
     "inputs": [
       "550e8400-e29b-41d4-a716-446655440000",
       "123e4567-e89b-12d3-a456-426614174000",
@@ -3686,7 +3699,7 @@
     ]
   },
   {
-    "pattern": "(?P<words>(?P<word>\\w+\\s+){3})(?P<end>\\w+)",
+    "pattern": "(?P\u003cwords\u003e(?P\u003cword\u003e\\w+\\s+){3})(?P\u003cend\u003e\\w+)",
     "inputs": [
       "hello world foo bar",
       "a b c d",
@@ -3806,7 +3819,7 @@
     ]
   },
   {
-    "pattern": "(?P<url>(?P<scheme>https?)://(?P<domain>(?:[\\w-]+\\.)+[\\w-]+)(?P<port>:\\d+)?(?P<path>/[^\\s?#]*)?(?P<query>\\?[^\\s#]*)?)",
+    "pattern": "(?P\u003curl\u003e(?P\u003cscheme\u003ehttps?)://(?P\u003cdomain\u003e(?:[\\w-]+\\.)+[\\w-]+)(?P\u003cport\u003e:\\d+)?(?P\u003cpath\u003e/[^\\s?#]*)?(?P\u003cquery\u003e\\?[^\\s#]*)?)",
     "inputs": [
       "https://api.example.com/path?query=1",
       "http://test.domain.com:8080/",
@@ -3818,7 +3831,8 @@
       "Captures",
       "CharClass",
       "NonCapturing",
-      "Quantifiers"
+      "Quantifiers",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "TDFA",
@@ -3826,7 +3840,7 @@
     ]
   },
   {
-    "pattern": "(?P<date>\\d{4}/\\d{2}/\\d{2})\\s+(?P<time>\\d{2}:\\d{2}:\\d{2})\\s+(?P<level>DEBUG|INFO|WARN|ERROR)\\s+(?P<component>[\\w.]+):\\s+(?P<msg>.*)",
+    "pattern": "(?P\u003cdate\u003e\\d{4}/\\d{2}/\\d{2})\\s+(?P\u003ctime\u003e\\d{2}:\\d{2}:\\d{2})\\s+(?P\u003clevel\u003eDEBUG|INFO|WARN|ERROR)\\s+(?P\u003ccomponent\u003e[\\w.]+):\\s+(?P\u003cmsg\u003e.*)",
     "inputs": [
       "2024/01/15 10:30:45 INFO app.server: Started",
       "2024/01/15 10:30:45 ERROR db: Connection failed",
@@ -3947,7 +3961,7 @@
     ]
   },
   {
-    "pattern": "(?P<number>(?P<prefix>\\d{4})[\\s-]?(?P<middle>\\d{4}[\\s-]?\\d{4})[\\s-]?(?P<suffix>\\d{4}))",
+    "pattern": "(?P\u003cnumber\u003e(?P\u003cprefix\u003e\\d{4})[\\s-]?(?P\u003cmiddle\u003e\\d{4}[\\s-]?\\d{4})[\\s-]?(?P\u003csuffix\u003e\\d{4}))",
     "inputs": [
       "4111-1111-1111-1111",
       "5500 0000 0000 0004",
@@ -4187,7 +4201,7 @@
     ]
   },
   {
-    "pattern": "(?P<ip>(?P<a>\\d{1,3})\\.(?P<b>\\d{1,3})\\.(?P<c>\\d{1,3})\\.(?P<d>\\d{1,3}))(?::(?P<port>\\d{1,5}))?",
+    "pattern": "(?P\u003cip\u003e(?P\u003ca\u003e\\d{1,3})\\.(?P\u003cb\u003e\\d{1,3})\\.(?P\u003cc\u003e\\d{1,3})\\.(?P\u003cd\u003e\\d{1,3}))(?::(?P\u003cport\u003e\\d{1,5}))?",
     "inputs": [
       "192.168.1.1",
       "10.0.0.1:8080",
@@ -4202,19 +4216,19 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
-    "pattern": "^/api/v1(?:/[a-z]{3,8}){5}/(?P<id>[1-9]\\d{3,5})(?:\\?(?P<params>[a-z]+=[0-9]{2}(?:&[a-z]+=[0-9]{2}){0,2}))?$",
+    "pattern": "^/api/v1(?:/[a-z]{3,8}){5}/(?P\u003cid\u003e[1-9]\\d{3,5})(?:\\?(?P\u003cparams\u003e[a-z]+=[0-9]{2}(?:\u0026[a-z]+=[0-9]{2}){0,2}))?$",
     "inputs": [
-      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22\u0026page=11\u0026size=16",
       "/api/v1/widgets/users/orders/reports/metrics/1077",
-      "/API/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics/ID1077?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics?tag=22&page=11&size=16",
-      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22&page=11&size=16&extra=99"
+      "/API/v1/widgets/users/orders/reports/metrics/1077?tag=22\u0026page=11\u0026size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/ID1077?tag=22\u0026page=11\u0026size=16",
+      "/api/v1/widgets/users/orders/reports/metrics?tag=22\u0026page=11\u0026size=16",
+      "/api/v1/widgets/users/orders/reports/metrics/1077?tag=22\u0026page=11\u0026size=16\u0026extra=99"
     ],
     "feature_labels": [
       "Anchored",
@@ -4224,7 +4238,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Memoization",
+      "DFA",
       "TNFA"
     ]
   },
@@ -4305,7 +4319,7 @@
     ]
   },
   {
-    "pattern": "(?P<ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s+-\\s+-\\s+\\[(?P<date>[^\\]]+)\\]\\s+\"(?P<method>\\w+)\\s+(?P<path>[^\\s]+)\\s+(?P<proto>[^\"]+)\"\\s+(?P<status>\\d+)\\s+(?P<size>\\d+)",
+    "pattern": "(?P\u003cip\u003e\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s+-\\s+-\\s+\\[(?P\u003cdate\u003e[^\\]]+)\\]\\s+\"(?P\u003cmethod\u003e\\w+)\\s+(?P\u003cpath\u003e[^\\s]+)\\s+(?P\u003cproto\u003e[^\"]+)\"\\s+(?P\u003cstatus\u003e\\d+)\\s+(?P\u003csize\u003e\\d+)",
     "inputs": [
       "192.168.1.1 - - [15/Jan/2024:10:30:45 +0000] \"GET /api HTTP/1.1\" 200 1234",
       "10.0.0.1 - - [01/Jan/2024:00:00:00 +0000] \"POST /data HTTP/2\" 201 567",
@@ -4316,7 +4330,8 @@
     "feature_labels": [
       "Captures",
       "CharClass",
-      "Quantifiers"
+      "Quantifiers",
+      "UnicodeCharClass"
     ],
     "engine_labels": [
       "TNFA",
@@ -4360,7 +4375,7 @@
     ]
   },
   {
-    "pattern": "(?P<words>(?P<word>\\w+\\s*){4})(?P<end>\\w+)",
+    "pattern": "(?P\u003cwords\u003e(?P\u003cword\u003e\\w+\\s*){4})(?P\u003cend\u003e\\w+)",
     "inputs": [
       "one two three four five",
       "a b c d e",
@@ -4378,7 +4393,7 @@
     ]
   },
   {
-    "pattern": "(?P<outer>(?P<inner>h+)+)i",
+    "pattern": "(?P\u003couter\u003e(?P\u003cinner\u003eh+)+)i",
     "inputs": [
       "hhhhhhhi",
       "hhhhhhhhhhhhhhi",
@@ -4391,8 +4406,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "TDFA",
-      "Thompson"
+      "DFA",
+      "TDFA"
     ]
   },
   {
@@ -4499,6 +4514,9 @@
       "testαβγtest"
     ],
     "feature_labels": [
+      "CharClass",
+      "Multibyte",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4516,6 +4534,8 @@
       "abc123def"
     ],
     "feature_labels": [
+      "CharClass",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4533,6 +4553,9 @@
       "mixedαβγabc"
     ],
     "feature_labels": [
+      "CharClass",
+      "Multibyte",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4549,6 +4572,8 @@
       "123"
     ],
     "feature_labels": [
+      "CharClass",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4565,6 +4590,8 @@
       "abc123def"
     ],
     "feature_labels": [
+      "CharClass",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4580,6 +4607,8 @@
       "אבגדהוזחטי"
     ],
     "feature_labels": [
+      "CharClass",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [
@@ -4595,6 +4624,9 @@
       "test שלום test"
     ],
     "feature_labels": [
+      "CharClass",
+      "Multibyte",
+      "Quantifiers",
       "UnicodeCharClass"
     ],
     "engine_labels": [

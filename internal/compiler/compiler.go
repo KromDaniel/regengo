@@ -26,7 +26,9 @@ type Config struct {
 	ForceThompson     bool           // Force Thompson NFA for MatchString/MatchBytes
 	ForceTNFA         bool           // Force Tagged NFA for FindString with captures
 	ForceTDFA         bool           // Force Tagged DFA for FindString with captures
-	TDFAThreshold     int            // Max DFA states before falling back (0 = use default 500)
+	TDFAThreshold     int            // Max TDFA states before falling back (0 = use default 500)
+	ForceDFA          bool           // Force pure DFA for MatchString/MatchBytes
+	DFAThreshold      int            // Max DFA states before falling back (0 = use default 500)
 	Verbose           bool           // Enable verbose logging of analysis decisions
 	Replacers         []string       // Raw replacement template strings for pre-compiled replacers
 	TestFileReplacers []string       // Replacement templates to test in generated test file
@@ -47,9 +49,11 @@ type Compiler struct {
 	complexity                 ComplexityAnalysis  // Results of pattern complexity analysis
 	matchLength                MatchLengthAnalysis // Results of match length analysis (for streaming)
 	useThompsonForMatch        bool                // True if Thompson NFA should be used for Match functions
+	useDFAForMatch             bool                // True if pure DFA should be used for Match functions
 	useTNFAForCaptures         bool                // True if TNFA/memoization should be used for Find functions
 	useTDFAForCaptures         bool                // True if Tagged DFA should be used for Find functions
 	tdfaInfo                   string              // TDFA status message for logging (set during analysis)
+	dfaInfo                    string              // DFA status message for logging (set during analysis)
 	altsNeedingCheckpoint      map[int]bool        // Alt instructions that need capture checkpointing
 	usePerCaptureCheckpointing bool                // True to use stdlib-style per-capture saves instead of array copying
 	hasWordBoundary            bool                // True if the pattern uses \b or \B word boundaries
@@ -102,12 +106,35 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 		c.matchLength = AnalyzeMatchLength(c.config.RegexAST)
 	}
 
-	// Determine if Thompson NFA should be used for Match functions
-	// Note: UseThompsonNFA already accounts for end anchor ($ prevents Thompson)
-	c.useThompsonForMatch = c.config.ForceThompson || c.complexity.UseThompsonNFA
+	// Determine engine selection for Match functions
+	// Priority: ForceThompson > ForceDFA > auto-selection based on complexity
 
-	// If catastrophic risk but can't use Thompson NFA (e.g., has end anchor), enable memoization
-	if c.complexity.HasCatastrophicRisk && !c.useThompsonForMatch {
+	if c.config.ForceThompson {
+		// ForceThompson takes highest priority
+		c.useThompsonForMatch = true
+	} else if c.config.ForceDFA || c.complexity.HasCatastrophicRisk {
+		// Try DFA for Match functions when pattern is suitable
+		// DFA provides O(n) matching per start position for ASCII patterns
+		dfaGen := NewDFAGenerator(c)
+		if dfaGen != nil {
+			canUseDFA, dfaInfo := dfaGen.CanUseDFA()
+			c.dfaInfo = dfaInfo
+			if canUseDFA {
+				c.useDFAForMatch = true
+			}
+		}
+
+		// Fallback: if DFA was requested but unavailable, use Thompson
+		if !c.useDFAForMatch {
+			c.useThompsonForMatch = true
+		}
+	} else if c.complexity.UseThompsonNFA {
+		// Auto-select Thompson based on complexity analysis
+		c.useThompsonForMatch = true
+	}
+
+	// If catastrophic risk but can't use Thompson NFA or DFA (e.g., has end anchor), enable memoization
+	if c.complexity.HasCatastrophicRisk && !c.useThompsonForMatch && !c.useDFAForMatch {
 		c.useMemoization = true
 	}
 
@@ -179,7 +206,15 @@ func (c *Compiler) logAnalysisResults(tdfaForcedButUnavailable bool) {
 		c.logger.Log("Warning: TDFA forced but pattern exceeds state threshold, falling back")
 	}
 
-	if c.config.ForceThompson {
+	if c.useDFAForMatch {
+		c.logger.Log("Match engine: DFA (O(n) per start position)")
+		if c.dfaInfo != "" {
+			c.logger.Log("DFA info: %s", c.dfaInfo)
+		}
+	} else if c.config.ForceDFA && c.dfaInfo != "" {
+		c.logger.Log("DFA unavailable: %s", c.dfaInfo)
+		c.logger.Log("Match engine: Thompson NFA (DFA fallback)")
+	} else if c.config.ForceThompson {
 		c.logger.Log("Match engine: Thompson NFA (forced by user)")
 	} else if c.complexity.HasEndAnchor && (c.complexity.HasCatastrophicRisk || c.complexity.HasNestedLoops) {
 		c.logger.Log("Match engine: Backtracking NFA with memoization (end anchor $ requires backtracking)")
@@ -255,14 +290,17 @@ func (c *Compiler) Generate() error {
 
 	// Add sync.Pool if enabled and backtracking is needed
 	// Stack pool is needed for:
-	// 1. Non-Thompson Match functions that use backtracking
-	// 2. Capture functions that use backtracking (even when Thompson is used for Match)
-	needsStackPool := c.config.UsePool && c.needsBacktracking &&
-		(!c.useThompsonForMatch || c.config.WithCaptures)
+	// 1. Match functions using backtracking (not DFA, and Thompson either not selected or will fallback)
+	// 2. Capture functions using backtracking (when not using TDFA)
+	// Note: DFA and Thompson (when it works) are table-driven and don't need stack pools
+	// Thompson only works for patterns with <= 64 NFA states; otherwise it falls back to backtracking
+	thompsonUsableForMatch := c.useThompsonForMatch && len(c.config.Program.Inst) <= 64
+	needsPoolForMatch := !c.useDFAForMatch && !thompsonUsableForMatch
+	needsPoolForCaptures := c.config.WithCaptures && !c.useTDFAForCaptures
+	needsStackPool := c.config.UsePool && c.needsBacktracking && (needsPoolForMatch || needsPoolForCaptures)
 	if needsStackPool {
 		// Use [3]int stack pool when captures are enabled (for selective checkpointing)
 		// This includes TNFA which uses backtracking-with-captures under the hood
-		// Only TDFA doesn't need this as it uses a completely different approach
 		if c.config.WithCaptures && !c.useTDFAForCaptures {
 			c.generateStackPoolWithCaptures()
 		} else {
@@ -277,7 +315,11 @@ func (c *Compiler) Generate() error {
 
 	// Generate visited pool if memoization is used and pool is enabled
 	// Note: TNFA for captures also uses memoization
-	if c.config.UsePool && (c.useMemoization || c.useTNFAForCaptures) {
+	// Thompson NFA and DFA don't use memoization, so skip if using those for Match
+	// Also need to account for Thompson fallback (when > 64 states)
+	thompsonFallsBack := c.useThompsonForMatch && len(c.config.Program.Inst) > 64
+	needsMemoization := c.useMemoization && (!c.useThompsonForMatch || thompsonFallsBack) && !c.useDFAForMatch
+	if c.config.UsePool && (needsMemoization || c.useTNFAForCaptures) {
 		c.generateVisitedPool()
 	}
 
@@ -292,11 +334,32 @@ func (c *Compiler) Generate() error {
 	// Generate match length constants for streaming API
 	c.generateMatchLengthConstants()
 
-	// Generate Match functions - use Thompson NFA if recommended
+	// Generate Match functions - use DFA, Thompson NFA, or backtracking based on analysis
 	var matchStringCode, matchBytesCode []jen.Code
 	var err error
 
-	if c.useThompsonForMatch {
+	if c.useDFAForMatch {
+		// Use pure DFA for Match functions (O(n) per start position)
+		dfaGen := NewDFAGenerator(c)
+		if dfaGen != nil {
+			canUseDFA, _ := dfaGen.CanUseDFA()
+			if canUseDFA {
+				c.logger.Log("Using DFA for MatchString/MatchBytes")
+				// Generate DFA tables as package-level variables
+				dfaGen.GenerateTables()
+				// Generate match functions using DFA
+				matchStringCode = dfaGen.GenerateMatchFunction(false)
+				matchBytesCode = dfaGen.GenerateMatchFunction(true)
+			} else {
+				// This shouldn't happen since analyze() already checked, but handle gracefully
+				c.logger.Log("DFA not available during generation, falling back to Thompson")
+				c.useDFAForMatch = false
+				c.useThompsonForMatch = true
+			}
+		}
+	}
+
+	if !c.useDFAForMatch && c.useThompsonForMatch {
 		thompsonGen := NewThompsonGenerator(c)
 		if thompsonGen != nil && thompsonGen.CanUseThompson() {
 			c.logger.Log("Using Thompson NFA for MatchString/MatchBytes")
@@ -320,7 +383,7 @@ func (c *Compiler) Generate() error {
 				return fmt.Errorf("failed to generate match bytes function: %w", err)
 			}
 		}
-	} else {
+	} else if !c.useDFAForMatch {
 		matchStringCode, err = c.generateMatchFunction(false)
 		if err != nil {
 			return fmt.Errorf("failed to generate match string function: %w", err)

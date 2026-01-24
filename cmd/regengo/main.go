@@ -34,7 +34,9 @@ var (
 	forceThompson = flag.Bool("force-thompson", false, "Force Thompson NFA for match functions (guarantees O(n*m) complexity)")
 	forceTNFA     = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
 	forceTDFA     = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
-	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max DFA states before falling back to other engines")
+	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max TDFA states before falling back to other engines")
+	forceDFA      = flag.Bool("force-dfa", false, "Force pure DFA for match functions (O(n) per start position)")
+	dfaThreshold  = flag.Int("dfa-threshold", 500, "Max DFA states before falling back to Thompson NFA")
 	analyze       = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
 	version       = flag.Bool("version", false, "Print version information")
 	helpFlag      = flag.Bool("help", false, "Show help message")
@@ -70,7 +72,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		result, err := regengo.AnalyzeWithThreshold(*pattern, *tdfaThreshold)
+		result, err := regengo.AnalyzeWithThresholds(*pattern, *tdfaThreshold, *dfaThreshold)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -129,6 +131,8 @@ func main() {
 		ForceTNFA:         *forceTNFA,
 		ForceTDFA:         *forceTDFA,
 		TDFAThreshold:     *tdfaThreshold,
+		ForceDFA:          *forceDFA,
+		DFAThreshold:      *dfaThreshold,
 		Replacers:         replacers,
 		TestFileReplacers: replacers, // Also test replacers in generated test file
 	}
@@ -186,8 +190,14 @@ Options:
       Force Tagged DFA for capture functions (guarantees O(n) captures)
       2-3x faster than stdlib for patterns with captures
   -tdfa-threshold int
-      Max DFA states before falling back to other engines (default: 500)
+      Max TDFA states before falling back to other engines (default: 500)
       Higher values allow more complex patterns to use TDFA
+  -force-dfa
+      Prefer pure DFA for match functions (O(n) per start position)
+      Only supports ASCII patterns without . (dot) or word boundaries
+      Falls back to Thompson NFA if pattern is incompatible
+  -dfa-threshold int
+      Max DFA states before falling back to Thompson NFA (default: 500)
   -replacer string
       Pre-compiled replacement template (can be used multiple times)
       Generates optimized ReplaceAllString0, ReplaceAllString1, etc.

@@ -2,30 +2,59 @@
 
 Regengo automatically analyzes your pattern and selects the optimal matching engine for both performance and safety.
 
-## Supported Algorithms
+## Supported Engines
 
-| Algorithm | Use Case | Complexity | Status |
-|-----------|----------|------------|--------|
-| **Backtracking DFA** | Simple patterns | O(n) typical | Default |
-| **Thompson NFA** | Patterns at risk of catastrophic backtracking | O(n×m) guaranteed | Supported |
-| **Tagged DFA (TDFA)** | Capture groups with complex patterns | O(n) guaranteed | Supported |
-| **Bit-vector Memoization** | Nested quantifiers with captures | O(n×m) with caching | Supported |
+Regengo uses different strategies for boolean matching vs. capture extraction:
+
+### Match Engines (MatchString/MatchBytes)
+
+| Algorithm | Use Case | Complexity | Constraints |
+|-----------|----------|------------|-------------|
+| **Backtracking NFA** | Simple patterns | O(n) typical | Default engine |
+| **Pure DFA** | ASCII patterns with catastrophic risk | O(n) per start, O(n²) unanchored | ASCII only, no `.` or `\b` |
+| **Thompson NFA** | Patterns with catastrophic risk | O(n×m) guaranteed | ≤ 64 NFA states |
+
+### Capture Engines (FindString/FindBytes)
+
+| Algorithm | Use Case | Complexity | Constraints |
+|-----------|----------|------------|-------------|
+| **Tagged DFA (TDFA)** | Patterns with catastrophic risk | O(n) guaranteed | ≤ 500 states (configurable) |
+| **Memoized Backtracking** | Complex captures, TDFA fallback | O(n×m) with caching | Bit-vector memoization |
+| **Backtracking** | Simple patterns | O(n) typical | Default for low-risk patterns |
 
 ## Auto-Detection Examples
 
 ```
 Pattern: [\w\.+-]+@[\w\.-]+
- → Backtracking DFA (simple, fast)
+ → Backtracking NFA for Match (simple, no catastrophic risk)
+ → Backtracking for Captures
 
 Pattern: (a+)+b
- → Thompson NFA (prevents exponential backtracking)
+ → DFA for Match (catastrophic risk, ASCII-compatible)
+ → TDFA for Captures (O(n) guaranteed)
 
 Pattern: (?P<user>\w+)@(?P<domain>\w+)
- → Tagged DFA (O(n) captures)
+ → Backtracking for Match (no catastrophic risk)
+ → Backtracking for Captures (simple pattern)
 
 Pattern: (?P<outer>(?P<inner>a+)+)b
- → TDFA + Memoization (complex nested captures)
+ → DFA/Thompson for Match (catastrophic risk)
+ → TDFA for Captures (O(n) guaranteed)
 ```
+
+## Match Engine Selection Priority
+
+1. `ForceThompson` → Thompson NFA (if pattern has ≤ 64 states)
+2. `ForceDFA` or catastrophic risk detected → Try DFA (ASCII patterns only, no `.` or `\b`)
+3. If DFA unavailable but risk exists → Thompson NFA (if ≤ 64 states)
+4. If end anchor `$` present with risk → Memoized Backtracking
+5. Default → Backtracking NFA
+
+## Capture Engine Selection Priority
+
+1. `ForceTDFA` or catastrophic risk detected → Try TDFA (if ≤ threshold states)
+2. If TDFA unavailable → Memoized Backtracking
+3. Default → Backtracking
 
 ## Verbose Mode
 
@@ -36,39 +65,53 @@ regengo -pattern '(a+)+b' -name Test -output test.go -verbose
 ```
 
 ```
-=== Pattern Analysis ===
-Pattern: (a+)+b
-NFA states: 8
-Has nested quantifiers: true
-Has catastrophic risk: true
-→ Using Thompson NFA for MatchString
-→ Using Tagged DFA for FindString
+[regengo] === Pattern Analysis ===
+[regengo] Pattern: (a+)+b
+[regengo] NFA states: 8
+[regengo] Min match length: 2 bytes
+[regengo] Max match length: unbounded
+[regengo] Has nested quantifiers: true
+[regengo] Has nested loops: true
+[regengo] Has end anchor ($): false
+[regengo] Has captures: true
+
+[regengo] === Engine Selection ===
+[regengo] Match engine: DFA (O(n) per start position)
+[regengo] DFA info: DFA constructed with 3 states
+[regengo] Capture engine: Tagged DFA (O(n) guaranteed, catastrophic risk mitigated)
 ```
 
 ## Runtime Complexity
 
 | Operation | Go stdlib | Regengo | Notes |
 |-----------|-----------|---------|-------|
-| Simple match | O(n) | O(n) | Both efficient |
-| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n×m)** guaranteed | Both use Thompson NFA construction |
+| Simple match | O(n) | O(n) | Both efficient (Backtracking NFA) |
+| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n²)** with DFA | DFA provides O(n) per start position for ASCII patterns |
+| Thompson NFA | **O(n×m)** guaranteed | **O(n×m)** guaranteed | Used when DFA not suitable and pattern ≤ 64 states |
 | Captures | O(n) typical | O(n) guaranteed | TDFA eliminates backtracking overhead |
 | Complex captures | **O(n×m)** guaranteed | **O(n×m)** with memoization | Both safe, Regengo uses bit-vector caching |
+
+> **Note on DFA Complexity:** Pure DFA provides O(n) matching per start position, but for unanchored patterns this results in O(n²) worst-case when searching all positions. This is still vastly better than exponential backtracking.
+
+> **Note on Thompson NFA:** Thompson NFA is only available for patterns with ≤ 64 NFA states (uses uint64 bitset). For larger patterns, memoized backtracking is used instead.
 
 ## Memory Complexity
 
 | Aspect | Go stdlib | Regengo |
 |--------|-----------|---------|
-| Per-match allocation | 2 allocs (128-192 B) | 1 alloc (64-96 B) |
+| Per-match allocation | 2 allocs typical | 1 alloc or less |
 | With reuse API | N/A | **0 allocs** |
 | Result storage | `[]string` slices | Typed structs |
 | Backtracking stack | Dynamic allocation | `sync.Pool` reuse |
+
+> Run `go test -bench=. -benchmem ./benchmarks/curated/...` to see exact allocation counts for specific patterns.
 
 ## Where Regengo May Be Slower
 
 | Scenario | Reason | Mitigation |
 |----------|--------|------------|
 | Patterns with many optional groups | TDFA state explosion | Increase `-tdfa-threshold` or pattern redesign |
-| Non-matching pathological inputs | Memoization overhead in nested capture groups (e.g., `(?P<outer>(?P<inner>a+)+)b` with input `"aaa...c"`) — up to **2.8x slower** | Use stdlib for patterns expected to frequently not match, or reduce capture nesting |
+| Non-matching pathological inputs | Memoization overhead in nested capture groups | Use stdlib for patterns expected to frequently not match, or reduce capture nesting |
 | First cold call | No JIT, but consistent performance | Warm up in init() if needed |
 
 > **Note:** Regengo trades compilation time for runtime performance. The generated code is optimized by the Go compiler, giving consistent, predictable performance without runtime interpretation overhead.
@@ -85,11 +128,13 @@ type Options struct {
 
     // Engine selection
     ForceThompson bool // Force Thompson NFA for all match functions
+    ForceDFA      bool // Force pure DFA for match functions (ASCII patterns only)
     ForceTNFA     bool // Force Tagged NFA for capture functions
     ForceTDFA     bool // Force Tagged DFA for capture functions
 
     // Tuning parameters
-    TDFAThreshold int  // Max DFA states before fallback (default: 500)
+    TDFAThreshold int  // Max TDFA states before fallback (default: 500)
+    DFAThreshold  int  // Max DFA states before fallback (default: 500)
     Verbose       bool // Print analysis decisions to stderr
 }
 ```
@@ -99,11 +144,13 @@ type Options struct {
 ```
 Advanced (Engine Selection):
   -force-thompson    Force Thompson NFA for match functions
+  -force-dfa         Force pure DFA for match functions (ASCII patterns only)
   -force-tnfa        Force Tagged NFA for capture functions
   -force-tdfa        Force Tagged DFA for capture functions
 
 Tuning:
-  -tdfa-threshold int  Max DFA states before fallback (default 500)
+  -tdfa-threshold int  Max TDFA states before fallback (default 500)
+  -dfa-threshold int   Max DFA states before fallback (default 500)
   -verbose             Print analysis decisions to stderr
 ```
 
@@ -112,9 +159,11 @@ Tuning:
 | Option | Use Case |
 |--------|----------|
 | `ForceThompson` | Guaranteed O(n×m) for untrusted patterns |
+| `ForceDFA` | O(n) matching for ASCII patterns, maximum performance |
 | `ForceTNFA` | Debugging, or patterns with many optional groups |
 | `ForceTDFA` | Maximize capture performance, predictable patterns |
 | `TDFAThreshold` | Increase for complex patterns with known bounds |
+| `DFAThreshold` | Increase for patterns that benefit from larger DFA |
 | `Verbose` | Debug engine selection, understand analysis decisions |
 
 ### Example: Force TDFA for Trusted Patterns
@@ -157,10 +206,12 @@ Output:
   "has_captures": true,
   "has_catastrophic_risk": false,
   "has_end_anchor": false,
-  "nfa_states": 11
+  "nfa_states": 11,
+  "min_match_length": 3,
+  "max_match_length": -1
 }
 ```
 
 The labels indicate:
 - **feature_labels**: Pattern characteristics (Anchored, Alternation, Captures, CharClass, Multibyte, NonCapturing, Quantifiers, Simple, UnicodeCharClass, WordBoundary)
-- **engine_labels**: Which engines will be used (Thompson, TDFA, TNFA, Memoization, Backtracking)
+- **engine_labels**: Which engines will be used (DFA, Thompson, TDFA, TNFA, Memoization, Backtracking)

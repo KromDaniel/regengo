@@ -317,9 +317,11 @@ Analysis:
 
 Engine Control:
   -force-thompson    Force Thompson NFA (prevents ReDoS)
+  -force-dfa         Force pure DFA for match functions (ASCII patterns only)
   -force-tnfa        Force Tagged NFA for captures
   -force-tdfa        Force Tagged DFA for captures
-  -tdfa-threshold    Max DFA states before fallback (default: 500)
+  -tdfa-threshold    Max TDFA states before fallback (default: 500)
+  -dfa-threshold     Max DFA states before fallback (default: 500)
 
 Info:
   -version           Print version information

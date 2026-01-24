@@ -305,60 +305,23 @@ func (g *TDFAGenerator) computeAcceptStates() {
 }
 
 // isAcceptingNFASet checks if the given NFA state set contains an accepting state.
+// Delegates to shared utility for the core logic.
 func (g *TDFAGenerator) isAcceptingNFASet(nfaSet []NFAStateWithActions) bool {
-	for _, nfaState := range nfaSet {
-		if g.prog.Inst[nfaState.ID].Op == syntax.InstMatch {
-			return true
-		}
+	ids := make([]int, len(nfaSet))
+	for i, s := range nfaSet {
+		ids[i] = s.ID
 	}
-	return false
+	return IsAcceptingNFASet(g.prog, ids)
 }
 
 // getPossibleChars returns all possible input characters from the given NFA states.
+// Delegates to shared utility for the core logic.
 func (g *TDFAGenerator) getPossibleChars(nfaSet []NFAStateWithActions) []byte {
-	charSet := make(map[byte]bool)
-
-	for _, state := range nfaSet {
-		inst := g.prog.Inst[state.ID]
-		switch inst.Op {
-		case syntax.InstRune1:
-			if len(inst.Rune) > 0 && inst.Rune[0] < MaxASCIIRune {
-				charSet[byte(inst.Rune[0])] = true
-			}
-		case syntax.InstRune:
-			// Character class - add all characters in ranges
-			for i := 0; i < len(inst.Rune); i += 2 {
-				lo, hi := inst.Rune[i], inst.Rune[i+1]
-				if lo < MaxASCIIRune {
-					end := hi
-					if end >= MaxASCIIRune {
-						end = MaxASCIIRune - 1
-					}
-					for c := lo; c <= end; c++ {
-						charSet[byte(c)] = true
-					}
-				}
-			}
-		case syntax.InstRuneAny:
-			// Match any - add all printable ASCII for now
-			for c := byte(0); c < MaxASCIIRune; c++ {
-				charSet[c] = true
-			}
-		case syntax.InstRuneAnyNotNL:
-			for c := byte(0); c < MaxASCIIRune; c++ {
-				if c != '\n' {
-					charSet[c] = true
-				}
-			}
-		}
+	ids := make([]int, len(nfaSet))
+	for i, s := range nfaSet {
+		ids[i] = s.ID
 	}
-
-	chars := make([]byte, 0, len(charSet))
-	for c := range charSet {
-		chars = append(chars, c)
-	}
-	sort.Slice(chars, func(i, j int) bool { return chars[i] < chars[j] })
-	return chars
+	return GetPossibleChars(g.prog, ids)
 }
 
 // computeTransition computes the next NFA state set after consuming character c.

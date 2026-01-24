@@ -26,8 +26,9 @@ type AnalysisResult struct {
 }
 
 // AnalyzePattern performs pattern analysis and returns labels without generating code.
+// tdfaThreshold sets the max TDFA states, dfaThreshold sets the max DFA states (0 = default 500).
 // It returns an error if the pattern is invalid.
-func AnalyzePattern(pattern string, tdfaThreshold int) (*AnalysisResult, error) {
+func AnalyzePattern(pattern string, tdfaThreshold int, dfaThreshold int) (*AnalysisResult, error) {
 	// Parse the regex pattern
 	regexAST, err := syntax.Parse(pattern, syntax.Perl)
 	if err != nil {
@@ -53,7 +54,7 @@ func AnalyzePattern(pattern string, tdfaThreshold int) (*AnalysisResult, error) 
 	featureLabels := deriveFeatureLabels(pattern, prog, regexAST)
 
 	// Derive engine labels using the same logic as the compiler
-	engineLabels := deriveEngineLabels(prog, regexAST, complexity, hasCaptures, tdfaThreshold)
+	engineLabels := deriveEngineLabels(prog, regexAST, complexity, hasCaptures, tdfaThreshold, dfaThreshold)
 
 	// Compute match length analysis for streaming
 	matchLenAnalysis := AnalyzeMatchLength(regexAST)
@@ -134,19 +135,34 @@ func deriveFeatureLabels(pattern string, prog *syntax.Prog, ast *syntax.Regexp) 
 // deriveEngineLabels determines which engine will be used for this pattern.
 // Uses the same logic as the compiler to ensure consistency.
 // Labels are sorted alphabetically.
-func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity ComplexityAnalysis, hasCaptures bool, tdfaThreshold int) []string {
+func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity ComplexityAnalysis, hasCaptures bool, tdfaThreshold int, dfaThreshold int) []string {
 	var labels []string
 
-	// Determine Thompson NFA for match (same logic as compiler.go:112)
-	useThompsonForMatch := complexity.UseThompsonNFA
+	// Apply default thresholds
+	if dfaThreshold <= 0 {
+		dfaThreshold = 500
+	}
 
-	// Determine memoization (same logic as compiler.go:115-117)
+	// Try DFA for patterns with catastrophic risk (same logic as compiler.go)
+	useDFAForMatch := false
+	if complexity.HasCatastrophicRisk {
+		useDFAForMatch = canUseDFAForPattern(prog, dfaThreshold)
+	}
+
+	// Determine Thompson NFA for match (same logic as compiler.go)
+	// Skip Thompson if DFA is selected
+	useThompsonForMatch := false
+	if !useDFAForMatch {
+		useThompsonForMatch = complexity.UseThompsonNFA
+	}
+
+	// Determine memoization (same logic as compiler.go)
 	useMemoization := false
-	if complexity.HasCatastrophicRisk && !useThompsonForMatch {
+	if complexity.HasCatastrophicRisk && !useThompsonForMatch && !useDFAForMatch {
 		useMemoization = true
 	}
 
-	// Determine capture engine (same logic as compiler.go:122-138)
+	// Determine capture engine (same logic as compiler.go)
 	useTDFAForCaptures := false
 	useTNFAForCaptures := false
 
@@ -160,7 +176,9 @@ func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity Comple
 	}
 
 	// Add engine labels based on decisions
-	if useThompsonForMatch {
+	if useDFAForMatch {
+		labels = append(labels, "DFA")
+	} else if useThompsonForMatch {
 		labels = append(labels, "Thompson")
 	}
 
@@ -172,12 +190,12 @@ func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity Comple
 		}
 	}
 
-	if useMemoization && !useThompsonForMatch {
+	if useMemoization && !useThompsonForMatch && !useDFAForMatch {
 		labels = append(labels, "Memoization")
 	}
 
 	// Default: Backtracking (when no special engine is needed)
-	if !useThompsonForMatch && !useTDFAForCaptures && !useTNFAForCaptures && !useMemoization {
+	if !useThompsonForMatch && !useDFAForMatch && !useTDFAForCaptures && !useTNFAForCaptures && !useMemoization {
 		labels = append(labels, "Backtracking")
 	}
 
@@ -215,6 +233,31 @@ func canUseTDFAStandalone(prog *syntax.Prog, tdfaThreshold int) bool {
 	}
 
 	return true
+}
+
+// canUseDFAForPattern checks if pure DFA can be used by actually constructing the DFA.
+// This uses the real DFAGenerator to get accurate results.
+func canUseDFAForPattern(prog *syntax.Prog, dfaThreshold int) bool {
+	if prog == nil {
+		return false
+	}
+
+	// Create a minimal compiler config for DFA checking
+	minimalCompiler := &Compiler{
+		config: Config{
+			Program:      prog,
+			Name:         "Analysis",
+			DFAThreshold: dfaThreshold,
+		},
+	}
+
+	dfaGen := NewDFAGenerator(minimalCompiler)
+	if dfaGen == nil {
+		return false
+	}
+
+	canUse, _ := dfaGen.CanUseDFA()
+	return canUse
 }
 
 // hasAlternation checks if the AST contains alternation (|).
