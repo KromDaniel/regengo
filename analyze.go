@@ -13,7 +13,7 @@ type AnalysisResult = compiler.AnalysisResult
 //
 // The analysis returns:
 //   - FeatureLabels: Derived from pattern structure (e.g., "Captures", "Multibyte")
-//   - EngineLabels: Derived from compilation analysis (e.g., "TDFA", "Thompson")
+//   - EngineLabels: Derived from compilation analysis (e.g., "TDFA", "Thompson", "DFA")
 //
 // Both label arrays are sorted alphabetically for deterministic comparison.
 //
@@ -26,11 +26,19 @@ type AnalysisResult = compiler.AnalysisResult
 //	fmt.Println(result.FeatureLabels)  // ["Captures", "CharClass", "Quantifiers"]
 //	fmt.Println(result.EngineLabels)   // ["Backtracking"]
 func Analyze(pattern string) (*AnalysisResult, error) {
-	return AnalyzeWithThreshold(pattern, 500)
+	return AnalyzeWithThresholds(pattern, 500, 500)
 }
 
 // AnalyzeWithThreshold performs pattern analysis with a custom TDFA state threshold.
 // The tdfaThreshold controls when TDFA falls back to other engines (default: 500).
+// Deprecated: Use AnalyzeWithThresholds for more control.
 func AnalyzeWithThreshold(pattern string, tdfaThreshold int) (*AnalysisResult, error) {
-	return compiler.AnalyzePattern(pattern, tdfaThreshold)
+	return AnalyzeWithThresholds(pattern, tdfaThreshold, 500)
+}
+
+// AnalyzeWithThresholds performs pattern analysis with custom state thresholds.
+// tdfaThreshold controls when TDFA falls back to other engines (default: 500).
+// dfaThreshold controls when DFA falls back to Thompson NFA (default: 500).
+func AnalyzeWithThresholds(pattern string, tdfaThreshold int, dfaThreshold int) (*AnalysisResult, error) {
+	return compiler.AnalyzePattern(pattern, tdfaThreshold, dfaThreshold)
 }

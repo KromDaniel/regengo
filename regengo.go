@@ -44,9 +44,18 @@ type Options struct {
 	// doesn't require it. Use this for guaranteed O(n) capture group matching.
 	ForceTDFA bool
 
-	// TDFAThreshold sets the maximum number of DFA states allowed before falling
+	// TDFAThreshold sets the maximum number of TDFA states allowed before falling
 	// back to other engines. Default is 500.
 	TDFAThreshold int
+
+	// ForceDFA forces pure DFA for MatchString/MatchBytes even if pattern analysis
+	// doesn't require it. DFA provides O(n) matching per start position but only
+	// supports ASCII patterns without . (dot) or word boundaries.
+	ForceDFA bool
+
+	// DFAThreshold sets the maximum number of DFA states allowed before falling
+	// back to Thompson NFA. Default is 500.
+	DFAThreshold int
 
 	// Verbose enables detailed logging of analysis decisions during compilation.
 	// Output is written to stderr and includes pattern analysis, engine selection,
@@ -140,6 +149,8 @@ func Compile(opts Options) error {
 		ForceTNFA:         opts.ForceTNFA,
 		ForceTDFA:         opts.ForceTDFA,
 		TDFAThreshold:     opts.TDFAThreshold,
+		ForceDFA:          opts.ForceDFA,
+		DFAThreshold:      opts.DFAThreshold,
 		Verbose:           opts.Verbose,
 		Replacers:         opts.Replacers,
 		TestFileReplacers: opts.TestFileReplacers,
