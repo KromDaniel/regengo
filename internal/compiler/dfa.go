@@ -20,6 +20,8 @@ type DFAGenerator struct {
 	startStateAny   int            // Start state when at position > 0
 	acceptStates    map[int]bool   // Which states are accepting
 	acceptStatesEOT map[int]bool   // Which states accept at end of text
+	unanchoredSet   []int          // Epsilon closure of start without BeginText (restart threads)
+	unanchored      bool           // True if a match can begin at any position (no ^ anchor)
 	maxStates       int            // Maximum allowed states before giving up
 	isBytes         bool           // Whether generating for bytes or string
 }
@@ -131,6 +133,8 @@ func (g *DFAGenerator) initializeStartStates() {
 
 	// Compute start state for unanchored match
 	startNFASetAny := EpsilonClosure(g.prog, []int{int(g.prog.Start)}, 0)
+	g.unanchoredSet = startNFASetAny
+	g.unanchored = len(GetPossibleChars(g.prog, startNFASetAny)) > 0
 	keyAny := NFASetKey(startNFASetAny)
 
 	if idx, exists := g.stateMap[keyAny]; exists {
