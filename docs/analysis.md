@@ -95,6 +95,22 @@ regengo -pattern '(a+)+b' -name Test -output test.go -verbose
 
 > **Note on Thompson NFA:** Thompson NFA is only available for patterns with ≤ 64 NFA states (uses uint64 bitset). For larger patterns, memoized backtracking is used instead.
 
+### Pure DFA vs Thompson NFA (measured)
+
+Head-to-head benchmarks on identical patterns (Apple M4 Pro, `MatchString`, geomean ns/op):
+
+| Pattern class | stdlib | Thompson | Pure DFA |
+|---------------|-------:|---------:|---------:|
+| Catastrophic `(a+)+b` | 83.1 | 8.1 | **5.7** |
+| Char class `[a-z]+` | 59.4 | 2.4 | **2.1** |
+| No-match inputs | — | 9.2 | **8.1** |
+
+The DFA wins on 11 of 13 paired benchmarks (geomean ratio 0.81). Because unanchored
+restart positions are embedded in the automaton states, the DFA stays O(n) on
+no-match inputs — previously its worst case. The remaining trade-off is table size:
+each DFA state costs 128 table entries, so high-state-count patterns fall back to
+Thompson via `DFAThreshold` (default 500 states).
+
 ## Memory Complexity
 
 | Aspect | Go stdlib | Regengo |
