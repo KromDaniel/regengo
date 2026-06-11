@@ -11,7 +11,7 @@ Regengo uses different strategies for boolean matching vs. capture extraction:
 | Algorithm | Use Case | Complexity | Constraints |
 |-----------|----------|------------|-------------|
 | **Backtracking NFA** | Simple patterns | O(n) typical | Default engine |
-| **Pure DFA** | ASCII patterns with catastrophic risk | O(n) per start, O(n²) unanchored | ASCII only, no `.` or `\b` |
+| **Pure DFA** | ASCII patterns with catastrophic risk | O(n) single pass | ASCII only, no `.` or `\b` |
 | **Thompson NFA** | Patterns with catastrophic risk | O(n×m) guaranteed | ≤ 64 NFA states |
 
 ### Capture Engines (FindString/FindBytes)
@@ -76,7 +76,7 @@ regengo -pattern '(a+)+b' -name Test -output test.go -verbose
 [regengo] Has captures: true
 
 [regengo] === Engine Selection ===
-[regengo] Match engine: DFA (O(n) per start position)
+[regengo] Match engine: DFA (O(n) single pass)
 [regengo] DFA info: DFA constructed with 3 states
 [regengo] Capture engine: Tagged DFA (O(n) guaranteed, catastrophic risk mitigated)
 ```
@@ -86,12 +86,12 @@ regengo -pattern '(a+)+b' -name Test -output test.go -verbose
 | Operation | Go stdlib | Regengo | Notes |
 |-----------|-----------|---------|-------|
 | Simple match | O(n) | O(n) | Both efficient (Backtracking NFA) |
-| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n²)** with DFA | DFA provides O(n) per start position for ASCII patterns |
+| Nested quantifiers `(a+)+` | **O(n×m)** guaranteed | **O(n)** with DFA | DFA provides O(n) single-pass matching for ASCII patterns |
 | Thompson NFA | **O(n×m)** guaranteed | **O(n×m)** guaranteed | Used when DFA not suitable and pattern ≤ 64 states |
 | Captures | O(n) typical | O(n) guaranteed | TDFA eliminates backtracking overhead |
 | Complex captures | **O(n×m)** guaranteed | **O(n×m)** with memoization | Both safe, Regengo uses bit-vector caching |
 
-> **Note on DFA Complexity:** Pure DFA provides O(n) matching per start position, but for unanchored patterns this results in O(n²) worst-case when searching all positions. This is still vastly better than exponential backtracking.
+> **Note on DFA Complexity:** Pure DFA matching is a single O(n) pass — unanchored restart positions are embedded in the automaton states (RE2-style), so no per-position re-scan occurs.
 
 > **Note on Thompson NFA:** Thompson NFA is only available for patterns with ≤ 64 NFA states (uses uint64 bitset). For larger patterns, memoized backtracking is used instead.
 

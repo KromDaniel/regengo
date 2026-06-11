@@ -49,7 +49,7 @@ type Options struct {
 	TDFAThreshold int
 
 	// ForceDFA forces pure DFA for MatchString/MatchBytes even if pattern analysis
-	// doesn't require it. DFA provides O(n) matching per start position but only
+	// doesn't require it. DFA provides O(n) single-pass matching but only
 	// supports ASCII patterns without . (dot) or word boundaries.
 	ForceDFA bool
 

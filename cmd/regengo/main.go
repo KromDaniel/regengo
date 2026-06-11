@@ -35,7 +35,7 @@ var (
 	forceTNFA     = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
 	forceTDFA     = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
 	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max TDFA states before falling back to other engines")
-	forceDFA      = flag.Bool("force-dfa", false, "Force pure DFA for match functions (O(n) per start position)")
+	forceDFA      = flag.Bool("force-dfa", false, "Force pure DFA for match functions (O(n) single-pass matching)")
 	dfaThreshold  = flag.Int("dfa-threshold", 500, "Max DFA states before falling back to Thompson NFA")
 	analyze       = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
 	version       = flag.Bool("version", false, "Print version information")
@@ -193,7 +193,7 @@ Options:
       Max TDFA states before falling back to other engines (default: 500)
       Higher values allow more complex patterns to use TDFA
   -force-dfa
-      Prefer pure DFA for match functions (O(n) per start position)
+      Prefer pure DFA for match functions (O(n) single-pass matching)
       Only supports ASCII patterns without . (dot) or word boundaries
       Falls back to Thompson NFA if pattern is incompatible
   -dfa-threshold int
