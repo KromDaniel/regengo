@@ -180,6 +180,12 @@ func (g *DFAGenerator) processWorklist(initialWorklist []int) error {
 			// Compute next states using shared utility
 			nextNFASet := ComputeNextStates(g.prog, state.NFASet, c, 0)
 
+			// Single-pass unanchored matching: every state carries the restart
+			// threads, so a dying thread never requires re-scanning from start+1.
+			if g.unanchored {
+				nextNFASet = UnionNFASets(nextNFASet, g.unanchoredSet)
+			}
+
 			if len(nextNFASet) == 0 {
 				continue
 			}

@@ -345,3 +345,31 @@ func TestComputeNextStates(t *testing.T) {
 		})
 	}
 }
+
+func TestUnionNFASets(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []int
+		want []int
+	}{
+		{"both empty", nil, nil, []int{}},
+		{"a empty", nil, []int{3, 1}, []int{3, 1}},
+		{"b empty", []int{2, 4}, nil, []int{2, 4}},
+		{"disjoint", []int{1, 2}, []int{3, 4}, []int{1, 2, 3, 4}},
+		{"overlap dedupes", []int{1, 2, 3}, []int{2, 3, 4}, []int{1, 2, 3, 4}},
+		{"preserves a order then new b", []int{5, 1}, []int{1, 9, 5, 7}, []int{5, 1, 9, 7}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := UnionNFASets(tt.a, tt.b)
+			if len(got) != len(tt.want) {
+				t.Fatalf("UnionNFASets(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("UnionNFASets(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
+				}
+			}
+		})
+	}
+}
