@@ -229,11 +229,11 @@ Regengo consistently outperforms Go's standard `regexp` package (Apple M4 Pro):
 
 | Pattern | Method | stdlib | regengo | Speedup |
 |---------|--------|--------|---------|---------|
-| Date `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})` | MatchString | 68 ns | 4.1 ns | **17x faster** |
-| Date (same) | FindString | 108 ns | 21 ns | **5.2x faster** |
-| Multi-date extraction | FindAllString | 302 ns | 51 ns | **6.0x faster** |
-| Email validation | MatchString | 1523 ns | 541 ns | **2.8x faster** |
-| Log parser | FindString | 380 ns | 123 ns | **3.1x faster** |
+| Date `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})` | MatchString | 66 ns | 3.8 ns | **17x faster** |
+| Date (same) | FindString | 99 ns | 19 ns | **5.2x faster** |
+| Multi-date extraction | FindAllString | 273 ns | 45 ns | **6.1x faster** |
+| Email validation | MatchString | 1478 ns | 524 ns | **2.8x faster** |
+| Log parser | FindString | 358 ns | 114 ns | **3.2x faster** |
 
 <p align="center">
   <img src="assets/benchmark_chart.png" alt="Performance comparison chart" width="700">

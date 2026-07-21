@@ -101,11 +101,11 @@ Head-to-head benchmarks on identical patterns (Apple M4 Pro, `MatchString`, geom
 
 | Pattern class | stdlib | Thompson | Pure DFA |
 |---------------|-------:|---------:|---------:|
-| Catastrophic `(a+)+b` | 83.1 | 8.1 | **5.7** |
-| Char class `[a-z]+` | 59.4 | 2.4 | **2.1** |
-| No-match inputs | — | 9.2 | **8.1** |
+| Catastrophic `(a+)+b` | 80.3 | 7.5 | **5.6** |
+| Char class `[a-z]+` | 58.3 | 2.2 | **2.0** |
+| No-match inputs | — | 8.4 | **7.8** |
 
-The DFA wins on 11 of 13 paired benchmarks (geomean ratio 0.81). Because unanchored
+The DFA wins on 11 of 13 paired benchmarks (geomean ratio 0.84). Because unanchored
 restart positions are embedded in the automaton states, the DFA stays O(n) on
 no-match inputs — previously its worst case. The remaining trade-off is table size:
 each DFA state costs 128 table entries, so high-state-count patterns fall back to
