@@ -135,9 +135,10 @@ This generates and opens `coverage.html`.
 The CI pipeline runs with coverage and uploads to Codecov:
 
 ```bash
-go test -v -race -coverprofile=coverage.txt -covermode=atomic \
-    -coverpkg=./internal/...,./pkg/...,./tests/... \
-    ./internal/... ./pkg/... ./tests/...
+go test -v -race -covermode=atomic \
+    -coverpkg=github.com/KromDaniel/regengo,github.com/KromDaniel/regengo/cmd/regengo,github.com/KromDaniel/regengo/internal/codegen,github.com/KromDaniel/regengo/internal/compiler,github.com/KromDaniel/regengo/replace,github.com/KromDaniel/regengo/stream \
+    -coverprofile=coverage.txt \
+    ./...
 ```
 
 ## CI/CD Pipeline
@@ -169,6 +170,8 @@ This runs formatting, vet, and lint checks before each commit.
 | `make test` | Run all tests |
 | `make bench` | Run benchmarks |
 | `make bench-analyze` | Run benchmarks with analysis |
+| `make bench-chart` | Generate performance comparison chart |
+| `make bench-format` | Format benchmark results as markdown |
 | `make coverage` | Generate coverage report |
 | `make lint` | Run linter |
 | `make fmt` | Format code |

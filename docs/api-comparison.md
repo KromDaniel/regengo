@@ -299,6 +299,10 @@ These regengo methods have no stdlib equivalent:
 | `ReplaceFirstString(s, tmpl)` | Replace first match only |
 | `ReplaceAllBytesAppend(b, tmpl, buf)` | Zero-alloc replace with buffer |
 | `CompileReplaceTemplate(tmpl)` | Compile template for reuse |
+| `ReplaceReader(r, tmpl)` | Streaming replace, returns `io.Reader` |
+| `SelectReader(r, pred)` | Streaming extract (keep only matches) |
+| `RejectReader(r, pred)` | Streaming filter (drop matches) |
+| `NewTransformReader(r, cfg, cb)` | Streaming transform with full control |
 | `MatchLengthInfo()` | Get min/max match lengths |
 | `DefaultMaxLeftover()` | Recommended streaming buffer size |
 
@@ -364,8 +368,21 @@ CompiledDate.ReplaceFirstString(s string, tmpl string) string
 CompiledDate.ReplaceAllBytes(b []byte, tmpl string) []byte
 CompiledDate.ReplaceAllBytesAppend(b []byte, tmpl string, buf []byte) []byte
 CompiledDate.ReplaceAllString0(s string) string       // pre-compiled
+CompiledDate.ReplaceAllBytes0(b []byte) []byte
 CompiledDate.ReplaceAllBytesAppend0(b []byte, buf []byte) []byte
+CompiledDate.ReplaceFirstString0(s string) string
+CompiledDate.ReplaceFirstBytes0(b []byte) []byte
+CompiledDate.ReplaceFirstBytes(b []byte, tmpl string) []byte
 CompiledDate.CompileReplaceTemplate(tmpl string) (*DateReplaceTemplate, error)
+
+// ═══════════════════════════════════════════════════════════════════
+// TRANSFORM (io.Reader in, io.Reader out - see transform-api.md)
+// ═══════════════════════════════════════════════════════════════════
+CompiledDate.ReplaceReader(r io.Reader, tmpl string) io.Reader
+CompiledDate.SelectReader(r io.Reader, pred func(*DateBytesResult) bool) io.Reader
+CompiledDate.RejectReader(r io.Reader, pred func(*DateBytesResult) bool) io.Reader
+CompiledDate.NewTransformReader(r io.Reader, cfg stream.TransformConfig,
+    onMatch func(m *DateBytesResult, emit func([]byte))) io.Reader
 
 // ═══════════════════════════════════════════════════════════════════
 // INTROSPECTION

@@ -27,7 +27,7 @@ r := CompiledEmail.ReplaceReader(file, "[REDACTED]")
 
 // Template replacement with capture groups
 // $1 = first capture group, $name = named capture
-r2 := CompiledEmail.ReplaceReader(file, "[$name at $domain]")
+r2 := CompiledEmail.ReplaceReader(file, "[$user at $domain]")
 // Input:  "Contact john@example.com for help"
 // Output: "Contact [john at example.com] for help"
 ```
@@ -129,8 +129,10 @@ ctx, cancel := context.WithCancel(context.Background())
 defer cancel()
 
 cfg := stream.TransformConfig{
-    Context:    ctx,        // Enable cancellation
-    BufferSize: 256 * 1024, // 256KB input buffer
+    Config: stream.Config{
+        BufferSize: 256 * 1024, // 256KB input buffer
+    },
+    Context: ctx, // Enable cancellation
 }
 
 r := CompiledEmail.NewTransformReader(file, cfg, onMatchCallback)

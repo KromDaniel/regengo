@@ -22,20 +22,12 @@ Verifies that regengo's output matches `regexp` stdlib exactly:
 
 ### Benchmarks
 
-Comparison benchmarks to measure speedup vs stdlib:
+A single `Benchmark<Name>` function is generated with nested sub-benchmarks that compare against stdlib, organized as `Benchmark<Name>/<Operation>/Input[i]/<variant>`:
 
-- `Benchmark...MatchString` - regengo MatchString performance
-- `BenchmarkStdlib...MatchString` - stdlib comparison
-- `Benchmark...FindString` - regengo FindString performance
-- `BenchmarkStdlib...FindStringSubmatch` - stdlib comparison
-- `Benchmark...FindStringReuse` - Zero-allocation single match
-- `Benchmark...FindAllString` - regengo FindAllString performance
-- `Benchmark...FindAllStringAppend` - Zero-allocation multi-match (reuse)
-- `BenchmarkStdlib...FindAllStringSubmatch` - stdlib comparison for FindAll
-- `BenchmarkStdlib...ReplaceAllStringN` - stdlib comparison per template (if replacers defined)
-- `Benchmark...ReplaceAllStringRuntimeN` - regengo runtime replace per template (if replacers defined)
-- `Benchmark...ReplaceAllStringN` - Precompiled replace per template (if replacers defined)
-- `Benchmark...ReplaceAllBytesAppendN` - Memory-reuse replace per template (if replacers defined)
+- `Match` - `stdlib` vs `regengo` MatchString
+- `FindFirst` - `stdlib` (FindStringSubmatch) vs `regengo` (FindString) vs `regengo_reuse` (zero-allocation FindStringReuse) — only for patterns with captures
+- `FindAll` - `stdlib` (FindAllStringSubmatch) vs `regengo` (FindAllString) vs `regengo_append` (zero-allocation FindAllStringAppend) — only for patterns with captures
+- `Replace/Template[j]` - `stdlib` vs `regengo_runtime` (runtime template) vs `regengo` (pre-compiled) vs `regengo_append` (zero-allocation ReplaceAllBytesAppendN) — only if replacers defined
 
 ## Generating Tests
 
@@ -80,8 +72,8 @@ go test -v
 # Run benchmarks
 go test -bench=. -benchmem
 
-# Run specific benchmark
-go test -bench=BenchmarkDateFindString -benchmem
+# Run specific benchmark (sub-benchmarks use / paths)
+go test -bench='BenchmarkDate/FindFirst' -benchmem
 ```
 
 ## Example Generated Test File
@@ -92,69 +84,76 @@ For a date pattern with captures, regengo generates (see [full example](../bench
 package main
 
 import (
+    "fmt"
     "regexp"
     "testing"
 )
 
+var dateRegexp = regexp.MustCompile("(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})")
+
+var dateTestInputs = []string{"2024-01-01"}
+
 func TestDateFindString(t *testing.T) {
-    pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
-    stdReg := regexp.MustCompile(pattern)
+    for _, input := range dateTestInputs {
+        expectedMatches := dateRegexp.FindStringSubmatch(input)
+        result, ok := Date{}.FindString(input)
 
-    t.Run("test input 0", func(t *testing.T) {
-        input := "2024-01-01"
-        stdMatch := stdReg.FindStringSubmatch(input)
-        regengoResult, found := CompiledDate.FindString(input)
-
-        if (len(stdMatch) > 0) != found {
-            t.Fatalf("match mismatch: std=%v, regengo=%v", len(stdMatch) > 0, found)
-        }
-
-        if found {
-            if stdMatch[0] != regengoResult.Match {
-                t.Errorf("Full match mismatch: std=%q regengo=%q",
-                    stdMatch[0], regengoResult.Match)
+        if len(expectedMatches) > 0 {
+            if !ok {
+                t.Errorf("FindString(%q) returned false, expected match", input)
+                continue
             }
+            if result.Match != expectedMatches[0] {
+                t.Errorf("FindString(%q).Match = %q, want %q", input, result.Match, expectedMatches[0])
+            }
+            if result.Year != expectedMatches[1] {
+                t.Errorf("FindString(%q).Year = %q, want %q", input, result.Year, expectedMatches[1])
+            }
+            // ... one check per capture group
+        } else if ok {
+            t.Errorf("FindString(%q) returned true, expected no match", input)
         }
-    })
+    }
 }
 
-func BenchmarkDateFindString(b *testing.B) {
-    pattern := `(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})`
-    stdReg := regexp.MustCompile(pattern)
+func BenchmarkDate(b *testing.B) {
+    inputs := dateTestInputs
 
-    b.Run("golang std", func(b *testing.B) {
-        b.ReportAllocs()
-        input := "2024-01-01"
-        for b.Loop() {
-            stdReg.FindStringSubmatch(input)
+    b.Run("FindFirst", func(b *testing.B) {
+        for i, input := range inputs {
+            b.Run(fmt.Sprintf("Input[%d]", i), func(b *testing.B) {
+                b.Run("stdlib", func(b *testing.B) {
+                    b.ReportAllocs()
+                    for b.Loop() {
+                        _ = dateRegexp.FindStringSubmatch(input)
+                    }
+                })
+                b.Run("regengo", func(b *testing.B) {
+                    b.ReportAllocs()
+                    for b.Loop() {
+                        _, _ = Date{}.FindString(input)
+                    }
+                })
+                b.Run("regengo_reuse", func(b *testing.B) {
+                    b.ReportAllocs()
+                    var result *DateResult
+                    for b.Loop() {
+                        result, _ = Date{}.FindStringReuse(input, result)
+                    }
+                })
+            })
         }
     })
-
-    b.Run("regengo", func(b *testing.B) {
-        b.ReportAllocs()
-        input := "2024-01-01"
-        for b.Loop() {
-            CompiledDate.FindString(input)
-        }
-    })
-
-    b.Run("regengo reuse", func(b *testing.B) {
-        b.ReportAllocs()
-        input := "2024-01-01"
-        var result *DateResult
-        for b.Loop() {
-            result, _ = CompiledDate.FindStringReuse(input, result)
-        }
-    })
+    // ... plus Match, FindAll, and Replace sub-benchmarks
 }
 ```
 
 ## Benchmark Output Example
 
 ```
-BenchmarkDateFindString/golang_std     10748672    111.3 ns/op    128 B/op    2 allocs/op
-BenchmarkDateFindString/regengo        55888143     20.5 ns/op     64 B/op    1 allocs/op
-BenchmarkDateFindString/regengo_reuse 157400960      7.5 ns/op      0 B/op    0 allocs/op
+BenchmarkDate/FindFirst/Input[0]/stdlib         10748672    111.3 ns/op    128 B/op    2 allocs/op
+BenchmarkDate/FindFirst/Input[0]/regengo        55888143     20.5 ns/op     64 B/op    1 allocs/op
+BenchmarkDate/FindFirst/Input[0]/regengo_reuse 157400960      7.5 ns/op      0 B/op    0 allocs/op
 ```
 
 ## Debugging Test Failures
