@@ -19,7 +19,7 @@ func (DFACharClass) MatchLengthInfo() (minLen, maxLen int) {
 }
 
 // DFA transition table [state][char] -> next state (-1 = no transition)
-var dfaTransitionsDFACharClass = [2][128]int8{{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1}}
+var dfaTransitionsDFACharClass = [2][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}}
 
 // DFA accept states array
 var dfaAcceptStatesDFACharClass = [2]bool{false, true}
@@ -29,91 +29,49 @@ var dfaAcceptStatesEOTDFACharClass = [2]bool{false, true}
 
 func (DFACharClass) MatchString(input string) bool {
 	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesDFACharClass[state] {
+		return true
+	}
 
-	// Try each start position (O(n²) worst case for unanchored patterns)
-	for start := 0; start <= inputLen; start++ {
-		var state int
-		if start == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
 			state = 0
-		} else {
-			state = 0
+			continue
 		}
-
-		// Check if start state accepts (empty match)
+		state = int(dfaTransitionsDFACharClass[state][c])
 		if dfaAcceptStatesDFACharClass[state] {
 			return true
 		}
-		// Check EOT acceptance at empty position
-		if start == inputLen && dfaAcceptStatesEOTDFACharClass[state] {
-			return true
-		}
-
-		// Process input characters
-		for i := start; i < inputLen; i++ {
-			c := input[i]
-			if c >= 128 {
-				break
-			}
-
-			nextState := dfaTransitionsDFACharClass[state][c]
-			if nextState < 0 {
-				break
-			}
-
-			state = int(nextState)
-			if dfaAcceptStatesDFACharClass[state] {
-				return true
-			}
-			// Check EOT acceptance at last character
-			if i == inputLen-1 && dfaAcceptStatesEOTDFACharClass[state] {
-				return true
-			}
-		}
 	}
-	return false
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTDFACharClass[state]
 }
 func (DFACharClass) MatchBytes(input []byte) bool {
 	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesDFACharClass[state] {
+		return true
+	}
 
-	// Try each start position (O(n²) worst case for unanchored patterns)
-	for start := 0; start <= inputLen; start++ {
-		var state int
-		if start == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
 			state = 0
-		} else {
-			state = 0
+			continue
 		}
-
-		// Check if start state accepts (empty match)
+		state = int(dfaTransitionsDFACharClass[state][c])
 		if dfaAcceptStatesDFACharClass[state] {
 			return true
 		}
-		// Check EOT acceptance at empty position
-		if start == inputLen && dfaAcceptStatesEOTDFACharClass[state] {
-			return true
-		}
-
-		// Process input characters
-		for i := start; i < inputLen; i++ {
-			c := input[i]
-			if c >= 128 {
-				break
-			}
-
-			nextState := dfaTransitionsDFACharClass[state][c]
-			if nextState < 0 {
-				break
-			}
-
-			state = int(nextState)
-			if dfaAcceptStatesDFACharClass[state] {
-				return true
-			}
-			// Check EOT acceptance at last character
-			if i == inputLen-1 && dfaAcceptStatesEOTDFACharClass[state] {
-				return true
-			}
-		}
 	}
-	return false
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTDFACharClass[state]
 }

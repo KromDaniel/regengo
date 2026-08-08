@@ -8,8 +8,9 @@ import (
 )
 
 // DFAGenerator generates pure DFA code for Match functions.
-// Pure DFA provides O(n) matching per start position without capture group overhead.
-// For unanchored patterns, the overall complexity is O(n²) worst case.
+// Matching is a single O(n) pass over the input: for unanchored patterns the
+// restart threads are embedded in every DFA state (union construction), so no
+// per-start-position re-scan is needed.
 type DFAGenerator struct {
 	compiler        *Compiler
 	prog            *syntax.Prog
@@ -20,6 +21,8 @@ type DFAGenerator struct {
 	startStateAny   int            // Start state when at position > 0
 	acceptStates    map[int]bool   // Which states are accepting
 	acceptStatesEOT map[int]bool   // Which states accept at end of text
+	unanchoredSet   []int          // Epsilon closure of start without BeginText (restart threads)
+	unanchored      bool           // True if a match can begin at any position (no ^ anchor)
 	maxStates       int            // Maximum allowed states before giving up
 	isBytes         bool           // Whether generating for bytes or string
 }
@@ -131,6 +134,8 @@ func (g *DFAGenerator) initializeStartStates() {
 
 	// Compute start state for unanchored match
 	startNFASetAny := EpsilonClosure(g.prog, []int{int(g.prog.Start)}, 0)
+	g.unanchoredSet = startNFASetAny
+	g.unanchored = len(GetPossibleChars(g.prog, startNFASetAny)) > 0
 	keyAny := NFASetKey(startNFASetAny)
 
 	if idx, exists := g.stateMap[keyAny]; exists {
@@ -175,6 +180,12 @@ func (g *DFAGenerator) processWorklist(initialWorklist []int) error {
 		for _, c := range chars {
 			// Compute next states using shared utility
 			nextNFASet := ComputeNextStates(g.prog, state.NFASet, c, 0)
+
+			// Single-pass unanchored matching: every state carries the restart
+			// threads, so a dying thread never requires re-scanning from start+1.
+			if g.unanchored {
+				nextNFASet = UnionNFASets(nextNFASet, g.unanchoredSet)
+			}
 
 			if len(nextNFASet) == 0 {
 				continue
@@ -260,11 +271,19 @@ func (g *DFAGenerator) generateTransitionTable() jen.Code {
 	intType := g.getOptimalIntType()
 	rowValues := make([]jen.Code, numStates)
 
+	// For unanchored patterns the table is dense: a char with no explicit
+	// transition collapses to the restart state (union construction guarantees
+	// this is exactly startStateAny). For anchored patterns -1 means dead.
+	defaultTarget := -1
+	if g.unanchored {
+		defaultTarget = g.startStateAny
+	}
+
 	for stateIdx := 0; stateIdx < numStates; stateIdx++ {
 		// Build row for this state - MaxASCIIRune entries for ASCII
 		entries := make([]jen.Code, MaxASCIIRune)
 		for i := 0; i < MaxASCIIRune; i++ {
-			entries[i] = jen.Lit(-1) // No transition
+			entries[i] = jen.Lit(defaultTarget)
 		}
 
 		// Fill in actual transitions
@@ -319,71 +338,68 @@ func (g *DFAGenerator) generateAcceptStatesEOT() jen.Code {
 }
 
 // GenerateMatchFunction generates the DFA-based MatchString/MatchBytes function body.
+// The generated code is a single O(n) pass over the input: unanchored restart
+// threads are embedded in the states (see processWorklist), so no outer
+// start-position loop is needed.
 func (g *DFAGenerator) GenerateMatchFunction(isBytes bool) []jen.Code {
 	g.isBytes = isBytes
 
-	var inputAccess jen.Code
-	if isBytes {
-		inputAccess = jen.Id("input").Index(jen.Id("i"))
+	transitionsVar := g.getVarName("dfaTransitions")
+	acceptVar := g.getVarName("dfaAcceptStates")
+	acceptEOTVar := g.getVarName("dfaAcceptStatesEOT")
+
+	var innerLoop []jen.Code
+	if g.unanchored {
+		// Dense table: every entry is a valid state; a non-ASCII byte kills all
+		// threads, so restart from the unanchored start state.
+		innerLoop = []jen.Code{
+			jen.Id("c").Op(":=").Id("input").Index(jen.Id("i")),
+			jen.If(jen.Id("c").Op(">=").Lit(MaxASCIIRune)).Block(
+				jen.Id("state").Op("=").Lit(g.startStateAny),
+				jen.Continue(),
+			),
+			jen.Id("state").Op("=").Int().Call(
+				jen.Id(transitionsVar).Index(jen.Id("state")).Index(jen.Id("c")),
+			),
+			jen.If(jen.Id(acceptVar).Index(jen.Id("state"))).Block(
+				jen.Return(jen.True()),
+			),
+		}
 	} else {
-		inputAccess = jen.Id("input").Index(jen.Id("i"))
-	}
-
-	// Build the matching loop body
-	innerLoop := []jen.Code{
-		jen.Id("c").Op(":=").Add(inputAccess),
-		jen.If(jen.Id("c").Op(">=").Lit(MaxASCIIRune)).Block(
-			jen.Break(), // Non-ASCII, exit inner loop
-		),
-		jen.Line(),
-		jen.Id("nextState").Op(":=").Id(g.getVarName("dfaTransitions")).Index(jen.Id("state")).Index(jen.Id("c")),
-		jen.If(jen.Id("nextState").Op("<").Lit(0)).Block(
-			jen.Break(), // No transition
-		),
-		jen.Line(),
-		jen.Id("state").Op("=").Int().Call(jen.Id("nextState")), // Cast to int for smaller table types
-		jen.If(jen.Id(g.getVarName("dfaAcceptStates")).Index(jen.Id("state"))).Block(
-			jen.Return(jen.True()),
-		),
-		jen.Comment("Check EOT acceptance at last character"),
-		jen.If(jen.Id("i").Op("==").Id("inputLen").Op("-").Lit(1).Op("&&").
-			Id(g.getVarName("dfaAcceptStatesEOT")).Index(jen.Id("state"))).Block(
-			jen.Return(jen.True()),
-		),
-	}
-
-	// Build the outer loop
-	outerLoopBody := []jen.Code{
-		jen.Var().Id("state").Int(),
-		jen.If(jen.Id("start").Op("==").Lit(0)).Block(
-			jen.Id("state").Op("=").Lit(g.startStateBegin),
-		).Else().Block(
-			jen.Id("state").Op("=").Lit(g.startStateAny),
-		),
-		jen.Line(),
-		jen.Comment("Check if start state accepts (empty match)"),
-		jen.If(jen.Id(g.getVarName("dfaAcceptStates")).Index(jen.Id("state"))).Block(
-			jen.Return(jen.True()),
-		),
-		jen.Comment("Check EOT acceptance at empty position"),
-		jen.If(jen.Id("start").Op("==").Id("inputLen").Op("&&").
-			Id(g.getVarName("dfaAcceptStatesEOT")).Index(jen.Id("state"))).Block(
-			jen.Return(jen.True()),
-		),
-		jen.Line(),
-		jen.Comment("Process input characters"),
-		jen.For(jen.Id("i").Op(":=").Id("start"), jen.Id("i").Op("<").Id("inputLen"), jen.Id("i").Op("++")).Block(
-			innerLoop...,
-		),
+		// Start-anchored pattern: a dead transition or non-ASCII byte means no
+		// match is possible anywhere — exit immediately.
+		innerLoop = []jen.Code{
+			jen.Id("c").Op(":=").Id("input").Index(jen.Id("i")),
+			jen.If(jen.Id("c").Op(">=").Lit(MaxASCIIRune)).Block(
+				jen.Return(jen.False()),
+			),
+			jen.Id("nextState").Op(":=").Id(transitionsVar).Index(jen.Id("state")).Index(jen.Id("c")),
+			jen.If(jen.Id("nextState").Op("<").Lit(0)).Block(
+				jen.Return(jen.False()),
+			),
+			jen.Id("state").Op("=").Int().Call(jen.Id("nextState")),
+			jen.If(jen.Id(acceptVar).Index(jen.Id("state"))).Block(
+				jen.Return(jen.True()),
+			),
+		}
 	}
 
 	return []jen.Code{
 		jen.Id("inputLen").Op(":=").Len(jen.Id("input")),
-		jen.Line(),
-		jen.Comment("Try each start position (O(n²) worst case for unanchored patterns)"),
-		jen.For(jen.Id("start").Op(":=").Lit(0), jen.Id("start").Op("<=").Id("inputLen"), jen.Id("start").Op("++")).Block(
-			outerLoopBody...,
+		jen.Id("state").Op(":=").Lit(g.startStateBegin),
+		jen.Comment("Empty-match check at the start state"),
+		jen.If(jen.Id(acceptVar).Index(jen.Id("state"))).Block(
+			jen.Return(jen.True()),
 		),
-		jen.Return(jen.False()),
+		jen.Line(),
+		jen.Comment("Single pass over the input — O(n)"),
+		jen.For(
+			jen.Id("i").Op(":=").Lit(0),
+			jen.Id("i").Op("<").Id("inputLen"),
+			jen.Id("i").Op("++"),
+		).Block(innerLoop...),
+		jen.Line(),
+		jen.Comment("End-of-text acceptance ($)"),
+		jen.Return(jen.Id(acceptEOTVar).Index(jen.Id("state"))),
 	}
 }

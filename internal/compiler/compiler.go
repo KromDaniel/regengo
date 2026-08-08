@@ -114,7 +114,7 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 		c.useThompsonForMatch = true
 	} else if c.config.ForceDFA || c.complexity.HasCatastrophicRisk {
 		// Try DFA for Match functions when pattern is suitable
-		// DFA provides O(n) matching per start position for ASCII patterns
+		// DFA provides O(n) single-pass matching for ASCII patterns
 		dfaGen := NewDFAGenerator(c)
 		if dfaGen != nil {
 			canUseDFA, dfaInfo := dfaGen.CanUseDFA()
@@ -207,7 +207,7 @@ func (c *Compiler) logAnalysisResults(tdfaForcedButUnavailable bool) {
 	}
 
 	if c.useDFAForMatch {
-		c.logger.Log("Match engine: DFA (O(n) per start position)")
+		c.logger.Log("Match engine: DFA (O(n) single pass)")
 		if c.dfaInfo != "" {
 			c.logger.Log("DFA info: %s", c.dfaInfo)
 		}
@@ -339,7 +339,7 @@ func (c *Compiler) Generate() error {
 	var err error
 
 	if c.useDFAForMatch {
-		// Use pure DFA for Match functions (O(n) per start position)
+		// Use pure DFA for Match functions (O(n) single pass)
 		dfaGen := NewDFAGenerator(c)
 		if dfaGen != nil {
 			canUseDFA, _ := dfaGen.CanUseDFA()

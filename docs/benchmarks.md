@@ -28,8 +28,8 @@ Simple email matching without capture groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1428.0 | 0 | 0 | - |
-| regengo | 493.7 | 0 | 0 | **2.9x faster** |
+| stdlib | 1478.0 | 0 | 0 | - |
+| regengo | 523.6 | 0 | 0 | **2.8x faster** |
 
 ### Greedy
 
@@ -44,8 +44,8 @@ Greedy quantifier with alternation
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 712.0 | 0 | 0 | - |
-| regengo | 152.9 | 0 | 0 | **4.7x faster** |
+| stdlib | 749.0 | 0 | 0 | - |
+| regengo | 166.6 | 0 | 0 | **4.5x faster** |
 
 ### Lazy
 
@@ -60,8 +60,8 @@ Lazy quantifier with alternation
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1195.0 | 0 | 0 | - |
-| regengo | 148.4 | 0 | 0 | **8.1x faster** |
+| stdlib | 1253.0 | 0 | 0 | - |
+| regengo | 153.9 | 0 | 0 | **8.1x faster** |
 
 ## Capture Patterns
 
@@ -80,24 +80,24 @@ ISO date pattern with year, month, day capture groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 201.5 | 0 | 0 | - |
-| regengo | 12.0 | 0 | 0 | **16.8x faster** |
+| stdlib | 65.6 | 0 | 0 | - |
+| regengo | 3.8 | 0 | 0 | **17.2x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 292.5 | 386 | 6 | - |
-| regengo | 56.2 | 192 | 3 | **5.2x faster** |
-| regengo (reuse) | 21.0 | 0 | 0 | **13.9x faster** |
+| stdlib | 98.5 | 128 | 2 | - |
+| regengo | 18.9 | 64 | 1 | **5.2x faster** |
+| regengo (reuse) | 7.4 | 0 | 0 | **13.3x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 508.1 | 1111 | 9 | - |
-| regengo | 89.8 | 216 | 6 | **5.7x faster** |
-| regengo (reuse) | 24.7 | 0 | 0 | **20.6x faster** |
+| stdlib | 169.1 | 369 | 3 | - |
+| regengo | 28.9 | 72 | 2 | **5.9x faster** |
+| regengo (reuse) | 8.4 | 0 | 0 | **20.1x faster** |
 
 ### EmailCapture
 
@@ -112,24 +112,24 @@ Email pattern with named capture groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 731.3 | 0 | 0 | - |
-| regengo | 175.1 | 0 | 0 | **4.2x faster** |
+| stdlib | 236.3 | 0 | 0 | - |
+| regengo | 64.0 | 0 | 0 | **3.7x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 862.6 | 384 | 6 | - |
-| regengo | 351.7 | 192 | 3 | **2.5x faster** |
-| regengo (reuse) | 318.9 | 0 | 0 | **2.7x faster** |
+| stdlib | 281.6 | 128 | 2 | - |
+| regengo | 125.8 | 64 | 1 | **2.2x faster** |
+| regengo (reuse) | 115.4 | 0 | 0 | **2.4x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1277.0 | 1108 | 9 | - |
-| regengo | 417.3 | 216 | 6 | **3.1x faster** |
-| regengo (reuse) | 356.3 | 0 | 0 | **3.6x faster** |
+| stdlib | 352.0 | 368 | 3 | - |
+| regengo | 148.5 | 72 | 2 | **2.4x faster** |
+| regengo (reuse) | 129.9 | 0 | 0 | **2.7x faster** |
 
 ### URLCapture
 
@@ -144,24 +144,24 @@ URL pattern with protocol, host, port, and path capture groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 763.6 | 0 | 0 | - |
-| regengo | 86.0 | 0 | 0 | **8.9x faster** |
+| stdlib | 238.2 | 0 | 0 | - |
+| regengo | 28.9 | 0 | 0 | **8.2x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 865.9 | 481 | 6 | - |
-| regengo | 339.5 | 240 | 3 | **2.6x faster** |
-| regengo (reuse) | 304.2 | 0 | 0 | **2.8x faster** |
+| stdlib | 279.6 | 160 | 2 | - |
+| regengo | 107.4 | 80 | 1 | **2.6x faster** |
+| regengo (reuse) | 95.2 | 0 | 0 | **2.9x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1055.0 | 1205 | 9 | - |
-| regengo | 398.8 | 264 | 6 | **2.6x faster** |
-| regengo (reuse) | 350.3 | 240 | 3 | **3.0x faster** |
+| stdlib | 345.3 | 401 | 3 | - |
+| regengo | 130.9 | 88 | 2 | **2.6x faster** |
+| regengo (reuse) | 121.8 | 80 | 1 | **2.8x faster** |
 
 ## FindAll Patterns
 
@@ -180,24 +180,24 @@ Find multiple dates in text
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 611.0 | 0 | 0 | - |
-| regengo | 43.2 | 0 | 0 | **14.2x faster** |
+| stdlib | 124.0 | 0 | 0 | - |
+| regengo | 7.5 | 0 | 0 | **16.6x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 807.4 | 513 | 8 | - |
-| regengo | 125.6 | 256 | 4 | **6.4x faster** |
-| regengo (reuse) | 91.1 | 64 | 1 | **8.9x faster** |
+| stdlib | 167.1 | 102 | 1 | - |
+| regengo | 26.5 | 51 | 0 | **6.3x faster** |
+| regengo (reuse) | 17.0 | 0 | 0 | **9.9x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1315.0 | 1477 | 12 | - |
-| regengo | 203.8 | 288 | 8 | **6.5x faster** |
-| regengo (reuse) | 125.6 | 0 | 0 | **10.5x faster** |
+| stdlib | 272.8 | 295 | 2 | - |
+| regengo | 44.8 | 57 | 1 | **6.1x faster** |
+| regengo (reuse) | 27.5 | 0 | 0 | **9.9x faster** |
 
 ### MultiEmail
 
@@ -212,24 +212,24 @@ Find multiple email addresses in text
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1465.0 | 0 | 0 | - |
-| regengo | 256.7 | 0 | 0 | **5.7x faster** |
+| stdlib | 281.9 | 0 | 0 | - |
+| regengo | 57.2 | 0 | 0 | **4.9x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1991.0 | 513 | 8 | - |
-| regengo | 712.5 | 256 | 4 | **2.8x faster** |
-| regengo (reuse) | 690.9 | 64 | 1 | **2.9x faster** |
+| stdlib | 395.8 | 102 | 1 | - |
+| regengo | 154.1 | 51 | 0 | **2.6x faster** |
+| regengo (reuse) | 143.9 | 0 | 0 | **2.7x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 2880.0 | 1604 | 14 | - |
-| regengo | 1330.0 | 368 | 10 | **2.2x faster** |
-| regengo (reuse) | 1247.0 | 0 | 0 | **2.3x faster** |
+| stdlib | 573.9 | 321 | 2 | - |
+| regengo | 289.6 | 73 | 2 | **2.0x faster** |
+| regengo (reuse) | 268.2 | 0 | 0 | **2.1x faster** |
 
 ## TDFA Patterns (Catastrophic Backtracking Prevention)
 
@@ -248,24 +248,24 @@ Complex URL with optional components
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1543.0 | 0 | 0 | - |
-| regengo | 135.0 | 0 | 0 | **11.4x faster** |
+| stdlib | 478.9 | 0 | 0 | - |
+| regengo | 43.5 | 0 | 0 | **11.0x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1755.0 | 866 | 6 | - |
-| regengo | 766.1 | 432 | 3 | **2.3x faster** |
-| regengo (reuse) | 715.9 | 0 | 0 | **2.5x faster** |
+| stdlib | 571.3 | 288 | 2 | - |
+| regengo | 260.4 | 144 | 1 | **2.2x faster** |
+| regengo (reuse) | 243.6 | 0 | 0 | **2.3x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1950.0 | 1589 | 9 | - |
-| regengo | 794.2 | 456 | 6 | **2.5x faster** |
-| regengo (reuse) | 717.1 | 0 | 0 | **2.7x faster** |
+| stdlib | 635.1 | 529 | 3 | - |
+| regengo | 273.7 | 152 | 2 | **2.3x faster** |
+| regengo (reuse) | 245.9 | 0 | 0 | **2.6x faster** |
 
 ### TDFALogParser
 
@@ -280,24 +280,24 @@ Log line parser with multiple optional groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 963.4 | 0 | 0 | - |
-| regengo | 114.7 | 0 | 0 | **8.4x faster** |
+| stdlib | 311.2 | 0 | 0 | - |
+| regengo | 40.4 | 0 | 0 | **7.7x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1114.0 | 577 | 6 | - |
-| regengo | 331.2 | 288 | 3 | **3.4x faster** |
-| regengo (reuse) | 304.4 | 0 | 0 | **3.7x faster** |
+| stdlib | 357.7 | 192 | 2 | - |
+| regengo | 113.5 | 96 | 1 | **3.2x faster** |
+| regengo (reuse) | 105.2 | 0 | 0 | **3.4x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1322.0 | 1300 | 9 | - |
-| regengo | 364.1 | 312 | 6 | **3.6x faster** |
-| regengo (reuse) | 311.7 | 0 | 0 | **4.2x faster** |
+| stdlib | 431.5 | 433 | 3 | - |
+| regengo | 124.3 | 104 | 2 | **3.5x faster** |
+| regengo (reuse) | 106.9 | 0 | 0 | **4.0x faster** |
 
 ### TDFANestedWord
 
@@ -312,24 +312,24 @@ Nested quantifiers with word boundaries
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1758.0 | 0 | 0 | - |
-| regengo | 289.9 | 0 | 0 | **6.1x faster** |
+| stdlib | 555.5 | 0 | 0 | - |
+| regengo | 92.6 | 0 | 0 | **6.0x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1942.0 | 336 | 6 | - |
-| regengo | 1157.0 | 144 | 3 | **1.7x faster** |
-| regengo (reuse) | 1128.0 | 0 | 0 | **1.7x faster** |
+| stdlib | 621.6 | 112 | 2 | - |
+| regengo | 397.1 | 48 | 1 | **1.6x faster** |
+| regengo (reuse) | 387.7 | 0 | 0 | **1.6x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 2127.0 | 1011 | 9 | - |
-| regengo | 1382.0 | 168 | 6 | **1.5x faster** |
-| regengo (reuse) | 1326.0 | 0 | 0 | **1.6x faster** |
+| stdlib | 691.0 | 336 | 3 | - |
+| regengo | 480.4 | 56 | 2 | **1.4x faster** |
+| regengo (reuse) | 459.5 | 0 | 0 | **1.5x faster** |
 
 ### TDFAPathological
 
@@ -344,26 +344,24 @@ Classic (a+)+b pattern - O(2^n) without TDFA, O(n) with TDFA
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1660.0 | 0 | 0 | - |
-| regengo | 476.5 | 0 | 0 | **3.5x faster** |
+| stdlib | 395.5 | 0 | 0 | - |
+| regengo | 111.1 | 0 | 0 | **3.6x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1849.0 | 336 | 6 | - |
-| regengo | 3999.0 | 144 | 3 | **2.2x slower** |
-| regengo (reuse) | 3231.0 | 48 | 1 | **1.7x slower** |
-
-> **Note:** For FindString on this pathological pattern, regengo's TDFA memoization adds overhead when tracking capture group positions. This is a known tradeoff — memoization prevents exponential O(2^n) blowup on matching inputs but adds constant overhead. MatchString (which doesn't track captures) is 3.5x faster. See [Analysis](analysis.md#where-regengo-may-be-slower) for details.
+| stdlib | 472.6 | 84 | 1 | - |
+| regengo | 883.4 | 36 | 0 | **1.9x slower** |
+| regengo (reuse) | 874.1 | 0 | 0 | **1.8x slower** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 2023.0 | 1010 | 9 | - |
-| regengo | 1169.0 | 168 | 6 | **1.7x faster** |
-| regengo (reuse) | 1101.0 | 0 | 0 | **1.8x faster** |
+| stdlib | 517.1 | 252 | 2 | - |
+| regengo | 315.3 | 42 | 1 | **1.6x faster** |
+| regengo (reuse) | 302.3 | 0 | 0 | **1.7x faster** |
 
 ### TDFASemVer
 
@@ -378,24 +376,24 @@ Semantic version with optional pre-release and build metadata
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 642.4 | 0 | 0 | - |
-| regengo | 48.9 | 0 | 0 | **13.1x faster** |
+| stdlib | 158.7 | 0 | 0 | - |
+| regengo | 12.9 | 0 | 0 | **12.3x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 811.2 | 770 | 8 | - |
-| regengo | 285.4 | 384 | 4 | **2.8x faster** |
-| regengo (reuse) | 221.3 | 0 | 0 | **3.7x faster** |
+| stdlib | 204.6 | 192 | 2 | - |
+| regengo | 66.9 | 96 | 1 | **3.1x faster** |
+| regengo (reuse) | 53.2 | 0 | 0 | **3.8x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1101.0 | 1737 | 12 | - |
-| regengo | 325.9 | 416 | 8 | **3.4x faster** |
-| regengo (reuse) | 289.1 | 384 | 4 | **3.8x faster** |
+| stdlib | 278.8 | 433 | 3 | - |
+| regengo | 79.4 | 104 | 2 | **3.5x faster** |
+| regengo (reuse) | 68.8 | 96 | 1 | **4.1x faster** |
 
 ## TNFA Patterns (Thompson NFA with Memoization)
 
@@ -414,24 +412,24 @@ Pathological pattern forced to use TNFA with memoization
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 388.7 | 0 | 0 | - |
-| regengo | 42.0 | 0 | 0 | **9.3x faster** |
+| stdlib | 195.8 | 0 | 0 | - |
+| regengo | 21.8 | 0 | 0 | **9.0x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 454.3 | 224 | 4 | - |
-| regengo | 260.0 | 96 | 2 | **1.7x faster** |
-| regengo (reuse) | 243.8 | 0 | 0 | **1.9x faster** |
+| stdlib | 232.9 | 112 | 2 | - |
+| regengo | 139.7 | 48 | 1 | **1.7x faster** |
+| regengo (reuse) | 132.4 | 0 | 0 | **1.8x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 578.7 | 675 | 6 | - |
-| regengo | 315.2 | 112 | 4 | **1.8x faster** |
-| regengo (reuse) | 272.6 | 0 | 0 | **2.1x faster** |
+| stdlib | 291.1 | 337 | 3 | - |
+| regengo | 167.1 | 56 | 2 | **1.7x faster** |
+| regengo (reuse) | 148.2 | 0 | 0 | **2.0x faster** |
 
 ## Replace Patterns
 
@@ -450,51 +448,51 @@ Date format conversion using capture groups
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 365.2 | 0 | 0 | - |
-| regengo | 21.0 | 0 | 0 | **17.4x faster** |
+| stdlib | 129.2 | 0 | 0 | - |
+| regengo | 7.0 | 0 | 0 | **18.4x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 512.6 | 385 | 6 | - |
-| regengo | 76.9 | 192 | 3 | **6.7x faster** |
-| regengo (reuse) | 43.3 | 0 | 0 | **11.8x faster** |
+| stdlib | 176.1 | 128 | 2 | - |
+| regengo | 26.6 | 64 | 1 | **6.6x faster** |
+| regengo (reuse) | 15.4 | 0 | 0 | **11.4x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 14128.0 | 21650 | 213 | - |
-| regengo | 2410.0 | 8792 | 114 | **5.9x faster** |
-| regengo (reuse) | 850.0 | 0 | 0 | **16.6x faster** |
+| stdlib | 4841.1 | 7212 | 71 | - |
+| regengo | 870.7 | 2930 | 38 | **5.6x faster** |
+| regengo (reuse) | 326.7 | 0 | 0 | **14.8x faster** |
 
 **Replace `$month/$day/$year`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 18610.0 | 11332 | 123 | - |
-| regengo | 3729.0 | 5728 | 29 | **5.0x faster** |
-| regengo (precompiled) | 2945.0 | 3424 | 14 | **6.3x faster** |
-| regengo (reuse) | 2097.0 | 1208 | 3 | **8.9x faster** |
+| stdlib | 6047.8 | 3771 | 41 | - |
+| regengo | 1333.3 | 1909 | 9 | **4.5x faster** |
+| regengo (precompiled) | 898.7 | 1141 | 4 | **6.7x faster** |
+| regengo (reuse) | 688.4 | 0 | 0 | **8.8x faster** |
 
 **Replace `[DATE]`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 10837.0 | 2789 | 18 | - |
-| regengo | 2099.0 | 2272 | 18 | **5.2x faster** |
-| regengo (precompiled) | 1827.0 | 1984 | 12 | **5.9x faster** |
-| regengo (reuse) | 1660.0 | 1208 | 3 | **6.5x faster** |
+| stdlib | 3657.6 | 927 | 6 | - |
+| regengo | 729.5 | 757 | 6 | **5.0x faster** |
+| regengo (precompiled) | 664.2 | 661 | 4 | **5.5x faster** |
+| regengo (reuse) | 550.5 | 0 | 0 | **6.6x faster** |
 
 **Replace `$year`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 13757.0 | 8305 | 120 | - |
-| regengo | 2047.0 | 1376 | 17 | **6.7x faster** |
-| regengo (precompiled) | 1845.0 | 1088 | 11 | **7.5x faster** |
-| regengo (reuse) | 1761.0 | 1208 | 3 | **7.8x faster** |
+| stdlib | 4747.3 | 2764 | 40 | - |
+| regengo | 729.2 | 458 | 5 | **6.5x faster** |
+| regengo (precompiled) | 648.9 | 362 | 3 | **7.3x faster** |
+| regengo (reuse) | 584.7 | 0 | 0 | **8.1x faster** |
 
 ### ReplaceEmail
 
@@ -509,51 +507,51 @@ Email replacement with capture group references
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1174.0 | 0 | 0 | - |
-| regengo | 206.6 | 0 | 0 | **5.7x faster** |
+| stdlib | 223.6 | 0 | 0 | - |
+| regengo | 45.6 | 0 | 0 | **4.9x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1516.0 | 641 | 10 | - |
-| regengo | 611.3 | 320 | 5 | **2.5x faster** |
-| regengo (reuse) | 564.2 | 0 | 0 | **2.7x faster** |
+| stdlib | 308.1 | 128 | 2 | - |
+| regengo | 131.6 | 64 | 1 | **2.3x faster** |
+| regengo (reuse) | 120.8 | 0 | 0 | **2.6x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 15082.0 | 11700 | 116 | - |
-| regengo | 5930.0 | 4508 | 65 | **2.5x faster** |
-| regengo (reuse) | 5129.0 | 0 | 0 | **2.9x faster** |
+| stdlib | 3183.9 | 2338 | 23 | - |
+| regengo | 1278.0 | 901 | 13 | **2.5x faster** |
+| regengo (reuse) | 1129.0 | 0 | 0 | **2.8x faster** |
 
 **Replace `$user@REDACTED.$tld`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 16603.0 | 8282 | 84 | - |
-| regengo | 6921.0 | 5496 | 40 | **2.4x faster** |
-| regengo (precompiled) | 6199.0 | 3573 | 20 | **2.7x faster** |
-| regengo (reuse) | 5901.0 | 1001 | 5 | **2.8x faster** |
+| stdlib | 3427.3 | 1652 | 16 | - |
+| regengo | 1452.6 | 1098 | 8 | **2.4x faster** |
+| regengo (precompiled) | 1326.6 | 714 | 4 | **2.6x faster** |
+| regengo (reuse) | 1253.7 | 0 | 0 | **2.7x faster** |
 
 **Replace `[EMAIL]`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 12751.0 | 1742 | 25 | - |
-| regengo | 6097.0 | 1642 | 25 | **2.1x faster** |
-| regengo (precompiled) | 5871.0 | 1161 | 15 | **2.2x faster** |
-| regengo (reuse) | 5790.0 | 1001 | 5 | **2.2x faster** |
+| stdlib | 2547.9 | 347 | 5 | - |
+| regengo | 1284.3 | 328 | 5 | **2.0x faster** |
+| regengo (precompiled) | 1247.4 | 232 | 3 | **2.0x faster** |
+| regengo (reuse) | 1224.3 | 0 | 0 | **2.1x faster** |
 
 **Replace `$0`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 15151.0 | 6648 | 79 | - |
-| regengo | 6140.0 | 2579 | 25 | **2.5x faster** |
-| regengo (precompiled) | 6060.0 | 2099 | 15 | **2.5x faster** |
-| regengo (reuse) | 5844.0 | 1001 | 5 | **2.6x faster** |
+| stdlib | 3139.5 | 1328 | 15 | - |
+| regengo | 1293.8 | 515 | 5 | **2.4x faster** |
+| regengo (precompiled) | 1261.2 | 419 | 3 | **2.5x faster** |
+| regengo (reuse) | 1229.6 | 0 | 0 | **2.6x faster** |
 
 ### ReplaceURL
 
@@ -568,51 +566,51 @@ URL redaction with selective capture group output
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 576.4 | 0 | 0 | - |
-| regengo | 170.9 | 0 | 0 | **3.4x faster** |
+| stdlib | 184.0 | 0 | 0 | - |
+| regengo | 54.3 | 0 | 0 | **3.4x faster** |
 
 **FindString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 688.0 | 481 | 6 | - |
-| regengo | 257.8 | 240 | 3 | **2.7x faster** |
-| regengo (reuse) | 215.8 | 0 | 0 | **3.2x faster** |
+| stdlib | 225.1 | 160 | 2 | - |
+| regengo | 82.4 | 80 | 1 | **2.7x faster** |
+| regengo (reuse) | 70.9 | 0 | 0 | **3.2x faster** |
 
 **FindAllString:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1504.0 | 1846 | 17 | - |
-| regengo | 659.4 | 936 | 16 | **2.3x faster** |
-| regengo (reuse) | 569.7 | 800 | 10 | **2.6x faster** |
+| stdlib | 500.3 | 615 | 5 | - |
+| regengo | 210.9 | 312 | 5 | **2.4x faster** |
+| regengo (reuse) | 183.8 | 266 | 3 | **2.7x faster** |
 
 **Replace `$protocol://$host[REDACTED]`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1925.0 | 1327 | 26 | - |
-| regengo | 1086.0 | 1640 | 25 | **1.8x faster** |
-| regengo (precompiled) | 689.2 | 488 | 13 | **2.8x faster** |
-| regengo (reuse) | 544.6 | 176 | 3 | **3.5x faster** |
+| stdlib | 617.9 | 441 | 8 | - |
+| regengo | 350.2 | 546 | 8 | **1.8x faster** |
+| regengo (precompiled) | 211.7 | 162 | 4 | **2.9x faster** |
+| regengo (reuse) | 162.9 | 0 | 0 | **3.8x faster** |
 
 **Replace `[URL]`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1359.0 | 338 | 15 | - |
-| regengo | 724.7 | 488 | 15 | **1.9x faster** |
-| regengo (precompiled) | 601.4 | 200 | 9 | **2.3x faster** |
-| regengo (reuse) | 532.4 | 176 | 3 | **2.6x faster** |
+| stdlib | 446.0 | 112 | 5 | - |
+| regengo | 223.5 | 162 | 5 | **2.0x faster** |
+| regengo (precompiled) | 189.2 | 66 | 3 | **2.4x faster** |
+| regengo (reuse) | 154.6 | 0 | 0 | **2.9x faster** |
 
 **Replace `$host`:**
 
 | Variant | ns/op | B/op | allocs/op | vs stdlib |
 |---------|------:|-----:|----------:|----------:|
-| stdlib | 1689.0 | 932 | 22 | - |
-| regengo | 766.3 | 512 | 15 | **2.2x faster** |
-| regengo (precompiled) | 620.3 | 224 | 9 | **2.7x faster** |
-| regengo (reuse) | 534.2 | 176 | 3 | **3.2x faster** |
+| stdlib | 532.3 | 310 | 7 | - |
+| regengo | 232.4 | 170 | 5 | **2.3x faster** |
+| regengo (precompiled) | 191.8 | 74 | 3 | **2.8x faster** |
+| regengo (reuse) | 155.8 | 0 | 0 | **3.4x faster** |
 
 ---
 
@@ -643,7 +641,7 @@ go test ./benchmarks/curated/... -bench="Match" -benchmem
 go test ./benchmarks/curated/... -bench="regengo_reuse" -benchmem
 
 # Run specific input
-go test ./benchmarks/curated/... -bench="Input\[0\]" -benchmem
+go test ./benchmarks/curated/... -bench="Input\\[0\\]" -benchmem
 ```
 
 ### Aggregating Results
@@ -653,12 +651,6 @@ Use the aggregation script for summary statistics across all inputs:
 ```bash
 # Aggregate results for a pattern
 go test ./benchmarks/curated/... -bench="BenchmarkDateCapture" -benchmem | go run scripts/curated/aggregate.go
-
-# Example output:
-# Pattern: DateCapture
-#   Category: Match
-#     stdlib:            avg=   73.86 ns  min=   73.15  max=   74.28  allocs=0
-#     regengo:           avg=    3.91 ns  min=    3.86  max=    4.01  allocs=0  (18.9x faster)
 ```
 
 ### Make Targets

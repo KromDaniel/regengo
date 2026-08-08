@@ -20,7 +20,8 @@ func (Date) FindReader(
 func (Date) FindReaderCount(r io.Reader, cfg stream.Config) (int64, error)
 
 // FindReaderFirst returns the first match found, or nil if no match.
-// The int64 return is the stream offset of the match (-1 if no match).
+// The int64 return is the stream offset of the match; it is only
+// meaningful when the result is non-nil (it stays 0 if no match).
 func (Date) FindReaderFirst(r io.Reader, cfg stream.Config) (*DateBytesResult, int64, error)
 
 // MatchLengthInfo returns the minimum and maximum match lengths for the pattern.

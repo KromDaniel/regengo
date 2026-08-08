@@ -11,7 +11,8 @@ Regengo fully supports Unicode character classes and multibyte UTF-8 patterns.
 | `[α-ω]` | Unicode range | `αβγ` |
 | `[\p{L}\p{N}]` | Letters and numbers | `abc123日本` |
 | `\p{Sc}` | Currency symbols | `$`, `€`, `¥` |
-| `\p{Emoji}` | Emoji characters | `😀`, `🎉` |
+
+> **Note:** Only the Unicode classes supported by Go's `regexp/syntax` are available (general categories and scripts). Properties like `\p{Emoji}` are not supported and will fail to compile, matching stdlib behavior.
 
 ## Performance Characteristics
 
@@ -77,14 +78,18 @@ pattern := `[a-zA-Zα-ωА-я]+`
 
 ## Word Boundaries
 
-The `\b` word boundary works correctly with Unicode:
+The `\b` word boundary is **ASCII-only**, matching Go's stdlib `regexp` behavior: a "word character" for `\b` is `[0-9A-Za-z_]`. Non-ASCII letters are treated as non-word characters, which can be surprising:
 
 ```go
 pattern := `\b\p{L}+\b`
 
-// Matches: "café" in "I love café culture"
-// Matches: "日本語" in "日本語 is Japanese"
+// "I love café culture" - first match is "I"; "café" alone would match only "caf"
+//                         (é is not an ASCII word character, so the boundary falls before it)
+// "日本語 is Japanese"   - "日本語" does NOT match (no ASCII word characters, so no \b boundary);
+//                         first match is "is"
 ```
+
+If you need to delimit Unicode words, prefer explicit anchors or negated classes (e.g., `(?:^|[^\p{L}])`) instead of `\b`.
 
 ## Case Sensitivity
 

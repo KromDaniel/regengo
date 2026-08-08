@@ -28,7 +28,7 @@ func (DFACatastrophic) MatchLengthInfo() (minLen, maxLen int) {
 }
 
 // DFA transition table [state][char] -> next state (-1 = no transition)
-var dfaTransitionsDFACatastrophic = [3][128]int8{{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}}
+var dfaTransitionsDFACatastrophic = [3][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 
 // DFA accept states array
 var dfaAcceptStatesDFACatastrophic = [3]bool{false, false, true}
@@ -38,93 +38,51 @@ var dfaAcceptStatesEOTDFACatastrophic = [3]bool{false, false, true}
 
 func (DFACatastrophic) MatchString(input string) bool {
 	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesDFACatastrophic[state] {
+		return true
+	}
 
-	// Try each start position (O(n²) worst case for unanchored patterns)
-	for start := 0; start <= inputLen; start++ {
-		var state int
-		if start == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
 			state = 0
-		} else {
-			state = 0
+			continue
 		}
-
-		// Check if start state accepts (empty match)
+		state = int(dfaTransitionsDFACatastrophic[state][c])
 		if dfaAcceptStatesDFACatastrophic[state] {
 			return true
 		}
-		// Check EOT acceptance at empty position
-		if start == inputLen && dfaAcceptStatesEOTDFACatastrophic[state] {
-			return true
-		}
-
-		// Process input characters
-		for i := start; i < inputLen; i++ {
-			c := input[i]
-			if c >= 128 {
-				break
-			}
-
-			nextState := dfaTransitionsDFACatastrophic[state][c]
-			if nextState < 0 {
-				break
-			}
-
-			state = int(nextState)
-			if dfaAcceptStatesDFACatastrophic[state] {
-				return true
-			}
-			// Check EOT acceptance at last character
-			if i == inputLen-1 && dfaAcceptStatesEOTDFACatastrophic[state] {
-				return true
-			}
-		}
 	}
-	return false
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTDFACatastrophic[state]
 }
 func (DFACatastrophic) MatchBytes(input []byte) bool {
 	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesDFACatastrophic[state] {
+		return true
+	}
 
-	// Try each start position (O(n²) worst case for unanchored patterns)
-	for start := 0; start <= inputLen; start++ {
-		var state int
-		if start == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
 			state = 0
-		} else {
-			state = 0
+			continue
 		}
-
-		// Check if start state accepts (empty match)
+		state = int(dfaTransitionsDFACatastrophic[state][c])
 		if dfaAcceptStatesDFACatastrophic[state] {
 			return true
 		}
-		// Check EOT acceptance at empty position
-		if start == inputLen && dfaAcceptStatesEOTDFACatastrophic[state] {
-			return true
-		}
-
-		// Process input characters
-		for i := start; i < inputLen; i++ {
-			c := input[i]
-			if c >= 128 {
-				break
-			}
-
-			nextState := dfaTransitionsDFACatastrophic[state][c]
-			if nextState < 0 {
-				break
-			}
-
-			state = int(nextState)
-			if dfaAcceptStatesDFACatastrophic[state] {
-				return true
-			}
-			// Check EOT acceptance at last character
-			if i == inputLen-1 && dfaAcceptStatesEOTDFACatastrophic[state] {
-				return true
-			}
-		}
 	}
-	return false
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTDFACatastrophic[state]
 }
 
 // Note: This pattern contains capture groups in repeating/optional context.

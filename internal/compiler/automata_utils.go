@@ -199,3 +199,24 @@ func ComputeNextStates(prog *syntax.Prog, stateIDs []int, c byte, matchFlags syn
 	// Compute epsilon closure of next states
 	return EpsilonClosure(prog, nextStates, matchFlags)
 }
+
+// UnionNFASets returns the union of two NFA state sets.
+// Order is preserved: all of a first, then elements of b not already present.
+// Used by the pure DFA to embed unanchored restart threads in every state.
+func UnionNFASets(a, b []int) []int {
+	seen := make(map[int]bool, len(a)+len(b))
+	result := make([]int, 0, len(a)+len(b))
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+	for _, s := range b {
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+	return result
+}

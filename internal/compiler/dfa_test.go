@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"regexp"
 	"regexp/syntax"
 	"testing"
 )
@@ -318,6 +319,84 @@ func TestDFAGenerator_GetOptimalIntType(t *testing.T) {
 			gotType := gen.getOptimalIntType()
 			if gotType != tt.wantType {
 				t.Errorf("getOptimalIntType() for %d states = %q, want %q", tt.numStates, gotType, tt.wantType)
+			}
+		})
+	}
+}
+
+// simulateSinglePassMatch mirrors the generated single-pass MatchString loop:
+// one scan over the input, restart threads embedded in the states (unanchored)
+// or early exit on dead transition (anchored).
+func simulateSinglePassMatch(g *DFAGenerator, input string) bool {
+	state := g.startStateBegin
+	if g.acceptStates[state] {
+		return true
+	}
+	for i := 0; i < len(input); i++ {
+		c := input[i]
+		if c >= MaxASCIIRune {
+			if !g.unanchored {
+				return false
+			}
+			state = g.startStateAny
+			continue
+		}
+		next, ok := g.transitions[state][c]
+		if !ok {
+			if !g.unanchored {
+				return false
+			}
+			// Dense-table default: missing entry collapses to the restart state.
+			next = g.startStateAny
+		}
+		state = next
+		if g.acceptStates[state] {
+			return true
+		}
+	}
+	return g.acceptStatesEOT[state]
+}
+
+func TestDFASinglePassMatchesStdlib(t *testing.T) {
+	tests := []struct {
+		pattern string
+		inputs  []string
+	}{
+		// Overlapping-prefix patterns: the cases the old per-start restart loop
+		// handled but a naive single pass without union construction gets wrong.
+		{"aab", []string{"aaab", "aab", "ab", "aaaab", "aaxaab", ""}},
+		{"abc", []string{"abc", "zzabc", "abczz", "zzabczz", "ab", "ababc", ""}},
+		{"(ab)+", []string{"ab", "xxabxx", "aabab", "a", "ba", ""}},
+		{"cat|dog|fish", []string{"cat", "a dog!", "goldfish", "cca t", "cdfish", ""}},
+		{"[a-z]+", []string{"HELLO", "HELLOworld", "123", "", "99bottles"}},
+		{"a+b", []string{"aaab", "b", "xab", "aaa", "aaxab", ""}},
+		// Anchors.
+		{"^hello", []string{"hello", "hello world", "say hello", "", "hhello"}},
+		{"world$", []string{"world", "hello world", "world tour", "worlworld", ""}},
+		{"^exact$", []string{"exact", "not exact", "exactness", "", "exact "}},
+		{"^foo|bar", []string{"foo", "xfoo", "xbar", "bar", "xfoobar", ""}},
+		{"a$|b", []string{"xa", "ab", "ax", "b", "", "ba"}},
+		// Empty-match patterns.
+		{"a*", []string{"", "aaa", "bbb"}},
+		// Non-ASCII input bytes (pattern itself is ASCII-only).
+		{"abc", []string{"日本abc", "ab日本c", "abc日本", "日本"}},
+		{"^hi", []string{"日hi", "hi日", "日本"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern, func(t *testing.T) {
+			re := regexp.MustCompile(tt.pattern)
+			gen := newTestDFAGenerator(t, tt.pattern)
+			canUse, info := gen.CanUseDFA()
+			if !canUse {
+				t.Fatalf("CanUseDFA() = false for %q: %s", tt.pattern, info)
+			}
+			for _, input := range tt.inputs {
+				want := re.MatchString(input)
+				got := simulateSinglePassMatch(gen, input)
+				if got != want {
+					t.Errorf("pattern %q input %q: single-pass = %v, stdlib = %v", tt.pattern, input, got, want)
+				}
 			}
 		})
 	}
