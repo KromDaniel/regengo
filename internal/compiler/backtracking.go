@@ -5,63 +5,120 @@ import (
 	"github.com/dave/jennifer/jen"
 )
 
-// generateBacktracking generates the backtracking logic.
-func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes bool) []jen.Code {
-	retryBlock := []jen.Code{}
-	// Optimization: If anchored, we don't retry at next offset
-	if !c.isAnchored {
-		if hasPrefix {
-			var indexCall *jen.Statement
-			if isBytes {
-				indexCall = jen.Qual("bytes", "IndexByte").Call(
-					jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-					jen.Lit(byte(prefix)),
-				)
-			} else {
-				indexCall = jen.Qual("strings", "IndexByte").Call(
-					jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-					jen.Lit(byte(prefix)),
-				)
-			}
+// retryOpts configures generateRetryBlock.
+type retryOpts struct {
+	withCaptures      bool // Find: reset captures and set captures[0] = attemptStart
+	clearCaptureStack bool // Find with array checkpointing: captureStack = captureStack[:0]
+	hasPrefix         bool // Match only: skip to the next required prefix byte with IndexByte
+	prefix            byte
+	isBytes           bool
+}
 
-			retryBlock = append(retryBlock,
-				jen.Id(codegen.OffsetName).Op("++"),
-				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-					jen.Id("idx").Op(":=").Add(indexCall),
-					jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
-					jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
-					// Clear visited bit-vector if memoization is used
-					func() jen.Code {
-						if c.useMemoization {
-							return jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
-								jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
-							)
-						}
-						return jen.Null()
-					}(),
-					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-					jen.Goto().Id(codegen.StepSelectName),
-				),
-			)
-		} else {
-			retryBlock = append(retryBlock,
-				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-					jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-					jen.Id(codegen.OffsetName).Op("++"),
-					// Clear visited bit-vector if memoization is used
-					func() jen.Code {
-						if c.useMemoization {
-							return jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
-								jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
-							)
-						}
-						return jen.Null()
-					}(),
-					jen.Goto().Id(codegen.StepSelectName),
-				),
+// attemptStartInit returns the declaration of attemptStart (the start offset of
+// the current unanchored match attempt). Anchored programs never retry, so they
+// get no declaration (Go rejects unused variables).
+func (c *Compiler) attemptStartInit() []jen.Code {
+	if c.isAnchored {
+		return nil
+	}
+	return []jen.Code{
+		jen.Id(codegen.AttemptStartName).Op(":=").Id(codegen.OffsetName),
+	}
+}
+
+// generateAdvanceRune emits code that advances variable v by one UTF-8 rune
+// (one byte for ASCII). The caller guarantees v < l.
+func (c *Compiler) generateAdvanceRune(v string, isBytes bool) jen.Code {
+	decode := "DecodeRuneInString"
+	if isBytes {
+		decode = "DecodeRune"
+	}
+	return jen.If(jen.Id(codegen.InputName).Index(jen.Id(v)).Op("<").Qual("unicode/utf8", "RuneSelf")).Block(
+		jen.Id(v).Op("++"),
+	).Else().Block(
+		jen.List(jen.Id("_"), jen.Id("attemptWidth")).Op(":=").Qual("unicode/utf8", decode).Call(
+			jen.Id(codegen.InputName).Index(jen.Id(v).Op(":")),
+		),
+		jen.Id(v).Op("+=").Id("attemptWidth"),
+	)
+}
+
+// generateRetryBlock emits the unanchored retry: the next attempt starts one
+// rune after attemptStart (or at the next prefix byte) instead of at the offset
+// where the last path died. It returns nil when the pattern is anchored. The
+// caller appends the failure return.
+func (c *Compiler) generateRetryBlock(o retryOpts) []jen.Code {
+	if c.isAnchored {
+		return nil
+	}
+	if o.withCaptures && o.hasPrefix {
+		panic("generateRetryBlock: prefix skipping is only supported for Match")
+	}
+
+	attempt := jen.Id(codegen.AttemptStartName)
+	clearVisited := func() jen.Code {
+		if c.useMemoization {
+			return jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
+				jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
 			)
 		}
+		return jen.Null()
 	}
+	start := jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start))
+	goStep := jen.Goto().Id(codegen.StepSelectName)
+
+	if o.hasPrefix {
+		pkg := "strings"
+		if o.isBytes {
+			pkg = "bytes"
+		}
+		indexCall := jen.Qual(pkg, "IndexByte").Call(
+			jen.Id(codegen.InputName).Index(attempt.Clone().Op(":")),
+			jen.Lit(o.prefix),
+		)
+		return []jen.Code{
+			attempt.Clone().Op("++"),
+			jen.If(attempt.Clone().Op("<").Id(codegen.InputLenName)).Block(
+				jen.Id("idx").Op(":=").Add(indexCall),
+				jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
+				attempt.Clone().Op("+=").Id("idx"),
+				jen.Id(codegen.OffsetName).Op("=").Add(attempt.Clone()),
+				clearVisited(),
+				start,
+				goStep,
+			),
+		}
+	}
+
+	block := []jen.Code{
+		c.generateAdvanceRune(codegen.AttemptStartName, o.isBytes),
+		jen.Id(codegen.OffsetName).Op("=").Add(attempt.Clone()),
+	}
+	if o.withCaptures {
+		block = append(block,
+			// Reset captures array for the new match attempt
+			jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
+				jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
+			),
+		)
+	}
+	if o.clearCaptureStack {
+		block = append(block, jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0)))
+	}
+	block = append(block, clearVisited())
+	if o.withCaptures {
+		block = append(block, jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Add(attempt.Clone()))
+	}
+	block = append(block, start, goStep)
+
+	return []jen.Code{
+		jen.If(attempt.Clone().Op("<").Id(codegen.InputLenName)).Block(block...),
+	}
+}
+
+// generateBacktracking generates the backtracking logic.
+func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes bool) []jen.Code {
+	retryBlock := c.generateRetryBlock(retryOpts{hasPrefix: hasPrefix, prefix: prefix, isBytes: isBytes})
 	retryBlock = append(retryBlock, jen.Return(jen.False()))
 
 	return []jen.Code{
@@ -80,43 +137,12 @@ func (c *Compiler) generateBacktracking(prefix byte, hasPrefix bool, isBytes boo
 // Supports two modes:
 // - Per-capture checkpointing (type=2): restores individual captures, loops until finding Alt backtrack
 // - Array checkpointing (type=1): restores entire capture array from checkpoint stack
-func (c *Compiler) generateBacktrackingWithCaptures() []jen.Code {
-	retryBlock := []jen.Code{}
-	// Optimization: If anchored, we don't retry at next offset
-	if !c.isAnchored {
-		var clearCaptureStack jen.Code
-		if c.usePerCaptureCheckpointing {
-			// Per-capture mode doesn't use captureStack
-			clearCaptureStack = jen.Null()
-		} else {
-			clearCaptureStack = jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Lit(0))
-		}
-
-		retryBlock = append(retryBlock,
-			jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-				jen.Id(codegen.OffsetName).Op("++"),
-				// Reset captures array for new match attempt
-				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
-					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
-				),
-				// Clear capture checkpoint stack (only for array mode)
-				clearCaptureStack,
-				// Clear visited bit-vector if memoization is used
-				func() jen.Code {
-					if c.useMemoization {
-						return jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
-							jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
-						)
-					}
-					return jen.Null()
-				}(),
-				// Set capture[0] to mark start of match attempt (after incrementing offset)
-				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-				jen.Goto().Id(codegen.StepSelectName),
-			),
-		)
-	}
+func (c *Compiler) generateBacktrackingWithCaptures(isBytes bool) []jen.Code {
+	retryBlock := c.generateRetryBlock(retryOpts{
+		withCaptures:      true,
+		clearCaptureStack: !c.usePerCaptureCheckpointing, // per-capture mode doesn't use captureStack
+		isBytes:           isBytes,
+	})
 	retryBlock = append(retryBlock, jen.Return(jen.Nil(), jen.False()))
 
 	// Per-capture checkpointing mode: loop to process capture restores (type=2)

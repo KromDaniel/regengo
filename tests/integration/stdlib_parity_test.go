@@ -136,6 +136,7 @@ var parityCases = []parityCase{
 		pattern: `^(a)`,
 		variants: []parityVariant{
 			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineBacktracking, markerBacktracking, markerBacktracking),
 			pv(engineTDFA, markerDFA, markerTDFA),
 		},
 		extra: []string{"aaa", "a"},
@@ -225,7 +226,25 @@ var parityCases = []parityCase{
 		name:     "dotXY",
 		pattern:  `x.y`,
 		variants: thompsonAndBacktracking(),
-		extra:    []string{"xéy", "xay"},
+		extra:    []string{"xéy", "xay", "x€y", "x😀y"},
+	},
+	{
+		name:     "dotSXY",
+		pattern:  `(?s)x.y`,
+		variants: []parityVariant{pv(engineBacktracking, markerBacktracking, markerBacktracking)},
+		extra:    []string{"xéy", "x\ny", "x€y", "x😀y"},
+	},
+	{
+		name:     "perCap",
+		pattern:  `a(b|c)?(d|e)?(f|g)?(h|i)?z`,
+		variants: []parityVariant{pv(engineDefault, markerDFA, markerBacktracking)},
+		extra:    []string{"aabz", "aaz", "az", "abaz"},
+	},
+	{
+		name:     "negE",
+		pattern:  `[^é]z`,
+		variants: []parityVariant{pv(engineDefault, markerBacktracking, markerBacktracking)},
+		extra:    []string{"éz", "aéz", "az"},
 	},
 	{
 		name:    "eAcute",
@@ -252,7 +271,7 @@ var parityCases = []parityCase{
 			pv(engineDefault, markerDFA, markerBacktracking),
 			pv(engineTDFA, markerDFA, markerTDFA),
 		},
-		extra: []string{"a@b.c", "x a@b.c y"},
+		extra: []string{"a@b.c", "x a@b.c y", ".@_@__._."},
 	},
 }
 
@@ -273,7 +292,6 @@ type divKey struct{ variant, method string }
 
 // Tags for knownDivergence entries. Each fix task owns the entries with its tag.
 const (
-	tagBug1      = "issue37-bug1 (Task B)" // restart from the failure offset (backtracking / no-Alt / TNFA)
 	tagBug2      = "issue37-bug2 (Task C)" // FindAll iteration (TDFA re-slicing, empty-match rules)
 	tagBug3      = "issue37-bug3 (Task D)" // Thompson Match: assertions and non-ASCII
 	tagUntriaged = "untriaged"
@@ -302,32 +320,12 @@ func buildKnownDivergence() map[divKey]string {
 		"FindAllBytes(n=-1)", "FindAllBytes(n=2)",
 	}
 	findAndAll := append(append([]string{}, find...), findAll...)
-	allMethods := append(append([]string{}, match...), findAndAll...)
-
-	// Task B: bug 1. The unanchored retry resumes from the offset where the last
-	// path died instead of the attempt start (backtracking and no-Alt Match,
-	// backtracking / no-Alt / TNFA Find).
-	for _, v := range []string{
-		"aWB/ForceBacktracking", "abCapE/default", "abE/default", "altAnch/ForceBacktracking",
-		"date/ForceBacktracking", "hex/ForceBacktracking", "hexE/default",
-	} {
-		known(m, tagBug1, v, match...)
-	}
-	for _, v := range []string{
-		"aWB/ForceBacktracking", "aWB/ForceThompson", "abCapE/default", "abE/default",
-		"abcDollar/ForceThompson", "altAnch/ForceBacktracking", "altAnch/ForceThompson",
-		"date/ForceBacktracking", "date/ForceTNFA", "date/default",
-		"hex/ForceBacktracking", "hex/ForceThompson", "hex/default",
-		"hexE/ForceThompson", "hexE/default",
-	} {
-		known(m, tagBug1, v, find...)
-	}
 
 	// Task C: bug 2. FindAll iteration: TDFA re-slicing (2a, 2b) and the
 	// empty-match rules (2c).
 	for _, v := range []string{
 		"aStar/default", "aStar/ForceTDFA", "digitsX/default", "digitsX/ForceTDFA",
-		"anchA/ForceTDFA", "semver/ForceTDFA",
+		"anchA/ForceTDFA", "semver/ForceTDFA", "email/ForceTDFA",
 	} {
 		known(m, tagBug2, v, findAll...)
 	}
@@ -341,13 +339,10 @@ func buildKnownDivergence() map[divKey]string {
 		known(m, tagBug3, v, match...)
 	}
 
-	// Untriaged: not one of the three bugs above.
-	//   - Backtracking '.' consumes one byte (x.y does not match "x\u00e9y"), so
-	//     Match/Find/FindAll fail on non-ASCII input in every backtracking path.
+	// Untriaged: not one of the bugs above.
 	//   - The TDFA Find engine is byte-based: non-ASCII literals never match and
 	//     classes like [^,] only see single bytes (eAcute, notComma Find*).
-	known(m, tagUntriaged, "dotXY/ForceBacktracking", allMethods...)
-	known(m, tagUntriaged, "dotXY/ForceThompson", findAndAll...)
+	//     Follow-up issue (TDFA byte-based Find, filed with bug 4).
 	for _, v := range []string{
 		"eAcute/ForceBacktracking", "eAcute/default",
 		"notComma/ForceBacktracking", "notComma/default",

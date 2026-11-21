@@ -294,7 +294,25 @@ func (c *Compiler) generateUnicodeRuneInst(label *jen.Statement, inst *syntax.In
 	return code, nil
 }
 
+// advanceOneRune emits code that advances offset by one full UTF-8 rune (one
+// byte for ASCII). The caller has already checked offset < l.
+func (c *Compiler) advanceOneRune() jen.Code {
+	decode := "DecodeRuneInString"
+	if c.generatingBytes {
+		decode = "DecodeRune"
+	}
+	return jen.If(jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("<").Qual("unicode/utf8", "RuneSelf")).Block(
+		jen.Id(codegen.OffsetName).Op("++"),
+	).Else().Block(
+		jen.List(jen.Id("_"), jen.Id("width")).Op(":=").Qual("unicode/utf8", decode).Call(
+			jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
+		),
+		jen.Id(codegen.OffsetName).Op("+=").Id("width"),
+	)
+}
+
 // generateRuneAnyInst generates code for InstRuneAny (match any character).
+// It consumes one full UTF-8 rune.
 func (c *Compiler) generateRuneAnyInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
 	return []jen.Code{
 		label,
@@ -302,13 +320,14 @@ func (c *Compiler) generateRuneAnyInst(label *jen.Statement, inst *syntax.Inst) 
 			jen.If(jen.Id(codegen.InputLenName).Op("<=").Id(codegen.OffsetName)).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
-			jen.Id(codegen.OffsetName).Op("++"),
+			c.advanceOneRune(),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
 	}, nil
 }
 
 // generateRuneAnyNotNLInst generates code for InstRuneAnyNotNL (match any character except newline).
+// It consumes one full UTF-8 rune.
 func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.Inst) ([]jen.Code, error) {
 	// Both string[i] and []byte[i] return byte in Go, so always use byte('\n')
 	newlineCheck := jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName)).Op("==").Lit(byte('\n'))
@@ -321,7 +340,7 @@ func (c *Compiler) generateRuneAnyNotNLInst(label *jen.Statement, inst *syntax.I
 			).Block(
 				jen.Goto().Id(codegen.TryFallbackName),
 			),
-			jen.Id(codegen.OffsetName).Op("++"),
+			c.advanceOneRune(),
 			jen.Goto().Id(codegen.InstructionName(inst.Out)),
 		),
 	}, nil

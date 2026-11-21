@@ -263,7 +263,7 @@ func (c *Compiler) generateFindAllBacktrackLogic() []jen.Code {
 	if !c.needsBacktracking {
 		return []jen.Code{
 			jen.Id(codegen.TryFallbackName).Op(":"),
-			jen.Id("searchStart").Op("++"),
+			c.generateAdvanceRune("searchStart", c.generatingBytes),
 			jen.Continue(),
 		}
 	}
@@ -291,7 +291,7 @@ func (c *Compiler) generatePerCaptureBacktrack() []jen.Code {
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Goto().Id(codegen.StepSelectName),
 		),
-		jen.Id("searchStart").Op("++"),
+		c.generateAdvanceRune("searchStart", c.generatingBytes),
 		jen.Continue(),
 	}
 }
@@ -314,7 +314,7 @@ func (c *Compiler) generateArrayCheckpointBacktrack() []jen.Code {
 			),
 			jen.Goto().Id(codegen.StepSelectName),
 		).Else().Block(
-			jen.Id("searchStart").Op("++"),
+			c.generateAdvanceRune("searchStart", c.generatingBytes),
 			jen.Continue(),
 		),
 	}
@@ -486,9 +486,14 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
 		// Initialize offset
 		jen.Id(codegen.OffsetName).Op(":=").Lit(0),
+	}
+	// Start offset of the current attempt; retries resume from here, not from
+	// the offset where the last path died.
+	code = append(code, c.attemptStartInit()...)
+	code = append(code,
 		// Initialize captures array (stack-allocated)
 		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
-	}
+	)
 
 	// Initialize capture checkpoint stack only if we have alternations and not using per-capture mode
 	// Per-capture mode saves captures on the main stack, not a separate captureStack
@@ -541,42 +546,13 @@ func (c *Compiler) generateFindReuseFunction(structName string, isBytes bool) ([
 	// Add backtracking logic (with nil return for captures)
 	// Only if backtracking is needed
 	if c.needsBacktracking {
-		code = append(code, c.generateBacktrackingWithCaptures()...)
+		code = append(code, c.generateBacktrackingWithCaptures(isBytes)...)
 	} else {
 		// For patterns without backtracking:
 		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
 
-		// If not anchored, we must retry at next offset
-		if !c.isAnchored {
-			retryBlock := []jen.Code{
-				jen.Id(codegen.OffsetName).Op("++"),
-				// Reset captures array for new match attempt
-				jen.For(jen.Id("i").Op(":=").Range().Id(codegen.CapturesName)).Block(
-					jen.Id(codegen.CapturesName).Index(jen.Id("i")).Op("=").Lit(0),
-				),
-			}
-
-			// Clear visited bit-vector if memoization is used
-			// Simple loop to zero out is faster than map delete
-			if c.useMemoization {
-				retryBlock = append(retryBlock,
-					jen.For(jen.Id("i").Op(":=").Range().Id(codegen.VisitedName)).Block(
-						jen.Id(codegen.VisitedName).Index(jen.Id("i")).Op("=").Lit(0),
-					),
-				)
-			}
-
-			retryBlock = append(retryBlock,
-				// Set capture[0] to mark start of match attempt
-				jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("=").Id(codegen.OffsetName),
-				jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-				jen.Goto().Id(codegen.StepSelectName),
-			)
-
-			fallback = append(fallback,
-				jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(retryBlock...),
-			)
-		}
+		// If not anchored, we must retry from the next attempt start
+		fallback = append(fallback, c.generateRetryBlock(retryOpts{withCaptures: true, isBytes: isBytes})...)
 
 		fallback = append(fallback, jen.Return(jen.Nil(), jen.False()))
 		code = append(code, fallback...)

@@ -881,6 +881,9 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 			jen.Id(codegen.OffsetName).Op(":=").Lit(0),
 		)
 	}
+	// Start offset of the current attempt; retries resume from here, not from
+	// the offset where the last path died.
+	code = append(code, c.attemptStartInit()...)
 
 	// Only add stack initialization if backtracking is needed
 	if c.needsBacktracking {
@@ -929,42 +932,8 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 		// For patterns without backtracking:
 		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
 
-		// If not anchored, we must retry at next offset
-		if !c.isAnchored {
-			if hasPrefix {
-				var indexCall *jen.Statement
-				if isBytes {
-					indexCall = jen.Qual("bytes", "IndexByte").Call(
-						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-						jen.Lit(byte(prefix)),
-					)
-				} else {
-					indexCall = jen.Qual("strings", "IndexByte").Call(
-						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-						jen.Lit(byte(prefix)),
-					)
-				}
-
-				fallback = append(fallback,
-					jen.Id(codegen.OffsetName).Op("++"),
-					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-						jen.Id("idx").Op(":=").Add(indexCall),
-						jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
-						jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
-						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-						jen.Goto().Id(codegen.StepSelectName),
-					),
-				)
-			} else {
-				fallback = append(fallback,
-					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-						jen.Id(codegen.OffsetName).Op("++"),
-						jen.Goto().Id(codegen.StepSelectName),
-					),
-				)
-			}
-		}
+		// If not anchored, we must retry from the next attempt start
+		fallback = append(fallback, c.generateRetryBlock(retryOpts{hasPrefix: hasPrefix, prefix: prefix, isBytes: isBytes})...)
 
 		fallback = append(fallback, jen.Return(jen.False()))
 		code = append(code, fallback...)
