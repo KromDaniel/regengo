@@ -24,6 +24,7 @@ type Config struct {
 	GenerateTestFile  bool           // Generate test file with tests and benchmarks
 	TestFileInputs    []string       // Test inputs for generated test file
 	ForceThompson     bool           // Force Thompson NFA for MatchString/MatchBytes
+	ForceBacktracking bool           // Force backtracking for MatchString/MatchBytes (skip DFA and Thompson)
 	ForceTNFA         bool           // Force Tagged NFA for FindString with captures
 	ForceTDFA         bool           // Force Tagged DFA for FindString with captures
 	TDFAThreshold     int            // Max TDFA states before falling back (0 = use default 500)
@@ -107,30 +108,35 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 	}
 
 	// Determine engine selection for Match functions
-	// Priority: ForceThompson > DFA (when compatible) > Thompson / backtracking fallback
+	// Priority: ForceBacktracking > ForceThompson > DFA (when compatible) > Thompson / backtracking fallback.
+	// With ForceBacktracking neither useDFAForMatch nor useThompsonForMatch is set, so the
+	// backtracking emitter is used (memoized below if the pattern has catastrophic risk).
+	// This exists so the stdlib parity test can reach the backtracking Match emitter.
 
-	if c.config.ForceThompson {
-		// ForceThompson takes highest priority
-		c.useThompsonForMatch = true
-	} else {
-		// DFA is the default Match engine whenever the pattern is DFA-compatible
-		// (ASCII-only, supported anchors, state count under the threshold):
-		// it is a single O(n) pass with no backtracking state.
-		dfaGen := NewDFAGenerator(c)
-		if dfaGen != nil {
-			canUseDFA, dfaInfo := dfaGen.CanUseDFA()
-			c.dfaInfo = dfaInfo
-			if canUseDFA {
-				c.useDFAForMatch = true
-			}
-		}
-
-		// Fallback when DFA is unavailable: Thompson if DFA was explicitly
-		// requested, the pattern has catastrophic risk, or analysis recommends it;
-		// otherwise the backtracking engine.
-		if !c.useDFAForMatch &&
-			(c.config.ForceDFA || c.complexity.HasCatastrophicRisk || c.complexity.UseThompsonNFA) {
+	if !c.config.ForceBacktracking {
+		if c.config.ForceThompson {
+			// ForceThompson takes priority over automatic selection
 			c.useThompsonForMatch = true
+		} else {
+			// DFA is the default Match engine whenever the pattern is DFA-compatible
+			// (ASCII-only, supported anchors, state count under the threshold):
+			// it is a single O(n) pass with no backtracking state.
+			dfaGen := NewDFAGenerator(c)
+			if dfaGen != nil {
+				canUseDFA, dfaInfo := dfaGen.CanUseDFA()
+				c.dfaInfo = dfaInfo
+				if canUseDFA {
+					c.useDFAForMatch = true
+				}
+			}
+
+			// Fallback when DFA is unavailable: Thompson if DFA was explicitly
+			// requested, the pattern has catastrophic risk, or analysis recommends it;
+			// otherwise the backtracking engine.
+			if !c.useDFAForMatch &&
+				(c.config.ForceDFA || c.complexity.HasCatastrophicRisk || c.complexity.UseThompsonNFA) {
+				c.useThompsonForMatch = true
+			}
 		}
 	}
 
@@ -211,6 +217,12 @@ func (c *Compiler) logAnalysisResults(tdfaForcedButUnavailable bool) {
 		c.logger.Log("Match engine: DFA (O(n) single pass)")
 		if c.dfaInfo != "" {
 			c.logger.Log("DFA info: %s", c.dfaInfo)
+		}
+	} else if c.config.ForceBacktracking {
+		if c.useMemoization {
+			c.logger.Log("Match engine: Backtracking NFA with memoization (forced by user)")
+		} else {
+			c.logger.Log("Match engine: Backtracking NFA (forced by user)")
 		}
 	} else if c.config.ForceDFA && c.dfaInfo != "" {
 		c.logger.Log("DFA unavailable: %s", c.dfaInfo)

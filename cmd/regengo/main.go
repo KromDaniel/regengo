@@ -23,24 +23,25 @@ func (a *arrayFlags) Set(value string) error {
 }
 
 var (
-	pattern       = flag.String("pattern", "", "Regular expression pattern to compile")
-	name          = flag.String("name", "", "Name prefix for generated functions")
-	output        = flag.String("output", "", "Output file path")
-	pkg           = flag.String("package", "main", "Package name for generated code")
-	noPool        = flag.Bool("no-pool", false, "Disable sync.Pool for stack reuse (pool is enabled by default)")
-	noTest        = flag.Bool("no-test", false, "Disable automatic test file generation")
-	testInputs    = flag.String("test-inputs", "", "Comma-separated test inputs for generated tests (default: 'example')")
-	verbose       = flag.Bool("verbose", false, "Enable verbose logging of analysis decisions")
-	forceThompson = flag.Bool("force-thompson", false, "Force Thompson NFA for match functions (guarantees O(n*m) complexity)")
-	forceTNFA     = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
-	forceTDFA     = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
-	tdfaThreshold = flag.Int("tdfa-threshold", 500, "Max TDFA states before falling back to other engines")
-	forceDFA      = flag.Bool("force-dfa", false, "Force pure DFA for match functions (O(n) single-pass matching)")
-	dfaThreshold  = flag.Int("dfa-threshold", 500, "Max DFA states before falling back to Thompson NFA")
-	analyze       = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
-	version       = flag.Bool("version", false, "Print version information")
-	helpFlag      = flag.Bool("help", false, "Show help message")
-	replacers     arrayFlags
+	pattern           = flag.String("pattern", "", "Regular expression pattern to compile")
+	name              = flag.String("name", "", "Name prefix for generated functions")
+	output            = flag.String("output", "", "Output file path")
+	pkg               = flag.String("package", "main", "Package name for generated code")
+	noPool            = flag.Bool("no-pool", false, "Disable sync.Pool for stack reuse (pool is enabled by default)")
+	noTest            = flag.Bool("no-test", false, "Disable automatic test file generation")
+	testInputs        = flag.String("test-inputs", "", "Comma-separated test inputs for generated tests (default: 'example')")
+	verbose           = flag.Bool("verbose", false, "Enable verbose logging of analysis decisions")
+	forceThompson     = flag.Bool("force-thompson", false, "Force Thompson NFA for match functions (guarantees O(n*m) complexity)")
+	forceTNFA         = flag.Bool("force-tnfa", false, "Force Tagged NFA for capture functions (guarantees linear-time captures)")
+	forceTDFA         = flag.Bool("force-tdfa", false, "Force Tagged DFA for capture functions (guarantees O(n) captures)")
+	tdfaThreshold     = flag.Int("tdfa-threshold", 500, "Max TDFA states before falling back to other engines")
+	forceDFA          = flag.Bool("force-dfa", false, "Force pure DFA for match functions (O(n) single-pass matching)")
+	forceBacktracking = flag.Bool("force-backtracking", false, "Force backtracking for match functions (skips DFA and Thompson NFA)")
+	dfaThreshold      = flag.Int("dfa-threshold", 500, "Max DFA states before falling back to Thompson NFA")
+	analyze           = flag.Bool("analyze", false, "Analyze pattern and output labels as JSON (no code generation)")
+	version           = flag.Bool("version", false, "Print version information")
+	helpFlag          = flag.Bool("help", false, "Show help message")
+	replacers         arrayFlags
 )
 
 func init() {
@@ -133,6 +134,7 @@ func main() {
 		TDFAThreshold:     *tdfaThreshold,
 		ForceDFA:          *forceDFA,
 		DFAThreshold:      *dfaThreshold,
+		ForceBacktracking: *forceBacktracking,
 		Replacers:         replacers,
 		TestFileReplacers: replacers, // Also test replacers in generated test file
 	}
@@ -198,6 +200,9 @@ Options:
       Falls back to Thompson NFA if pattern is incompatible
   -dfa-threshold int
       Max DFA states before falling back to Thompson NFA (default: 500)
+  -force-backtracking
+      Force the backtracking engine for match functions (skips DFA and Thompson NFA)
+      Mainly for testing; cannot be combined with -force-thompson or -force-dfa
   -replacer string
       Pre-compiled replacement template (can be used multiple times)
       Generates optimized ReplaceAllString0, ReplaceAllString1, etc.

@@ -53,6 +53,11 @@ type Options struct {
 	// supports ASCII patterns without . (dot) or word boundaries.
 	ForceDFA bool
 
+	// ForceBacktracking forces the backtracking engine for MatchString/MatchBytes,
+	// skipping DFA and Thompson NFA selection. Find* engine selection is unaffected.
+	// Mainly for testing and debugging. It cannot be combined with ForceThompson or ForceDFA.
+	ForceBacktracking bool
+
 	// DFAThreshold sets the maximum number of DFA states allowed before falling
 	// back to Thompson NFA. Default is 500.
 	DFAThreshold int
@@ -86,6 +91,9 @@ func (o Options) Validate() error {
 	}
 	if o.Package == "" {
 		return fmt.Errorf("package cannot be empty")
+	}
+	if o.ForceBacktracking && (o.ForceThompson || o.ForceDFA) {
+		return fmt.Errorf("ForceBacktracking cannot be combined with ForceThompson or ForceDFA")
 	}
 	return nil
 }
@@ -150,6 +158,7 @@ func Compile(opts Options) error {
 		ForceTDFA:         opts.ForceTDFA,
 		TDFAThreshold:     opts.TDFAThreshold,
 		ForceDFA:          opts.ForceDFA,
+		ForceBacktracking: opts.ForceBacktracking,
 		DFAThreshold:      opts.DFAThreshold,
 		Verbose:           opts.Verbose,
 		Replacers:         opts.Replacers,
