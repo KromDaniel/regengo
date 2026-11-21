@@ -1,9 +1,9 @@
 {
   "name": "Regengo Playground",
-  "image": "mcr.microsoft.com/devcontainers/go:1-1.21-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/go:2-1.27-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/go:1": {
-      "version": "1.21"
+      "version": "1.27"
     }
   },
   "postCreateCommand": "go mod download && make bench",

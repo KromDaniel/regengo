@@ -106,7 +106,7 @@ ci: fmt lint test
 ## setup-hooks: Install git hooks and dependencies
 setup-hooks:
 	@echo "Installing dependencies..."
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	@echo "Installing git hooks..."
 	@chmod +x .githooks/pre-commit
 	@git config core.hooksPath .githooks

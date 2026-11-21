@@ -31,6 +31,7 @@ func Analyze(pattern string) (*AnalysisResult, error) {
 
 // AnalyzeWithThreshold performs pattern analysis with a custom TDFA state threshold.
 // The tdfaThreshold controls when TDFA falls back to other engines (default: 500).
+//
 // Deprecated: Use AnalyzeWithThresholds for more control.
 func AnalyzeWithThreshold(pattern string, tdfaThreshold int) (*AnalysisResult, error) {
 	return AnalyzeWithThresholds(pattern, tdfaThreshold, 500)

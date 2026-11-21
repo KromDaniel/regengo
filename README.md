@@ -45,6 +45,8 @@ Regengo is a **compile-time finite state machine generator** for regular express
 
 ## Installation
 
+Requires Go 1.27 or later.
+
 ```bash
 go install github.com/KromDaniel/regengo/cmd/regengo@latest
 ```
