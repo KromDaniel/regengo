@@ -38,359 +38,62 @@ func (MultiEmail) MatchLengthInfo() (minLen, maxLen int) {
 	return MultiEmailMinMatchLen, MultiEmailMaxMatchLen
 }
 
+// DFA transition table [state][char] -> next state (-1 = no transition)
+var dfaTransitionsMultiEmail = [7][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 4, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 5, 6, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 5, 6, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 5, 6, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0}}
+
+// DFA accept states array
+var dfaAcceptStatesMultiEmail = [7]bool{false, false, false, false, false, true, true}
+
+// DFA accept states array (End of Text)
+var dfaAcceptStatesEOTMultiEmail = [7]bool{false, false, false, false, false, true, true}
+
 func (MultiEmail) MatchString(input string) bool {
-	l := len(input)
-	offset := 0
-	stackPtr := multiEmailStackPool.Get().(*[][3]int)
-	stack := (*stackPtr)[:0]
-	defer func() {
-		for i := range stack {
-			stack[i] = [3]int{0, 0, 0}
-		}
-		*stackPtr = stack[:0]
-		multiEmailStackPool.Put(stackPtr)
-	}()
-	nextInstruction := 1
-	goto StepSelect
-TryFallback:
-	if len(stack) > 0 {
-		last := stack[len(stack)-1]
-		offset = last[0]
-		nextInstruction = last[1]
-		stack = stack[:len(stack)-1]
-		goto StepSelect
-	} else {
-		if l > offset {
-			nextInstruction = 1
-			offset++
-			goto StepSelect
-		}
-		return false
-	}
-StepSelect:
-	switch nextInstruction {
-	case 0:
-		goto Ins0
-	case 1:
-		goto Ins1
-	case 2:
-		goto Ins2
-	case 3:
-		goto Ins3
-	case 4:
-		goto Ins4
-	case 5:
-		goto Ins5
-	case 6:
-		goto Ins6
-	case 7:
-		goto Ins7
-	case 8:
-		goto Ins8
-	case 9:
-		goto Ins9
-	case 10:
-		goto Ins10
-	case 11:
-		goto Ins11
-	case 12:
-		goto Ins12
-	case 13:
-		goto Ins13
-	case 14:
-		goto Ins14
-	case 15:
-		goto Ins15
-	}
-Ins0:
-	{
-		return false
-	}
-Ins1:
-	{
-		goto Ins2
-	}
-Ins2:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x68), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins3
-	}
-Ins3:
-	{
-		stack = append(stack, [3]int{offset, 2, 0})
-		goto Ins4
-	}
-Ins4:
-	{
-		goto Ins5
-	}
-Ins5:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x40) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins6
-	}
-Ins6:
-	{
-		goto Ins7
-	}
-Ins7:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x60), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins8
-	}
-Ins8:
-	{
-		stack = append(stack, [3]int{offset, 7, 0})
-		goto Ins9
-	}
-Ins9:
-	{
-		goto Ins10
-	}
-Ins10:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2e) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins11
-	}
-Ins11:
-	{
-		goto Ins12
-	}
-Ins12:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x60), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins13
-	}
-Ins13:
-	{
-		stack = append(stack, [3]int{offset, 12, 0})
-		goto Ins14
-	}
-Ins14:
-	{
-		goto Ins15
-	}
-Ins15:
-	{
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesMultiEmail[state] {
 		return true
 	}
+
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsMultiEmail[state][c])
+		if dfaAcceptStatesMultiEmail[state] {
+			return true
+		}
+	}
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTMultiEmail[state]
 }
 func (MultiEmail) MatchBytes(input []byte) bool {
-	l := len(input)
-	offset := 0
-	stackPtr := multiEmailStackPool.Get().(*[][3]int)
-	stack := (*stackPtr)[:0]
-	defer func() {
-		for i := range stack {
-			stack[i] = [3]int{0, 0, 0}
-		}
-		*stackPtr = stack[:0]
-		multiEmailStackPool.Put(stackPtr)
-	}()
-	nextInstruction := 1
-	goto StepSelect
-TryFallback:
-	if len(stack) > 0 {
-		last := stack[len(stack)-1]
-		offset = last[0]
-		nextInstruction = last[1]
-		stack = stack[:len(stack)-1]
-		goto StepSelect
-	} else {
-		if l > offset {
-			nextInstruction = 1
-			offset++
-			goto StepSelect
-		}
-		return false
-	}
-StepSelect:
-	switch nextInstruction {
-	case 0:
-		goto Ins0
-	case 1:
-		goto Ins1
-	case 2:
-		goto Ins2
-	case 3:
-		goto Ins3
-	case 4:
-		goto Ins4
-	case 5:
-		goto Ins5
-	case 6:
-		goto Ins6
-	case 7:
-		goto Ins7
-	case 8:
-		goto Ins8
-	case 9:
-		goto Ins9
-	case 10:
-		goto Ins10
-	case 11:
-		goto Ins11
-	case 12:
-		goto Ins12
-	case 13:
-		goto Ins13
-	case 14:
-		goto Ins14
-	case 15:
-		goto Ins15
-	}
-Ins0:
-	{
-		return false
-	}
-Ins1:
-	{
-		goto Ins2
-	}
-Ins2:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x68), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins3
-	}
-Ins3:
-	{
-		stack = append(stack, [3]int{offset, 2, 0})
-		goto Ins4
-	}
-Ins4:
-	{
-		goto Ins5
-	}
-Ins5:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x40) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins6
-	}
-Ins6:
-	{
-		goto Ins7
-	}
-Ins7:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x60), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins8
-	}
-Ins8:
-	{
-		stack = append(stack, [3]int{offset, 7, 0})
-		goto Ins9
-	}
-Ins9:
-	{
-		goto Ins10
-	}
-Ins10:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2e) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins11
-	}
-Ins11:
-	{
-		goto Ins12
-	}
-Ins12:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if [32]byte{uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x60), uint8(0xff), uint8(0x3), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x87), uint8(0xfe), uint8(0xff), uint8(0xff), uint8(0x7), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)}[input[offset]/8]&(1<<(input[offset]%8)) == 0 {
-			goto TryFallback
-		}
-		offset++
-		goto Ins13
-	}
-Ins13:
-	{
-		stack = append(stack, [3]int{offset, 12, 0})
-		goto Ins14
-	}
-Ins14:
-	{
-		goto Ins15
-	}
-Ins15:
-	{
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesMultiEmail[state] {
 		return true
 	}
+
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsMultiEmail[state][c])
+		if dfaAcceptStatesMultiEmail[state] {
+			return true
+		}
+	}
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTMultiEmail[state]
 }
 
 type MultiEmailResult struct {
@@ -638,8 +341,8 @@ Ins15:
 		return r, true
 	}
 }
-func (recv MultiEmail) FindString(input string) (*MultiEmailResult, bool) {
-	return recv.FindStringReuse(input, nil)
+func (r MultiEmail) FindString(input string) (*MultiEmailResult, bool) {
+	return r.FindStringReuse(input, nil)
 }
 func (MultiEmail) FindAllStringAppend(input string, n int, s []*MultiEmailResult) []*MultiEmailResult {
 	if n == 0 {
@@ -1127,8 +830,8 @@ Ins15:
 		return r, true
 	}
 }
-func (recv MultiEmail) FindBytes(input []byte) (*MultiEmailBytesResult, bool) {
-	return recv.FindBytesReuse(input, nil)
+func (r MultiEmail) FindBytes(input []byte) (*MultiEmailBytesResult, bool) {
+	return r.FindBytesReuse(input, nil)
 }
 func (MultiEmail) FindAllBytesAppend(input []byte, n int, s []*MultiEmailBytesResult) []*MultiEmailBytesResult {
 	if n == 0 {

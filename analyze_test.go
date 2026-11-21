@@ -63,11 +63,11 @@ func TestAnalyzeWithThresholds(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name:          "simple pattern uses backtracking",
+			name:          "simple pattern uses DFA",
 			pattern:       "hello",
 			tdfaThreshold: 500,
 			dfaThreshold:  500,
-			wantEngine:    "Backtracking",
+			wantEngine:    "DFA",
 			wantErr:       false,
 		},
 		{

@@ -18,139 +18,85 @@ func (Lazy) MatchLengthInfo() (minLen, maxLen int) {
 	return LazyMinMatchLen, LazyMaxMatchLen
 }
 
+// DFA transition table [state][char] -> next state (-1 = no transition)
+var dfaTransitionsLazy = [7][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 5, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 6, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+
+// DFA accept states array
+var dfaAcceptStatesLazy = [7]bool{false, false, false, false, false, false, true}
+
+// DFA accept states array (End of Text)
+var dfaAcceptStatesEOTLazy = [7]bool{false, false, false, false, false, false, true}
+
+// Bytes that can begin a match (start-state skip table)
+var dfaFirstBytesLazy = [256]bool{
+	107: true,
+	97:  true,
+	98:  true,
+}
+
 func (Lazy) MatchString(input string) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesLazy[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0x16))
-	acceptMask := uint64(uint64(0x400))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [11]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
-		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 1
-			if current&uint64(uint64(0x2)) != 0 && (c >= uint8(0x61) && c <= uint8(0x62)) {
-				next |= epsilonClosures[1]
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			for i < inputLen && !dfaFirstBytesLazy[input[i]] {
+				i++
 			}
-			// State 2
-			if current&uint64(uint64(0x4)) != 0 && c == uint8(0x6b) {
-				next |= epsilonClosures[2]
-			}
-			// State 6
-			if current&uint64(uint64(0x40)) != 0 && c == uint8(0x61) {
-				next |= epsilonClosures[6]
-			}
-			// State 7
-			if current&uint64(uint64(0x80)) != 0 && c == uint8(0x62) {
-				next |= epsilonClosures[7]
-			}
-			// State 8
-			if current&uint64(uint64(0x100)) != 0 && c == uint8(0x63) {
-				next |= epsilonClosures[8]
-			}
-			// State 9
-			if current&uint64(uint64(0x200)) != 0 && c == uint8(0x64) {
-				next |= epsilonClosures[9]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
+			if i == inputLen {
 				break
 			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsLazy[state][c])
+		if dfaAcceptStatesLazy[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTLazy[state]
 }
 func (Lazy) MatchBytes(input []byte) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesLazy[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0x16))
-	acceptMask := uint64(uint64(0x400))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [11]uint64{1: uint64(uint64(0x76)), 2: uint64(uint64(0x7e)), 6: uint64(uint64(0x80)), 7: uint64(uint64(0x100)), 8: uint64(uint64(0x200)), 9: uint64(uint64(0x400))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
-		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 1
-			if current&uint64(uint64(0x2)) != 0 && (c >= uint8(0x61) && c <= uint8(0x62)) {
-				next |= epsilonClosures[1]
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			for i < inputLen && !dfaFirstBytesLazy[input[i]] {
+				i++
 			}
-			// State 2
-			if current&uint64(uint64(0x4)) != 0 && c == uint8(0x6b) {
-				next |= epsilonClosures[2]
-			}
-			// State 6
-			if current&uint64(uint64(0x40)) != 0 && c == uint8(0x61) {
-				next |= epsilonClosures[6]
-			}
-			// State 7
-			if current&uint64(uint64(0x80)) != 0 && c == uint8(0x62) {
-				next |= epsilonClosures[7]
-			}
-			// State 8
-			if current&uint64(uint64(0x100)) != 0 && c == uint8(0x63) {
-				next |= epsilonClosures[8]
-			}
-			// State 9
-			if current&uint64(uint64(0x200)) != 0 && c == uint8(0x64) {
-				next |= epsilonClosures[9]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
+			if i == inputLen {
 				break
 			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsLazy[state][c])
+		if dfaAcceptStatesLazy[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTLazy[state]
 }

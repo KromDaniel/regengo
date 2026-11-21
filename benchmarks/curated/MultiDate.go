@@ -27,433 +27,94 @@ func (MultiDate) MatchLengthInfo() (minLen, maxLen int) {
 	return MultiDateMinMatchLen, MultiDateMaxMatchLen
 }
 
+// DFA transition table [state][char] -> next state (-1 = no transition)
+var dfaTransitionsMultiDate = [11][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+
+// DFA accept states array
+var dfaAcceptStatesMultiDate = [11]bool{false, false, false, false, false, false, false, false, false, false, true}
+
+// DFA accept states array (End of Text)
+var dfaAcceptStatesEOTMultiDate = [11]bool{false, false, false, false, false, false, false, false, false, false, true}
+
+// Bytes that can begin a match (start-state skip table)
+var dfaFirstBytesMultiDate = [256]bool{
+	48: true,
+	49: true,
+	50: true,
+	51: true,
+	52: true,
+	53: true,
+	54: true,
+	55: true,
+	56: true,
+	57: true,
+}
+
 func (MultiDate) MatchString(input string) bool {
-	l := len(input)
-	offset := 0
-	nextInstruction := 1
-	goto StepSelect
-TryFallback:
-	if l > offset {
-		nextInstruction = 1
-		offset++
-		goto StepSelect
-	}
-	return false
-StepSelect:
-	switch nextInstruction {
-	case 0:
-		goto Ins0
-	case 1:
-		goto Ins1
-	case 2:
-		goto Ins2
-	case 3:
-		goto Ins3
-	case 4:
-		goto Ins4
-	case 5:
-		goto Ins5
-	case 6:
-		goto Ins6
-	case 7:
-		goto Ins7
-	case 8:
-		goto Ins8
-	case 9:
-		goto Ins9
-	case 10:
-		goto Ins10
-	case 11:
-		goto Ins11
-	case 12:
-		goto Ins12
-	case 13:
-		goto Ins13
-	case 14:
-		goto Ins14
-	case 15:
-		goto Ins15
-	case 16:
-		goto Ins16
-	case 17:
-		goto Ins17
-	}
-Ins0:
-	{
-		return false
-	}
-Ins1:
-	{
-		goto Ins2
-	}
-Ins2:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins3
-	}
-Ins3:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins4
-	}
-Ins4:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins5
-	}
-Ins5:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins6
-	}
-Ins6:
-	{
-		goto Ins7
-	}
-Ins7:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2d) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins8
-	}
-Ins8:
-	{
-		goto Ins9
-	}
-Ins9:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins10
-	}
-Ins10:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins11
-	}
-Ins11:
-	{
-		goto Ins12
-	}
-Ins12:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2d) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins13
-	}
-Ins13:
-	{
-		goto Ins14
-	}
-Ins14:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins15
-	}
-Ins15:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins16
-	}
-Ins16:
-	{
-		goto Ins17
-	}
-Ins17:
-	{
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesMultiDate[state] {
 		return true
 	}
+
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			for i < inputLen && !dfaFirstBytesMultiDate[input[i]] {
+				i++
+			}
+			if i == inputLen {
+				break
+			}
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsMultiDate[state][c])
+		if dfaAcceptStatesMultiDate[state] {
+			return true
+		}
+	}
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTMultiDate[state]
 }
 func (MultiDate) MatchBytes(input []byte) bool {
-	l := len(input)
-	offset := 0
-	nextInstruction := 1
-	goto StepSelect
-TryFallback:
-	if l > offset {
-		nextInstruction = 1
-		offset++
-		goto StepSelect
-	}
-	return false
-StepSelect:
-	switch nextInstruction {
-	case 0:
-		goto Ins0
-	case 1:
-		goto Ins1
-	case 2:
-		goto Ins2
-	case 3:
-		goto Ins3
-	case 4:
-		goto Ins4
-	case 5:
-		goto Ins5
-	case 6:
-		goto Ins6
-	case 7:
-		goto Ins7
-	case 8:
-		goto Ins8
-	case 9:
-		goto Ins9
-	case 10:
-		goto Ins10
-	case 11:
-		goto Ins11
-	case 12:
-		goto Ins12
-	case 13:
-		goto Ins13
-	case 14:
-		goto Ins14
-	case 15:
-		goto Ins15
-	case 16:
-		goto Ins16
-	case 17:
-		goto Ins17
-	}
-Ins0:
-	{
-		return false
-	}
-Ins1:
-	{
-		goto Ins2
-	}
-Ins2:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins3
-	}
-Ins3:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins4
-	}
-Ins4:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins5
-	}
-Ins5:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins6
-	}
-Ins6:
-	{
-		goto Ins7
-	}
-Ins7:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2d) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins8
-	}
-Ins8:
-	{
-		goto Ins9
-	}
-Ins9:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins10
-	}
-Ins10:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins11
-	}
-Ins11:
-	{
-		goto Ins12
-	}
-Ins12:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] != uint8(0x2d) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins13
-	}
-Ins13:
-	{
-		goto Ins14
-	}
-Ins14:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins15
-	}
-Ins15:
-	{
-		if l <= offset {
-			goto TryFallback
-		}
-	}
-	{
-		if input[offset] < uint8(0x30) || input[offset] > uint8(0x39) {
-			goto TryFallback
-		}
-		offset++
-		goto Ins16
-	}
-Ins16:
-	{
-		goto Ins17
-	}
-Ins17:
-	{
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesMultiDate[state] {
 		return true
 	}
+
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			for i < inputLen && !dfaFirstBytesMultiDate[input[i]] {
+				i++
+			}
+			if i == inputLen {
+				break
+			}
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsMultiDate[state][c])
+		if dfaAcceptStatesMultiDate[state] {
+			return true
+		}
+	}
+
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTMultiDate[state]
 }
 
 type MultiDateResult struct {
@@ -722,8 +383,8 @@ Ins17:
 		return r, true
 	}
 }
-func (recv MultiDate) FindString(input string) (*MultiDateResult, bool) {
-	return recv.FindStringReuse(input, nil)
+func (r MultiDate) FindString(input string) (*MultiDateResult, bool) {
+	return r.FindStringReuse(input, nil)
 }
 func (MultiDate) FindAllStringAppend(input string, n int, s []*MultiDateResult) []*MultiDateResult {
 	if n == 0 {
@@ -1252,8 +913,8 @@ Ins17:
 		return r, true
 	}
 }
-func (recv MultiDate) FindBytes(input []byte) (*MultiDateBytesResult, bool) {
-	return recv.FindBytesReuse(input, nil)
+func (r MultiDate) FindBytes(input []byte) (*MultiDateBytesResult, bool) {
+	return r.FindBytesReuse(input, nil)
 }
 func (MultiDate) FindAllBytesAppend(input []byte, n int, s []*MultiDateBytesResult) []*MultiDateBytesResult {
 	if n == 0 {

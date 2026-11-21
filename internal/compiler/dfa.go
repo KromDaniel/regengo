@@ -246,6 +246,45 @@ func (g *DFAGenerator) GenerateTables() {
 	g.compiler.file.Add(g.generateTransitionTable())
 	g.compiler.file.Add(g.generateAcceptStates())
 	g.compiler.file.Add(g.generateAcceptStatesEOT())
+	if first, single := g.startSkipBytes(); first != nil && !single {
+		g.compiler.file.Add(g.generateFirstBytesTable(first))
+	}
+}
+
+// dfaSkipMaxFirstBytes is the largest first-byte set for which start-state
+// skipping is generated. Larger sets (e.g. \w) match most input bytes, so the
+// skip loop would rarely advance and only add overhead.
+const dfaSkipMaxFirstBytes = 16
+
+// startSkipBytes returns the bytes that leave the unanchored restart state.
+// While the DFA sits in that state, every other byte is a self-loop, so the
+// matcher can skip ahead to the next byte of this set without table lookups.
+// Returns nil when skipping does not apply; single is true when the set has
+// exactly one byte (IndexByte can be used).
+func (g *DFAGenerator) startSkipBytes() (first []byte, single bool) {
+	if !g.unanchored || g.acceptStates[g.startStateAny] {
+		return nil, false
+	}
+	for c := 0; c < MaxASCIIRune; c++ {
+		if next, ok := g.transitions[g.startStateAny][byte(c)]; ok && next != g.startStateAny {
+			first = append(first, byte(c))
+		}
+	}
+	if len(first) == 0 || len(first) > dfaSkipMaxFirstBytes {
+		return nil, false
+	}
+	return first, len(first) == 1
+}
+
+// generateFirstBytesTable generates the lookup table used by start-state skipping.
+func (g *DFAGenerator) generateFirstBytesTable(first []byte) jen.Code {
+	values := jen.Dict{}
+	for _, b := range first {
+		values[jen.Lit(int(b))] = jen.True()
+	}
+	return jen.Comment("Bytes that can begin a match (start-state skip table)").Line().
+		Var().Id(g.getVarName("dfaFirstBytes")).Op("=").
+		Index(jen.Lit(256)).Bool().Values(values)
 }
 
 // getOptimalIntType returns the name of the smallest integer type that can hold the state count.
@@ -352,7 +391,8 @@ func (g *DFAGenerator) GenerateMatchFunction(isBytes bool) []jen.Code {
 	if g.unanchored {
 		// Dense table: every entry is a valid state; a non-ASCII byte kills all
 		// threads, so restart from the unanchored start state.
-		innerLoop = []jen.Code{
+		innerLoop = append(innerLoop, g.generateStartSkip(isBytes)...)
+		innerLoop = append(innerLoop, []jen.Code{
 			jen.Id("c").Op(":=").Id("input").Index(jen.Id("i")),
 			jen.If(jen.Id("c").Op(">=").Lit(MaxASCIIRune)).Block(
 				jen.Id("state").Op("=").Lit(g.startStateAny),
@@ -364,7 +404,7 @@ func (g *DFAGenerator) GenerateMatchFunction(isBytes bool) []jen.Code {
 			jen.If(jen.Id(acceptVar).Index(jen.Id("state"))).Block(
 				jen.Return(jen.True()),
 			),
-		}
+		}...)
 	} else {
 		// Start-anchored pattern: a dead transition or non-ASCII byte means no
 		// match is possible anywhere — exit immediately.
@@ -384,6 +424,43 @@ func (g *DFAGenerator) GenerateMatchFunction(isBytes bool) []jen.Code {
 		}
 	}
 
+	return g.matchPrelude(innerLoop, transitionsVar, acceptVar, acceptEOTVar)
+}
+
+// generateStartSkip generates the start-state acceleration block: while the DFA
+// is in the restart state, jump directly to the next byte that can begin a match.
+func (g *DFAGenerator) generateStartSkip(isBytes bool) []jen.Code {
+	first, single := g.startSkipBytes()
+	if first == nil {
+		return nil
+	}
+	var skip []jen.Code
+	if single {
+		pkg := "strings"
+		if isBytes {
+			pkg = "bytes"
+		}
+		skip = []jen.Code{
+			jen.Id("idx").Op(":=").Qual(pkg, "IndexByte").Call(jen.Id("input").Index(jen.Id("i").Op(":")), jen.Lit(first[0])),
+			jen.If(jen.Id("idx").Op("<").Lit(0)).Block(jen.Break()),
+			jen.Id("i").Op("+=").Id("idx"),
+		}
+	} else {
+		firstVar := g.getVarName("dfaFirstBytes")
+		skip = []jen.Code{
+			jen.For(jen.Id("i").Op("<").Id("inputLen").Op("&&").Op("!").Id(firstVar).Index(jen.Id("input").Index(jen.Id("i")))).Block(
+				jen.Id("i").Op("++"),
+			),
+			jen.If(jen.Id("i").Op("==").Id("inputLen")).Block(jen.Break()),
+		}
+	}
+	return []jen.Code{
+		jen.Comment("Start-state skip: no match is in progress, jump to the next byte that can begin one"),
+		jen.If(jen.Id("state").Op("==").Lit(g.startStateAny)).Block(skip...),
+	}
+}
+
+func (g *DFAGenerator) matchPrelude(innerLoop []jen.Code, transitionsVar, acceptVar, acceptEOTVar string) []jen.Code {
 	return []jen.Code{
 		jen.Id("inputLen").Op(":=").Len(jen.Id("input")),
 		jen.Id("state").Op(":=").Lit(g.startStateBegin),

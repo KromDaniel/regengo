@@ -2205,8 +2205,8 @@ Ins54:
 		return r, true
 	}
 }
-func (recv TDFALogParser) FindString(input string) (*TDFALogParserResult, bool) {
-	return recv.FindStringReuse(input, nil)
+func (r TDFALogParser) FindString(input string) (*TDFALogParserResult, bool) {
+	return r.FindStringReuse(input, nil)
 }
 func (TDFALogParser) FindAllStringAppend(input string, n int, s []*TDFALogParserResult) []*TDFALogParserResult {
 	if n == 0 {
@@ -3750,8 +3750,8 @@ Ins54:
 		return r, true
 	}
 }
-func (recv TDFALogParser) FindBytes(input []byte) (*TDFALogParserBytesResult, bool) {
-	return recv.FindBytesReuse(input, nil)
+func (r TDFALogParser) FindBytes(input []byte) (*TDFALogParserBytesResult, bool) {
+	return r.FindBytesReuse(input, nil)
 }
 func (TDFALogParser) FindAllBytesAppend(input []byte, n int, s []*TDFALogParserBytesResult) []*TDFALogParserBytesResult {
 	if n == 0 {

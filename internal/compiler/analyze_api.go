@@ -143,11 +143,9 @@ func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity Comple
 		dfaThreshold = 500
 	}
 
-	// Try DFA for patterns with catastrophic risk (same logic as compiler.go)
-	useDFAForMatch := false
-	if complexity.HasCatastrophicRisk {
-		useDFAForMatch = canUseDFAForPattern(prog, dfaThreshold)
-	}
+	// DFA is the default Match engine for every DFA-compatible pattern
+	// (same logic as compiler.go)
+	useDFAForMatch := canUseDFAForPattern(prog, dfaThreshold)
 
 	// Determine Thompson NFA for match (same logic as compiler.go)
 	// Skip Thompson if DFA is selected
@@ -194,8 +192,11 @@ func deriveEngineLabels(prog *syntax.Prog, ast *syntax.Regexp, complexity Comple
 		labels = append(labels, "Memoization")
 	}
 
-	// Default: Backtracking (when no special engine is needed)
-	if !useThompsonForMatch && !useDFAForMatch && !useTDFAForCaptures && !useTNFAForCaptures && !useMemoization {
+	// Backtracking: Match when no automaton engine applies, and captures when
+	// neither TDFA nor TNFA is selected.
+	matchBacktracks := !useThompsonForMatch && !useDFAForMatch && !useMemoization
+	capturesBacktrack := hasCaptures && !useTDFAForCaptures && !useTNFAForCaptures
+	if (matchBacktracks && !useTDFAForCaptures && !useTNFAForCaptures) || capturesBacktrack {
 		labels = append(labels, "Backtracking")
 	}
 
