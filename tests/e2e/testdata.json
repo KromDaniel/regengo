@@ -59,7 +59,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -100,7 +101,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -117,7 +118,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -134,7 +135,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -151,7 +152,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -168,7 +169,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -185,7 +186,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -203,7 +204,8 @@
       "Captures"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -288,7 +290,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -312,7 +315,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -412,7 +416,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -560,7 +565,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -579,7 +584,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -598,7 +603,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -617,7 +622,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -664,7 +669,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -687,7 +693,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -816,7 +823,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -833,7 +840,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -850,7 +857,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -867,7 +874,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -884,7 +891,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -901,7 +908,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -919,7 +926,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -960,7 +968,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -977,7 +985,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -994,7 +1002,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1011,7 +1019,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1028,7 +1036,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1045,7 +1053,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1064,7 +1072,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1083,7 +1091,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1102,7 +1110,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1154,7 +1163,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1180,7 +1190,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1206,7 +1217,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1232,7 +1244,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1258,7 +1271,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1284,7 +1298,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1310,7 +1325,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1336,7 +1352,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1362,7 +1379,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1388,7 +1406,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1414,7 +1433,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1440,7 +1460,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1466,7 +1487,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1492,7 +1514,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1518,7 +1541,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1614,7 +1638,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1631,7 +1655,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1648,7 +1672,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1665,7 +1689,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1682,7 +1706,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1699,7 +1723,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1716,7 +1740,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1753,7 +1777,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1781,7 +1806,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1809,7 +1835,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1837,7 +1864,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ],
     "replacers": [
       "REDACTED",
@@ -1865,7 +1893,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -1882,7 +1911,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1899,7 +1928,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1916,7 +1945,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1933,7 +1962,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1950,7 +1979,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -1967,7 +1996,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2023,7 +2052,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2040,7 +2069,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2057,7 +2086,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2074,7 +2103,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2091,7 +2120,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2108,7 +2137,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2126,7 +2155,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2185,7 +2215,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2223,7 +2254,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2314,7 +2346,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2333,7 +2365,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2352,7 +2384,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2371,7 +2403,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2388,7 +2420,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2425,7 +2457,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2444,7 +2477,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2463,7 +2496,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2482,7 +2515,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2501,7 +2534,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2520,7 +2553,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2539,7 +2572,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2556,7 +2589,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2573,7 +2606,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2590,7 +2623,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2607,7 +2640,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2624,7 +2657,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2641,7 +2674,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2678,7 +2711,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2695,7 +2728,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2712,7 +2745,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2729,7 +2762,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2746,7 +2779,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2763,7 +2796,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2780,7 +2813,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2802,7 +2836,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -2839,7 +2874,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2858,7 +2893,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2875,7 +2910,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2892,7 +2927,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2909,7 +2944,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2926,7 +2961,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2943,7 +2978,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2960,7 +2995,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2979,7 +3014,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -2996,7 +3031,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3013,7 +3048,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3030,7 +3065,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3047,7 +3082,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3064,7 +3099,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3081,7 +3116,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3157,7 +3192,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3174,7 +3210,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3193,7 +3230,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3274,7 +3312,7 @@
       "Alternation"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3331,7 +3369,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3384,7 +3423,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3401,7 +3440,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3418,7 +3457,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3435,7 +3474,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3452,7 +3491,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3469,7 +3508,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3488,7 +3527,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3507,7 +3546,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3526,7 +3565,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3545,7 +3584,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3602,7 +3641,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3621,7 +3660,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3640,7 +3679,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3659,7 +3698,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3678,7 +3717,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3695,7 +3735,8 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3713,7 +3754,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -3730,7 +3772,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3747,7 +3789,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3764,7 +3806,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3781,7 +3823,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3798,7 +3840,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3815,7 +3857,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3872,7 +3914,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3889,7 +3931,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3906,7 +3948,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3923,7 +3965,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3940,7 +3982,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3957,7 +3999,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -3975,7 +4017,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -4010,7 +4053,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4027,7 +4070,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4044,7 +4087,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4061,7 +4104,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4078,7 +4121,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4095,7 +4138,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4112,7 +4155,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4129,7 +4172,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4146,7 +4189,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4163,7 +4206,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4180,7 +4223,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4197,7 +4240,7 @@
       "CharClass"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4258,7 +4301,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4277,7 +4320,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4296,7 +4339,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4315,7 +4358,7 @@
       "NonCapturing"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4371,7 +4414,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4389,7 +4432,8 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "Backtracking",
+      "DFA"
     ]
   },
   {
@@ -4426,7 +4470,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4445,7 +4489,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4464,7 +4508,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {
@@ -4483,7 +4527,7 @@
       "Quantifiers"
     ],
     "engine_labels": [
-      "Backtracking"
+      "DFA"
     ]
   },
   {

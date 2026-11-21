@@ -2,6 +2,11 @@
 
 This guide covers testing the regengo project itself. For documentation on the test files regengo generates for users, see [Auto-Generated Tests](../auto-generated-tests.md).
 
+## Requirements
+
+- Go 1.27 or later (the module's `go.mod` pins `toolchain go1.27.4`; older Go toolchains download it automatically)
+- golangci-lint v2 for linting, built with Go 1.27 or later (`make setup-hooks` installs it)
+
 ## Running Tests
 
 ### All Tests
@@ -147,7 +152,7 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
 
 1. **Format check**: `gofmt -s -d .`
 2. **Vet**: `go vet ./...`
-3. **Lint**: `golangci-lint run`
+3. **Lint**: `golangci-lint run` (golangci-lint v2)
 4. **Build**: `go build -v ./cmd/regengo`
 5. **CLI test**: Generate and verify a test pattern
 6. **Tests**: Full test suite with race detection and coverage

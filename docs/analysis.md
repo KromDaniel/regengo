@@ -10,9 +10,13 @@ Regengo uses different strategies for boolean matching vs. capture extraction:
 
 | Algorithm | Use Case | Complexity | Constraints |
 |-----------|----------|------------|-------------|
-| **Backtracking NFA** | Simple patterns | O(n) typical | Default engine |
-| **Pure DFA** | ASCII patterns with catastrophic risk | O(n) single pass | ASCII only, no `.` or `\b` |
-| **Thompson NFA** | Patterns with catastrophic risk | O(n×m) guaranteed | ≤ 64 NFA states |
+| **Pure DFA** | Default for DFA-compatible patterns | O(n) single pass | ASCII only, no `.` or `\b`, ≤ 500 states (configurable) |
+| **Thompson NFA** | Patterns with catastrophic risk that cannot use the DFA | O(n×m) guaranteed | ≤ 64 NFA states |
+| **Backtracking NFA** | Remaining patterns (e.g. `.`, `\b`, non-ASCII) | O(n) typical | Fallback engine |
+
+The DFA also uses **start-state skipping**: when no match is in progress and at most 16 distinct
+bytes can begin a match, it jumps straight to the next such byte (`IndexByte` for a single byte,
+a lookup table otherwise) instead of stepping through the transition table.
 
 ### Capture Engines (FindString/FindBytes)
 
@@ -26,7 +30,7 @@ Regengo uses different strategies for boolean matching vs. capture extraction:
 
 ```
 Pattern: [\w\.+-]+@[\w\.-]+
- → Backtracking NFA for Match (simple, no catastrophic risk)
+ → DFA for Match (ASCII-compatible)
  → Backtracking for Captures
 
 Pattern: (a+)+b
@@ -34,7 +38,7 @@ Pattern: (a+)+b
  → TDFA for Captures (O(n) guaranteed)
 
 Pattern: (?P<user>\w+)@(?P<domain>\w+)
- → Backtracking for Match (no catastrophic risk)
+ → DFA for Match (ASCII-compatible)
  → Backtracking for Captures (simple pattern)
 
 Pattern: (?P<outer>(?P<inner>a+)+)b
@@ -45,10 +49,10 @@ Pattern: (?P<outer>(?P<inner>a+)+)b
 ## Match Engine Selection Priority
 
 1. `ForceThompson` → Thompson NFA (if pattern has ≤ 64 states)
-2. `ForceDFA` or catastrophic risk detected → Try DFA (ASCII patterns only, no `.` or `\b`)
-3. If DFA unavailable but risk exists → Thompson NFA (if ≤ 64 states)
+2. Pattern is DFA-compatible (ASCII only, no `.` or `\b`, within the state threshold) → DFA
+3. If DFA unavailable and `ForceDFA` was set or catastrophic risk exists → Thompson NFA (if ≤ 64 states)
 4. If end anchor `$` present with risk → Memoized Backtracking
-5. Default → Backtracking NFA
+5. Otherwise → Backtracking NFA
 
 ## Capture Engine Selection Priority
 

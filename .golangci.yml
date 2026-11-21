@@ -1,61 +1,82 @@
+version: "2"
+run:
+  tests: true
 linters:
   enable:
-    - gofmt
-    - govet
-    - staticcheck
-    - gosimple
-    - ineffassign
-    - errcheck
-    - typecheck
-    - misspell
     - gocritic
+    - misspell
     - revive
-    - unused
-
-linters-settings:
-  misspell:
-    locale: US
-  errcheck:
-    check-type-assertions: true
-    check-blank: false
-  gocritic:
-    disabled-checks:
-      - ifElseChain
-      - assignOp
-      - dupBranchBody
-      - unlambda
-      - dupArg
-  revive:
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - assignOp
+        - dupBranchBody
+        - unlambda
+        - dupArg
+    misspell:
+      locale: US
+    staticcheck:
+      # Defaults minus the quickfix (QF) suggestions, which are style hints
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        - -QF*
+    revive:
+      rules:
+        - name: increment-decrement
+          disabled: true
+        - name: redefines-builtin-id
+          disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: increment-decrement
-        disabled: true
-      - name: redefines-builtin-id
-        disabled: true
-
+      - linters:
+          - errcheck
+          - gocritic
+        path: _test\.go
+      - linters:
+          - errcheck
+          - gocritic
+        path: cmd/
+    paths:
+      - benchmarks/generated
+      - benchmarks/curated
+      - benchmarks/mass_generated
+      - examples/generated
+      - output
+      - vendor
+      - third_party$
+      - builtin$
+      - examples/
 issues:
-  exclude-dirs:
-    - benchmarks/generated
-    - benchmarks/curated
-    - benchmarks/mass_generated
-    - examples/generated
-    - output
-    - vendor
-
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gocritic
-
-    - path: cmd/
-      linters:
-        - errcheck
-        - gocritic
-
-
   max-issues-per-linter: 0
   max-same-issues: 0
-
-run:
-  timeout: 5m
-  tests: true
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - benchmarks/generated
+      - benchmarks/curated
+      - benchmarks/mass_generated
+      - examples/generated
+      - output
+      - vendor
+      - third_party$
+      - builtin$
+      - examples/

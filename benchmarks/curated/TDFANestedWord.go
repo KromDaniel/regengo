@@ -42,133 +42,62 @@ func (TDFANestedWord) MatchLengthInfo() (minLen, maxLen int) {
 	return TDFANestedWordMinMatchLen, TDFANestedWordMaxMatchLen
 }
 
+// DFA transition table [state][char] -> next state (-1 = no transition)
+var dfaTransitionsTDFANestedWord = [6][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 5, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}}
+
+// DFA accept states array
+var dfaAcceptStatesTDFANestedWord = [6]bool{false, false, false, false, false, true}
+
+// DFA accept states array (End of Text)
+var dfaAcceptStatesEOTTDFANestedWord = [6]bool{false, false, false, false, false, true}
+
 func (TDFANestedWord) MatchString(input string) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesTDFANestedWord[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0xe))
-	acceptMask := uint64(uint64(0x2000))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [14]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
 		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 3
-			if current&uint64(uint64(0x8)) != 0 && ((((c >= uint8(0x30) && c <= uint8(0x39)) || (c >= uint8(0x41) && c <= uint8(0x5a))) || c == uint8(0x5f)) || (c >= uint8(0x61) && c <= uint8(0x7a))) {
-				next |= epsilonClosures[3]
-			}
-			// State 5
-			if current&uint64(uint64(0x20)) != 0 && (((c >= uint8(0x9) && c <= uint8(0xa)) || (c >= uint8(0xc) && c <= uint8(0xd))) || c == uint8(0x20)) {
-				next |= epsilonClosures[5]
-			}
-			// State 0
-			if current&uint64(uint64(0x400)) != 0 && c == uint8(0x65) {
-				next |= epsilonClosures[10]
-			}
-			// State 1
-			if current&uint64(uint64(0x800)) != 0 && c == uint8(0x6e) {
-				next |= epsilonClosures[11]
-			}
-			// State 2
-			if current&uint64(uint64(0x1000)) != 0 && c == uint8(0x64) {
-				next |= epsilonClosures[12]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
-				break
-			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+		state = int(dfaTransitionsTDFANestedWord[state][c])
+		if dfaAcceptStatesTDFANestedWord[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTTDFANestedWord[state]
 }
 func (TDFANestedWord) MatchBytes(input []byte) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesTDFANestedWord[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0xe))
-	acceptMask := uint64(uint64(0x2000))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [14]uint64{3: uint64(uint64(0x7fc)), 5: uint64(uint64(0x7ec)), 10: uint64(uint64(0x800)), 11: uint64(uint64(0x1000)), 12: uint64(uint64(0x2000))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
 		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 3
-			if current&uint64(uint64(0x8)) != 0 && ((((c >= uint8(0x30) && c <= uint8(0x39)) || (c >= uint8(0x41) && c <= uint8(0x5a))) || c == uint8(0x5f)) || (c >= uint8(0x61) && c <= uint8(0x7a))) {
-				next |= epsilonClosures[3]
-			}
-			// State 5
-			if current&uint64(uint64(0x20)) != 0 && (((c >= uint8(0x9) && c <= uint8(0xa)) || (c >= uint8(0xc) && c <= uint8(0xd))) || c == uint8(0x20)) {
-				next |= epsilonClosures[5]
-			}
-			// State 0
-			if current&uint64(uint64(0x400)) != 0 && c == uint8(0x65) {
-				next |= epsilonClosures[10]
-			}
-			// State 1
-			if current&uint64(uint64(0x800)) != 0 && c == uint8(0x6e) {
-				next |= epsilonClosures[11]
-			}
-			// State 2
-			if current&uint64(uint64(0x1000)) != 0 && c == uint8(0x64) {
-				next |= epsilonClosures[12]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
-				break
-			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+		state = int(dfaTransitionsTDFANestedWord[state][c])
+		if dfaAcceptStatesTDFANestedWord[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTTDFANestedWord[state]
 }
 
 // Note: This pattern contains capture groups in repeating/optional context.
@@ -440,8 +369,8 @@ Ins13:
 		return r, true
 	}
 }
-func (recv TDFANestedWord) FindString(input string) (*TDFANestedWordResult, bool) {
-	return recv.FindStringReuse(input, nil)
+func (r TDFANestedWord) FindString(input string) (*TDFANestedWordResult, bool) {
+	return r.FindStringReuse(input, nil)
 }
 func (TDFANestedWord) FindAllStringAppend(input string, n int, s []*TDFANestedWordResult) []*TDFANestedWordResult {
 	if n == 0 {
@@ -958,8 +887,8 @@ Ins13:
 		return r, true
 	}
 }
-func (recv TDFANestedWord) FindBytes(input []byte) (*TDFANestedWordBytesResult, bool) {
-	return recv.FindBytesReuse(input, nil)
+func (r TDFANestedWord) FindBytes(input []byte) (*TDFANestedWordBytesResult, bool) {
+	return r.FindBytesReuse(input, nil)
 }
 func (TDFANestedWord) FindAllBytesAppend(input []byte, n int, s []*TDFANestedWordBytesResult) []*TDFANestedWordBytesResult {
 	if n == 0 {

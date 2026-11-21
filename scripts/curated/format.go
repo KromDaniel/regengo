@@ -243,7 +243,7 @@ func aggregateResults(results []BenchResult) map[string]*PatternBenchmarks {
 func generateDetailedMarkdown(groups map[string]*PatternBenchmarks) {
 	fmt.Println("# Detailed Benchmarks")
 	fmt.Println()
-	fmt.Println("Benchmarks run on Apple M4 Pro. Each benchmark shows performance for Go stdlib vs regengo.")
+	fmt.Println("Each benchmark shows performance for Go stdlib vs regengo.")
 	fmt.Println()
 
 	// Print summary table

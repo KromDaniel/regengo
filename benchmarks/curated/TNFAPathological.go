@@ -42,109 +42,78 @@ func (TNFAPathological) MatchLengthInfo() (minLen, maxLen int) {
 	return TNFAPathologicalMinMatchLen, TNFAPathologicalMaxMatchLen
 }
 
+// DFA transition table [state][char] -> next state (-1 = no transition)
+var dfaTransitionsTNFAPathological = [3][128]int8{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+
+// DFA accept states array
+var dfaAcceptStatesTNFAPathological = [3]bool{false, false, true}
+
+// DFA accept states array (End of Text)
+var dfaAcceptStatesEOTTNFAPathological = [3]bool{false, false, true}
+
 func (TNFAPathological) MatchString(input string) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesTNFAPathological[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0xe))
-	acceptMask := uint64(uint64(0x200))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [10]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
-		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 3
-			if current&uint64(uint64(0x8)) != 0 && c == uint8(0x61) {
-				next |= epsilonClosures[3]
-			}
-			// State 8
-			if current&uint64(uint64(0x100)) != 0 && c == uint8(0x62) {
-				next |= epsilonClosures[8]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			idx := strings.IndexByte(input[i:], uint8(0x61))
+			if idx < 0 {
 				break
 			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+			i += idx
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsTNFAPathological[state][c])
+		if dfaAcceptStatesTNFAPathological[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTTNFAPathological[state]
 }
 func (TNFAPathological) MatchBytes(input []byte) bool {
-	l := len(input)
-	// Thompson NFA state sets (bitset representation)
-	var current uint64
-	var next uint64
+	inputLen := len(input)
+	state := 0
+	// Empty-match check at the start state
+	if dfaAcceptStatesTNFAPathological[state] {
+		return true
+	}
 
-	// Precomputed constants
-	startClosure := uint64(uint64(0xe))
-	acceptMask := uint64(uint64(0x200))
-
-	// Epsilon closure lookup for next states after character transitions
-	epsilonClosures := [10]uint64{3: uint64(uint64(0x1fc)), 8: uint64(uint64(0x200))}
-
-	// Unanchored pattern - try from each starting position
-	for searchStart := 0; searchStart <= l; searchStart++ {
-		current = startClosure
-
-		// Check immediate match (empty pattern or already at accept)
-		if current&acceptMask != 0 {
-			return true
-		}
-
-		for offset := searchStart; offset < l; offset++ {
-			c := input[offset]
-			next = 0
-
-			// State 3
-			if current&uint64(uint64(0x8)) != 0 && c == uint8(0x61) {
-				next |= epsilonClosures[3]
-			}
-			// State 8
-			if current&uint64(uint64(0x100)) != 0 && c == uint8(0x62) {
-				next |= epsilonClosures[8]
-			}
-
-			// Update current state set
-			current = next
-
-			// Check for dead end
-			if current == 0 {
+	// Single pass over the input — O(n)
+	for i := 0; i < inputLen; i++ {
+		// Start-state skip: no match is in progress, jump to the next byte that can begin one
+		if state == 0 {
+			idx := bytes.IndexByte(input[i:], uint8(0x61))
+			if idx < 0 {
 				break
 			}
-
-			// Check for match
-			if current&acceptMask != 0 {
-				return true
-			}
+			i += idx
+		}
+		c := input[i]
+		if c >= 128 {
+			state = 0
+			continue
+		}
+		state = int(dfaTransitionsTNFAPathological[state][c])
+		if dfaAcceptStatesTNFAPathological[state] {
+			return true
 		}
 	}
 
-	return false
+	// End-of-text acceptance ($)
+	return dfaAcceptStatesEOTTNFAPathological[state]
 }
 
 // Note: This pattern contains capture groups in repeating/optional context.
@@ -357,8 +326,8 @@ Ins9:
 		return r, true
 	}
 }
-func (recv TNFAPathological) FindString(input string) (*TNFAPathologicalResult, bool) {
-	return recv.FindStringReuse(input, nil)
+func (r TNFAPathological) FindString(input string) (*TNFAPathologicalResult, bool) {
+	return r.FindStringReuse(input, nil)
 }
 func (TNFAPathological) FindAllStringAppend(input string, n int, s []*TNFAPathologicalResult) []*TNFAPathologicalResult {
 	if n == 0 {
@@ -757,8 +726,8 @@ Ins9:
 		return r, true
 	}
 }
-func (recv TNFAPathological) FindBytes(input []byte) (*TNFAPathologicalBytesResult, bool) {
-	return recv.FindBytesReuse(input, nil)
+func (r TNFAPathological) FindBytes(input []byte) (*TNFAPathologicalBytesResult, bool) {
+	return r.FindBytesReuse(input, nil)
 }
 func (TNFAPathological) FindAllBytesAppend(input []byte, n int, s []*TNFAPathologicalBytesResult) []*TNFAPathologicalBytesResult {
 	if n == 0 {

@@ -107,14 +107,15 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 	}
 
 	// Determine engine selection for Match functions
-	// Priority: ForceThompson > ForceDFA > auto-selection based on complexity
+	// Priority: ForceThompson > DFA (when compatible) > Thompson / backtracking fallback
 
 	if c.config.ForceThompson {
 		// ForceThompson takes highest priority
 		c.useThompsonForMatch = true
-	} else if c.config.ForceDFA || c.complexity.HasCatastrophicRisk {
-		// Try DFA for Match functions when pattern is suitable
-		// DFA provides O(n) single-pass matching for ASCII patterns
+	} else {
+		// DFA is the default Match engine whenever the pattern is DFA-compatible
+		// (ASCII-only, supported anchors, state count under the threshold):
+		// it is a single O(n) pass with no backtracking state.
 		dfaGen := NewDFAGenerator(c)
 		if dfaGen != nil {
 			canUseDFA, dfaInfo := dfaGen.CanUseDFA()
@@ -124,13 +125,13 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 			}
 		}
 
-		// Fallback: if DFA was requested but unavailable, use Thompson
-		if !c.useDFAForMatch {
+		// Fallback when DFA is unavailable: Thompson if DFA was explicitly
+		// requested, the pattern has catastrophic risk, or analysis recommends it;
+		// otherwise the backtracking engine.
+		if !c.useDFAForMatch &&
+			(c.config.ForceDFA || c.complexity.HasCatastrophicRisk || c.complexity.UseThompsonNFA) {
 			c.useThompsonForMatch = true
 		}
-	} else if c.complexity.UseThompsonNFA {
-		// Auto-select Thompson based on complexity analysis
-		c.useThompsonForMatch = true
 	}
 
 	// If catastrophic risk but can't use Thompson NFA or DFA (e.g., has end anchor), enable memoization

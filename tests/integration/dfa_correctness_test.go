@@ -67,47 +67,88 @@ var dfaTestCases = []struct {
 		pattern: "(one|two|three)(a|b|c)",
 		inputs:  []string{"onea", "twob", "threec", "one", "a", "foura", ""},
 	},
+	// Start-state skipping (single first byte -> IndexByte). The inputs include
+	// failed attempts that overlap the real match start.
+	{
+		name:    "skip_single_first_byte",
+		pattern: "0x[0-9a-fA-F]+",
+		inputs:  []string{"0x1f", "00x1f", "000x", "0 0x 0xg 00xA", "x0x", "addr=0xdeadbeef", "0", "", "é0xé", "é00x1"},
+	},
+	// Start-state skipping (small first-byte set -> lookup table)
+	{
+		name:    "skip_first_byte_set",
+		pattern: `\d{4}-\d{2}-\d{2}`,
+		inputs:  []string{"2025-10-05", "12025-10-05", "id 20252025-10-05", "2025-10-0", "2025-1-05 2025-10-05", "20252025", "é2025-10-05", "2025é-10-05", ""},
+	},
+	{
+		name:    "skip_alternation_literals",
+		pattern: "error|warn|fatal|panic",
+		inputs:  []string{"eerror", "wwarn", "fatapanic", "erro warn", "level=error", "pani", "ERROR", "é", ""},
+	},
+	{
+		name:    "skip_with_start_anchor_branch",
+		pattern: "^ab|cd",
+		inputs:  []string{"ab", "xab", "xcd", "ccd", "abx", "c", ""},
+	},
+	{
+		name:    "skip_with_end_anchor",
+		pattern: "ab$",
+		inputs:  []string{"ab", "abab", "abx", "aab", "a", "xxab", ""},
+	},
+	// First-byte set too large for skipping: plain DFA loop
+	{
+		name:    "email_no_skip",
+		pattern: `[\w\.+-]+@[\w\.-]+\.[\w\.-]+`,
+		inputs:  []string{"a@b.c", "a@b@c.d", "a@b", "@b.c", "x a@b.c y", "é@b.c", ""},
+	},
 }
 
 func TestDFACorrectnessVsStdlib(t *testing.T) {
+	type mode struct {
+		name     string
+		forceDFA bool
+	}
+	// "default" exercises automatic engine selection, which picks the DFA for
+	// every DFA-compatible pattern.
+	modes := []mode{{"forced", true}, {"default", false}}
 	for _, tc := range dfaTestCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Compile stdlib regex for comparison
-			stdRe := regexp.MustCompile(tc.pattern)
+		for _, m := range modes {
+			t.Run(tc.name+"/"+m.name, func(t *testing.T) {
+				// Compile stdlib regex for comparison
+				stdRe := regexp.MustCompile(tc.pattern)
 
-			// Create temp directory for generated code
-			tmpDir := t.TempDir()
-			outputFile := filepath.Join(tmpDir, "regex.go")
+				// Create temp directory for generated code
+				tmpDir := t.TempDir()
+				outputFile := filepath.Join(tmpDir, "regex.go")
 
-			// Generate with ForceDFA option
-			opts := regengo.Options{
-				Pattern:    tc.pattern,
-				Name:       "TestRegex",
-				OutputFile: outputFile,
-				Package:    "main",
-				ForceDFA:   true,
-			}
-
-			if err := regengo.Compile(opts); err != nil {
-				t.Fatalf("compilation failed: %v", err)
-			}
-
-			// Create test program that compares results
-			var testCases strings.Builder
-			for _, input := range tc.inputs {
-				expected := stdRe.MatchString(input)
-				testCases.WriteString("\t{`")
-				testCases.WriteString(strings.ReplaceAll(input, "`", "` + \"`\" + `"))
-				testCases.WriteString("`, ")
-				if expected {
-					testCases.WriteString("true")
-				} else {
-					testCases.WriteString("false")
+				opts := regengo.Options{
+					Pattern:    tc.pattern,
+					Name:       "TestRegex",
+					OutputFile: outputFile,
+					Package:    "main",
+					ForceDFA:   m.forceDFA,
 				}
-				testCases.WriteString("},\n")
-			}
 
-			testProgram := `package main
+				if err := regengo.Compile(opts); err != nil {
+					t.Fatalf("compilation failed: %v", err)
+				}
+
+				// Create test program that compares results
+				var testCases strings.Builder
+				for _, input := range tc.inputs {
+					expected := stdRe.MatchString(input)
+					testCases.WriteString("\t{`")
+					testCases.WriteString(strings.ReplaceAll(input, "`", "` + \"`\" + `"))
+					testCases.WriteString("`, ")
+					if expected {
+						testCases.WriteString("true")
+					} else {
+						testCases.WriteString("false")
+					}
+					testCases.WriteString("},\n")
+				}
+
+				testProgram := `package main
 
 import (
 	"fmt"
@@ -128,6 +169,11 @@ func main() {
 			fmt.Printf("FAIL: input=%q expected=%v got=%v\n", tc.input, tc.expected, got)
 			failed = true
 		}
+		gotBytes := CompiledTestRegex.MatchBytes([]byte(tc.input))
+		if gotBytes != tc.expected {
+			fmt.Printf("FAIL (bytes): input=%q expected=%v got=%v\n", tc.input, tc.expected, gotBytes)
+			failed = true
+		}
 	}
 
 	if failed {
@@ -137,17 +183,17 @@ func main() {
 }
 `
 
-			testFile := filepath.Join(tmpDir, "main.go")
-			if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
-				t.Fatalf("failed to write test program: %v", err)
-			}
+				testFile := filepath.Join(tmpDir, "main.go")
+				if err := os.WriteFile(testFile, []byte(testProgram), 0644); err != nil {
+					t.Fatalf("failed to write test program: %v", err)
+				}
 
-			// Get project root
-			wd, _ := os.Getwd()
-			projectRoot := filepath.Join(wd, "..", "..")
+				// Get project root
+				wd, _ := os.Getwd()
+				projectRoot := filepath.Join(wd, "..", "..")
 
-			// Create go.mod
-			goMod := `module test
+				// Create go.mod
+				goMod := `module test
 
 go 1.21
 
@@ -155,29 +201,30 @@ require github.com/KromDaniel/regengo v0.0.0
 
 replace github.com/KromDaniel/regengo => ` + projectRoot + `
 `
-			if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
-				t.Fatalf("failed to write go.mod: %v", err)
-			}
+				if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+					t.Fatalf("failed to write go.mod: %v", err)
+				}
 
-			// Run go mod tidy first
-			tidyCmd := exec.Command("go", "mod", "tidy")
-			tidyCmd.Dir = tmpDir
-			if output, err := tidyCmd.CombinedOutput(); err != nil {
-				t.Fatalf("go mod tidy failed: %v\nOutput:\n%s", err, output)
-			}
+				// Run go mod tidy first
+				tidyCmd := exec.Command("go", "mod", "tidy")
+				tidyCmd.Dir = tmpDir
+				if output, err := tidyCmd.CombinedOutput(); err != nil {
+					t.Fatalf("go mod tidy failed: %v\nOutput:\n%s", err, output)
+				}
 
-			// Run the test program
-			cmd := exec.Command("go", "run", ".")
-			cmd.Dir = tmpDir
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("test program failed: %v\nOutput:\n%s", err, output)
-			}
+				// Run the test program
+				cmd := exec.Command("go", "run", ".")
+				cmd.Dir = tmpDir
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("test program failed: %v\nOutput:\n%s", err, output)
+				}
 
-			if !strings.Contains(string(output), "PASS") {
-				t.Fatalf("unexpected output:\n%s", output)
-			}
-		})
+				if !strings.Contains(string(output), "PASS") {
+					t.Fatalf("unexpected output:\n%s", output)
+				}
+			})
+		}
 	}
 }
 
