@@ -459,6 +459,11 @@ func computeEpsilonClosures(prog *syntax.Prog) []uint64 {
 // computeEpsilonClosureForState computes the epsilon closure for a single state.
 // The epsilon closure is the set of all states reachable by following only
 // epsilon transitions (Nop, Capture, Alt branches).
+//
+// It stops at InstEmptyWidth on purpose: whether an assertion (^ $ \b ...) holds
+// depends on the input position. The closure contains the assertion state, and
+// the Thompson generator adds the closure of its Out at run time from the
+// position context (see ThompsonGenerator.generateExpand).
 func computeEpsilonClosureForState(prog *syntax.Prog, start int) uint64 {
 	if start >= 64 {
 		// For now, only support up to 64 states with bitset

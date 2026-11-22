@@ -64,6 +64,9 @@ type parityCase struct {
 	pattern  string
 	variants []parityVariant
 	extra    []string // fixed regression inputs, always run first, in this order
+	// matchOnly generates and compares Match only (no Find package). Used for
+	// patterns whose Find generation is not supported (e.g. (?i) with captures).
+	matchOnly bool
 }
 
 func pv(engine parityEngine, matchEngine, findEngine string) parityVariant {
@@ -76,6 +79,17 @@ func thompsonAndBacktracking() []parityVariant {
 		pv(engineThompson, markerThompson, markerBacktracking),
 		pv(engineBacktracking, markerBacktracking, markerBacktracking),
 	}
+}
+
+// thompsonOnly is the variant list for patterns that only the Thompson engine
+// can be generated for (the backtracking generator panics on them).
+func thompsonOnly() []parityVariant {
+	return []parityVariant{pv(engineThompson, markerThompson, markerBacktracking)}
+}
+
+// thompsonMatchOnly is thompsonOnly for cases flagged matchOnly (no Find engine).
+func thompsonMatchOnly() []parityVariant {
+	return []parityVariant{pv(engineThompson, markerThompson, "")}
 }
 
 var parityCases = []parityCase{
@@ -220,13 +234,13 @@ var parityCases = []parityCase{
 			pv(engineDefault, markerThompson, markerTDFA),
 			pv(engineBacktracking, markerBacktracking, markerTDFA),
 		},
-		extra: []string{"é;", "a,b;"},
+		extra: []string{"é;", "a,b;", "€;", "😀;", "a,😀;", "😀,€;"},
 	},
 	{
 		name:     "dotXY",
 		pattern:  `x.y`,
 		variants: thompsonAndBacktracking(),
-		extra:    []string{"xéy", "xay", "x€y", "x😀y"},
+		extra:    []string{"xéy", "xay", "x€y", "x😀y", "x\ny"},
 	},
 	{
 		name:     "dotSXY",
@@ -330,6 +344,103 @@ var parityCases = []parityCase{
 		},
 		extra: []string{"ab", "aab", "b"},
 	},
+	{
+		name:     "mlA",
+		pattern:  `(?m)^a+$`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"a\nb", "b\na", "a\n", "\na", "ab\na"},
+	},
+	{
+		name:     "textAZ",
+		pattern:  `\Aa+\z`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"aa", "aab", "ba", "", "a\n"},
+	},
+	{
+		name:     "anchStar",
+		pattern:  `^a*`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"bbb", "", "ab"},
+	},
+	{
+		name:     "midRuneB",
+		pattern:  `x*\B`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"aéb", "é", "ab", "a€b", "a😀b"},
+	},
+	{
+		name:     "negAb",
+		pattern:  `[^a]b`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"😀b", "€b", "éb", "ab", "a€b"},
+	},
+	{
+		name:     "greekZ",
+		pattern:  `\p{Greek}+z`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"αβz", "αz", "az", "Ωz", "😀z"},
+	},
+	{
+		name:     "multiByte",
+		pattern:  `a€😀b`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"a€😀b", "a€😀", "xa€😀b", "a€€b"},
+	},
+	{
+		name:     "negEth",
+		pattern:  `[^é]z`,
+		variants: thompsonOnly(),
+		extra:    []string{"éz", "aéz", "az", "€z"},
+	},
+	{
+		name:    "mlWords",
+		pattern: `(?m)^(?:\w+\s?)+$`,
+		variants: []parityVariant{
+			pv(engineDefault, markerThompson, markerTNFA),
+			pv(engineBacktracking, markerBacktracking, markerTNFA),
+		},
+		extra: []string{"ab cd\nx", "a\n\nb", " a", "ab \ncd", "é\nab"},
+	},
+	{
+		name:     "mlEmpty",
+		pattern:  `(?m)^$`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"a\n\nb", "\n", "", "a", "a\n"},
+	},
+	{
+		name:     "onlyB",
+		pattern:  `\B`,
+		variants: thompsonAndBacktracking(),
+		extra:    []string{"aéb", "é", "ab", "a€b"},
+	},
+	{
+		name:      "foldA",
+		pattern:   `(?i)ab`,
+		variants:  thompsonMatchOnly(),
+		matchOnly: true,
+		extra:     []string{"AB", "aB", "ab", "a b"},
+	},
+	{
+		name:      "foldK",
+		pattern:   `(?i)k`,
+		variants:  thompsonMatchOnly(),
+		matchOnly: true,
+		extra:     []string{"K", "k", "\u212a", "x", "é"},
+	},
+	{
+		name:      "foldS",
+		pattern:   `(?i)as`,
+		variants:  thompsonMatchOnly(),
+		matchOnly: true,
+		extra:     []string{"aſ", "AS", "Aſ", "as"},
+	},
+	{
+		name:      "foldE",
+		pattern:   `(?i)é+x`,
+		variants:  thompsonMatchOnly(),
+		matchOnly: true,
+		extra:     []string{"Éx", "éÉx", "ex", "x"},
+	},
 }
 
 // Method names, in the order they are reported. Used in driver output and in
@@ -351,15 +462,13 @@ var parityMethods = []string{
 
 type divKey struct{ variant, method string }
 
-// Tags for knownDivergence entries. Each fix task owns the entries with its tag.
+// Tags for knownDivergence entries.
 const (
-	tagBug3      = "issue37-bug3 (Task D)" // Thompson Match: assertions and non-ASCII
 	tagUntriaged = "untriaged"
 )
 
-// knownDivergence parks divergences from the standard library that exist before
-// the fixes for issue #37. Each fix task (B, C, D) deletes the entries carrying
-// its tag when it fixes the bug; the final state of the branch has none.
+// knownDivergence parks divergences from the standard library that are not part
+// of issue #37 (see the untriaged entries in buildKnownDivergence).
 // TestStdlibParity fails on a divergence that is not listed here, and also on a
 // listed entry that no longer diverges (so entries cannot go stale).
 var knownDivergence = buildKnownDivergence()
@@ -373,7 +482,6 @@ func known(m map[divKey]string, tag, variant string, methods ...string) {
 func buildKnownDivergence() map[divKey]string {
 	m := map[divKey]string{}
 
-	match := []string{"MatchString", "MatchBytes"}
 	find := []string{"FindString", "FindBytes"}
 	findAll := []string{
 		"FindAllString(n=-1)", "FindAllString(n=2)",
@@ -383,16 +491,7 @@ func buildKnownDivergence() map[divKey]string {
 	}
 	findAndAll := append(append([]string{}, find...), findAll...)
 
-	// Task D: bug 3. Thompson Match: assertions (3a, 3b) and non-ASCII (3c).
-	for _, v := range []string{
-		"aWB/ForceThompson", "abcDollar/ForceThompson", "altAnch/ForceThompson",
-		"caretAbc/ForceThompson", "mlWord/ForceThompson", "notB/ForceThompson",
-		"wordEnd/default", "notComma/default", "eAcute/default", "dotXY/ForceThompson",
-	} {
-		known(m, tagBug3, v, match...)
-	}
-
-	// Untriaged: not one of the bugs above.
+	// Untriaged: not one of the issue #37 bugs.
 	//   - The TDFA Find engine is byte-based: non-ASCII literals never match and
 	//     classes like [^,] only see single bytes (eAcute, notComma Find*).
 	//     Follow-up issue (TDFA byte-based Find, filed with bug 4).
@@ -631,14 +730,14 @@ func matchMarkerError(engine, body string) string {
 			return `marker "dfaTransitionsR" not found`
 		}
 	case markerThompson:
-		if !strings.Contains(body, "epsilonClosures") {
-			return `marker "epsilonClosures" not found`
+		if !strings.Contains(body, "startClosure") {
+			return `marker "startClosure" not found`
 		}
 	case markerBacktracking:
 		if !strings.Contains(body, "StepSelect") {
 			return `marker "StepSelect" not found`
 		}
-		if strings.Contains(body, "dfaTransitionsR") || strings.Contains(body, "epsilonClosures") {
+		if strings.Contains(body, "dfaTransitionsR") || strings.Contains(body, "startClosure") {
 			return "DFA/Thompson marker present in backtracking body"
 		}
 	}
@@ -797,7 +896,12 @@ func TestStdlibParity(t *testing.T) {
 			matchSrc := compile(c.pattern, dv.matchPkg, v.engine)
 			findSrc := matchSrc
 			dv.findPkg = dv.matchPkg
-			if !hasCaptures {
+			if c.matchOnly {
+				if v.findEngine != "" {
+					t.Errorf("%s: matchOnly case must not expect a Find engine (%q)", name, v.findEngine)
+				}
+				dv.findPkg = ""
+			} else if !hasCaptures {
 				dv.findPattern = "(" + c.pattern + ")"
 				dv.findPkg = nextPkg()
 				findSrc = compile(dv.findPattern, dv.findPkg, v.engine)
@@ -808,10 +912,12 @@ func TestStdlibParity(t *testing.T) {
 			} else if msg := matchMarkerError(v.matchEngine, body); msg != "" {
 				t.Errorf("%s: expected %s engine for MatchString: %s", name, v.matchEngine, msg)
 			}
-			if body, ok := parityFuncBody(findSrc, parityFindFuncHeader); !ok {
-				t.Errorf("%s: FindStringReuse function not found in generated code", name)
-			} else if msg := findMarkerError(v.findEngine, body); msg != "" {
-				t.Errorf("%s: expected %s engine for FindStringReuse: %s", name, v.findEngine, msg)
+			if !c.matchOnly {
+				if body, ok := parityFuncBody(findSrc, parityFindFuncHeader); !ok {
+					t.Errorf("%s: FindStringReuse function not found in generated code", name)
+				} else if msg := findMarkerError(v.findEngine, body); msg != "" {
+					t.Errorf("%s: expected %s engine for FindStringReuse: %s", name, v.findEngine, msg)
+				}
 			}
 
 			variants = append(variants, dv)
@@ -937,7 +1043,7 @@ func writeParityDriver(w io.Writer, vs []driverVariant) {
 	seen := map[string]bool{}
 	for _, v := range vs {
 		for _, pkg := range []string{v.matchPkg, v.findPkg} {
-			if !seen[pkg] {
+			if pkg != "" && !seen[pkg] {
 				seen[pkg] = true
 				fmt.Fprintf(&imports, "\t%q\n", "paritytest/"+pkg)
 			}
@@ -973,6 +1079,10 @@ func writeDriverVariant(w io.Writer, v driverVariant) {
 	fmt.Fprintf(w, "\t\textra: []string{%s},\n", extra.String())
 	fmt.Fprintf(w, "\t\tmatch: %s.CompiledR.MatchString,\n", m)
 	fmt.Fprintf(w, "\t\tmatchB: %s.CompiledR.MatchBytes,\n", m)
+	if f == "" {
+		fmt.Fprintf(w, "\t},\n")
+		return
+	}
 	fmt.Fprintf(w, "\t\tfind: func(s string) (any, bool) { r, ok := %s.CompiledR.FindString(s); return r, ok },\n", f)
 	fmt.Fprintf(w, "\t\tfindB: func(b []byte) (any, bool) { r, ok := %s.CompiledR.FindBytes(b); return r, ok },\n", f)
 	fmt.Fprintf(w, "\t\tfindAll: func(s string, n int) []any {\n")
