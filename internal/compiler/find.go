@@ -141,7 +141,9 @@ func (c *Compiler) generateFindAllAppendFunction(structName string, isBytes bool
 	code := []jen.Code{
 		jen.If(jen.Id("n").Op("==").Lit(0)).Block(jen.Return(jen.Id("s"))),
 		jen.Id("result").Op(":=").Id("s"),
+		jen.Id("base").Op(":=").Len(jen.Id("s")),
 		jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
+		jen.List(jen.Id("pos"), jen.Id("prevEnd")).Op(":=").List(jen.Lit(0), jen.Lit(-1)),
 		jen.Id("searchStart").Op(":=").Lit(0),
 	}
 
@@ -219,7 +221,7 @@ func (c *Compiler) generateMemoizationInit() []jen.Code {
 // Includes match count check, anchored check, offset initialization, and stack resets.
 func (c *Compiler) generateFindAllLoopSetup(numCaptures int) []jen.Code {
 	loopBody := []jen.Code{
-		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op(">=").Id("n")).Block(
+		jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("result")).Op("-").Id("base").Op(">=").Id("n")).Block(
 			jen.Break(),
 		),
 	}
@@ -231,7 +233,7 @@ func (c *Compiler) generateFindAllLoopSetup(numCaptures int) []jen.Code {
 	}
 
 	loopBody = append(loopBody,
-		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(jen.Break()),
+		jen.If(jen.Id("searchStart").Op(">").Id(codegen.InputLenName)).Block(jen.Break()),
 		jen.Id(codegen.OffsetName).Op(":=").Id("searchStart"),
 		jen.Var().Id(codegen.CapturesName).Index(jen.Lit(numCaptures)).Int(),
 	)
@@ -261,11 +263,10 @@ func (c *Compiler) generateFindAllLoopSetup(numCaptures int) []jen.Code {
 // Handles per-capture checkpointing, array checkpointing, and no-backtracking modes.
 func (c *Compiler) generateFindAllBacktrackLogic() []jen.Code {
 	if !c.needsBacktracking {
-		return []jen.Code{
+		code := []jen.Code{
 			jen.Id(codegen.TryFallbackName).Op(":"),
-			c.generateAdvanceRune("searchStart", c.generatingBytes),
-			jen.Continue(),
 		}
+		return append(code, c.generateFindAllNextAttempt()...)
 	}
 
 	if c.usePerCaptureCheckpointing {
@@ -274,9 +275,21 @@ func (c *Compiler) generateFindAllBacktrackLogic() []jen.Code {
 	return c.generateArrayCheckpointBacktrack()
 }
 
+// generateFindAllNextAttempt emits the failure path of a FindAll attempt: stop
+// when the attempt started at the end of the input, otherwise start the next
+// attempt one rune later. The loop guard admits searchStart == l (the empty
+// match at end of input), so the advance must be guarded here.
+func (c *Compiler) generateFindAllNextAttempt() []jen.Code {
+	return []jen.Code{
+		jen.If(jen.Id("searchStart").Op(">=").Id(codegen.InputLenName)).Block(jen.Break()),
+		c.generateAdvanceRune("searchStart", c.generatingBytes),
+		jen.Continue(),
+	}
+}
+
 // generatePerCaptureBacktrack generates backtrack logic for per-capture checkpointing mode.
 func (c *Compiler) generatePerCaptureBacktrack() []jen.Code {
-	return []jen.Code{
+	return append([]jen.Code{
 		jen.Id(codegen.TryFallbackName).Op(":"),
 		jen.For(jen.Len(jen.Id(codegen.StackName)).Op(">").Lit(0)).Block(
 			jen.Id("last").Op(":=").Id(codegen.StackName).Index(jen.Len(jen.Id(codegen.StackName)).Op("-").Lit(1)),
@@ -291,9 +304,7 @@ func (c *Compiler) generatePerCaptureBacktrack() []jen.Code {
 			jen.Id(codegen.NextInstructionName).Op("=").Id("last").Index(jen.Lit(1)),
 			jen.Goto().Id(codegen.StepSelectName),
 		),
-		c.generateAdvanceRune("searchStart", c.generatingBytes),
-		jen.Continue(),
-	}
+	}, c.generateFindAllNextAttempt()...)
 }
 
 // generateArrayCheckpointBacktrack generates backtrack logic for array checkpointing mode.
@@ -313,10 +324,7 @@ func (c *Compiler) generateArrayCheckpointBacktrack() []jen.Code {
 				jen.Id("captureStack").Op("=").Id("captureStack").Index(jen.Empty(), jen.Id("top")),
 			),
 			jen.Goto().Id(codegen.StepSelectName),
-		).Else().Block(
-			c.generateAdvanceRune("searchStart", c.generatingBytes),
-			jen.Continue(),
-		),
+		).Else().Block(c.generateFindAllNextAttempt()...),
 	}
 }
 
@@ -425,11 +433,8 @@ func (c *Compiler) generateMatchInstForFindAllAppend(id uint32, structName strin
 		}
 	}
 
-	// Build the block with slice reuse logic
-	blockCode := []jen.Code{
-		// Set captures[1] to mark end of match
-		jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
-		// Declare item variable
+	// Item acquisition (reusing capacity) followed by the field assignments.
+	acquire := []jen.Code{
 		jen.Var().Id("item").Op("*").Id(structName),
 		// Check if we can reuse from capacity
 		jen.If(jen.Len(jen.Id("result")).Op("<").Cap(jen.Id("result"))).Block(
@@ -447,20 +452,53 @@ func (c *Compiler) generateMatchInstForFindAllAppend(id uint32, structName strin
 			jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("item")),
 		),
 	}
+	acquire = append(acquire, fieldAssignments...)
 
-	// Add field assignments
-	blockCode = append(blockCode, fieldAssignments...)
+	// Set captures[1] to mark end of match
+	blockCode := []jen.Code{
+		jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op("=").Id(codegen.OffsetName),
+	}
 
-	// Add search position update and continue
+	// With memoization, the bits set on the success path of this match would
+	// prune the next attempt at the match end (the next attempt can reach the
+	// same (alt, end) states). Failure bits stay valid, so clear only the
+	// states at the match end.
+	if c.useMemoization {
+		var altIDs []jen.Code
+		for i, inst := range c.config.Program.Inst {
+			if inst.Op == syntax.InstAlt {
+				altIDs = append(altIDs, jen.Lit(i))
+			}
+		}
+		if len(altIDs) > 0 {
+			blockCode = append(blockCode,
+				jen.For(jen.List(jen.Id("_"), jen.Id("altID")).Op(":=").Range().Index(jen.Op("...")).Int().Values(altIDs...)).Block(
+					jen.Id("idx").Op(":=").Id("altID").Op("*").Parens(jen.Id(codegen.InputLenName).Op("+").Lit(1)).Op("+").Id(codegen.OffsetName),
+					jen.Id(codegen.VisitedName).Index(jen.Id("idx").Op("/").Lit(32)).Op("&^=").Uint32().Call(jen.Lit(1)).Op("<<").Parens(jen.Id("idx").Op("%").Lit(32)),
+				),
+			)
+		}
+	}
+
 	blockCode = append(blockCode,
-		// Move search position past this match
-		jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(1)).Op(">").Id("searchStart")).Block(
-			jen.Id("searchStart").Op("=").Id(codegen.CapturesName).Index(jen.Lit(1)),
+		jen.Id("accept").Op(":=").True(),
+		// An empty match at pos: reject it when it starts where the previous
+		// match ended, and step the cursor one rune (stdlib allMatches).
+		jen.If(jen.Id(codegen.OffsetName).Op("==").Id("pos")).Block(
+			jen.If(jen.Id(codegen.CapturesName).Index(jen.Lit(0)).Op("==").Id("prevEnd")).Block(
+				jen.Id("accept").Op("=").False(),
+			),
+			jen.If(jen.Id("pos").Op("<").Id(codegen.InputLenName)).Block(
+				c.generateAdvanceRune("pos", isBytes),
+			).Else().Block(
+				jen.Id("pos").Op("++"),
+			),
 		).Else().Block(
-			// Prevent infinite loop on zero-width matches
-			jen.Id("searchStart").Op("++"),
+			jen.Id("pos").Op("=").Id(codegen.OffsetName),
 		),
-		// Continue searching
+		jen.Id("prevEnd").Op("=").Id(codegen.OffsetName),
+		jen.If(jen.Id("accept")).Block(acquire...),
+		jen.Id("searchStart").Op("=").Id("pos"),
 		jen.Continue(),
 	)
 

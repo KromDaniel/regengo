@@ -585,7 +585,7 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			jen.If(jen.Id("r").Op("==").Nil()).Block(
 				jen.Id("r").Op("=").New(jen.Id(structName)),
 			),
-			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
+			jen.List(jen.Id("_"), jen.Id("_"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName), jen.Lit(0), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
@@ -594,8 +594,8 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 
 	// Generate internal FindString function (takes pointer, returns bool)
 	c.method("findStringInternal").
-		Params(jen.Id(codegen.InputName).String(), jen.Id("r").Op("*").Id(structName)).
-		Params(jen.Bool()).
+		Params(jen.Id(codegen.InputName).String(), jen.Id("from").Int(), jen.Id("r").Op("*").Id(structName)).
+		Params(jen.Int(), jen.Int(), jen.Bool()).
 		Block(findStringCode...)
 
 	// Generate FindString that calls FindStringReuse with nil (allocates once)
@@ -622,7 +622,7 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			jen.If(jen.Id("r").Op("==").Nil()).Block(
 				jen.Id("r").Op("=").New(jen.Id(bytesStructName)),
 			),
-			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
+			jen.List(jen.Id("_"), jen.Id("_"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName), jen.Lit(0), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
@@ -631,8 +631,8 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 
 	// Generate internal FindBytes function (takes pointer, returns bool)
 	c.method("findBytesInternal").
-		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("r").Op("*").Id(bytesStructName)).
-		Params(jen.Bool()).
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("from").Int(), jen.Id("r").Op("*").Id(bytesStructName)).
+		Params(jen.Int(), jen.Int(), jen.Bool()).
 		Block(findBytesCode...)
 
 	// Generate FindBytes that calls FindBytesReuse with nil (allocates once)
@@ -646,23 +646,31 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			)),
 		)
 
-	// Generate FindAllString using TDFA (iterate with FindString)
-	c.generateFindAllStringTDFA()
-
-	// Generate FindAllBytes using TDFA
-	c.generateFindAllBytesTDFA()
+	// Generate FindAllString / FindAllBytes using TDFA (stdlib allMatches loop)
+	c.generateFindAllTDFA(false)
+	c.generateFindAllTDFA(true)
 
 	return nil
 }
 
-// generateFindAllStringTDFA generates FindAllStringAppend and FindAllString using TDFA-based FindString.
-func (c *Compiler) generateFindAllStringTDFA() {
-	structName := fmt.Sprintf("%sResult", c.config.Name)
+// generateFindAllTDFA generates FindAll{String,Bytes}Append and FindAll{String,Bytes}
+// on top of the TDFA internal find. The loop is stdlib's allMatches: the search
+// runs on the full input from pos (so ^ keeps its context), an empty match
+// adjacent to the previous match is rejected, the cursor steps one rune after
+// an empty match, and the empty match at end of input is tried. Results reuse
+// the capacity of s and are committed only when accepted.
+func (c *Compiler) generateFindAllTDFA(isBytes bool) {
+	kind, structName := "String", fmt.Sprintf("%sResult", c.config.Name)
+	inputType := jen.String()
+	if isBytes {
+		kind, structName = "Bytes", fmt.Sprintf("%sBytesResult", c.config.Name)
+		inputType = jen.Index().Byte()
+	}
+	internal := "find" + kind + "Internal"
 
-	// Generate FindAllStringAppend first (zero-alloc with slice reuse)
-	c.method("FindAllStringAppend").
+	c.method("FindAll"+kind+"Append").
 		Params(
-			jen.Id(codegen.InputName).String(),
+			jen.Id(codegen.InputName).Add(inputType),
 			jen.Id("n").Int(),
 			jen.Id("s").Index().Op("*").Id(structName),
 		).
@@ -672,94 +680,58 @@ func (c *Compiler) generateFindAllStringTDFA() {
 				jen.Return(jen.Id("s")),
 			),
 			jen.Id("results").Op(":=").Id("s"),
-			jen.Id("offset").Op(":=").Lit(0),
-			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
-				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindString").Call(
-					jen.Id(codegen.InputName).Index(jen.Id("offset").Op(":")),
+			jen.Id("base").Op(":=").Len(jen.Id("s")),
+			jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
+			jen.List(jen.Id("pos"), jen.Id("prevEnd")).Op(":=").List(jen.Lit(0), jen.Lit(-1)),
+			jen.Var().Id("item").Op("*").Id(structName),
+			jen.For(jen.Id("pos").Op("<=").Id(codegen.InputLenName).Op("&&").Parens(
+				jen.Id("n").Op("<").Lit(0).Op("||").Len(jen.Id("results")).Op("-").Id("base").Op("<").Id("n"),
+			)).Block(
+				jen.If(jen.Id("item").Op("==").Nil()).Block(
+					jen.If(jen.Len(jen.Id("results")).Op("<").Cap(jen.Id("results"))).Block(
+						jen.Id("item").Op("=").Id("results").Index(jen.Empty(), jen.Len(jen.Id("results")).Op("+").Lit(1)).Index(jen.Len(jen.Id("results"))),
+					),
+					jen.If(jen.Id("item").Op("==").Nil()).Block(
+						jen.Id("item").Op("=").Op("&").Id(structName).Values(),
+					),
+				),
+				jen.List(jen.Id("start"), jen.Id("end"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot(internal).Call(
+					jen.Id(codegen.InputName), jen.Id("pos"), jen.Id("item"),
 				),
 				jen.If(jen.Op("!").Id("ok")).Block(
 					jen.Break(),
 				),
-				jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("result")),
-				jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("results")).Op(">=").Id("n")).Block(
-					jen.Break(),
-				),
-				jen.Comment("Move past this match"),
-				jen.Id("matchLen").Op(":=").Len(jen.Id("result").Dot("Match")),
-				jen.If(jen.Id("matchLen").Op(">").Lit(0)).Block(
-					jen.Id("offset").Op("+=").Id("matchLen"),
+				jen.Id("accept").Op(":=").True(),
+				jen.If(jen.Id("end").Op("==").Id("pos")).Block(
+					jen.If(jen.Id("start").Op("==").Id("prevEnd")).Block(
+						jen.Id("accept").Op("=").False(),
+					),
+					jen.If(jen.Id("pos").Op("<").Id(codegen.InputLenName)).Block(
+						c.generateAdvanceRune("pos", isBytes),
+					).Else().Block(
+						jen.Id("pos").Op("++"),
+					),
 				).Else().Block(
-					jen.Id("offset").Op("++"),
+					jen.Id("pos").Op("=").Id("end"),
+				),
+				jen.Id("prevEnd").Op("=").Id("end"),
+				jen.If(jen.Id("accept")).Block(
+					jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("item")),
+					jen.Id("item").Op("=").Nil(),
 				),
 			),
 			jen.Return(jen.Id("results")),
 		)
 
-	// Generate FindAllString that calls FindAllStringAppend with nil
-	c.method("FindAllString").
+	// FindAll{String,Bytes} calls the Append form with nil.
+	c.method("FindAll"+kind).
 		Params(
-			jen.Id(codegen.InputName).String(),
+			jen.Id(codegen.InputName).Add(inputType),
 			jen.Id("n").Int(),
 		).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(
-			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllStringAppend").Call(
-				jen.Id(codegen.InputName),
-				jen.Id("n"),
-				jen.Nil(),
-			)),
-		)
-}
-
-// generateFindAllBytesTDFA generates FindAllBytesAppend and FindAllBytes using TDFA-based FindBytes.
-func (c *Compiler) generateFindAllBytesTDFA() {
-	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
-
-	// Generate FindAllBytesAppend first (zero-alloc with slice reuse)
-	c.method("FindAllBytesAppend").
-		Params(
-			jen.Id(codegen.InputName).Index().Byte(),
-			jen.Id("n").Int(),
-			jen.Id("s").Index().Op("*").Id(bytesStructName),
-		).
-		Params(jen.Index().Op("*").Id(bytesStructName)).
-		Block(
-			jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-				jen.Return(jen.Id("s")),
-			),
-			jen.Id("results").Op(":=").Id("s"),
-			jen.Id("offset").Op(":=").Lit(0),
-			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
-				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytes").Call(
-					jen.Id(codegen.InputName).Index(jen.Id("offset").Op(":")),
-				),
-				jen.If(jen.Op("!").Id("ok")).Block(
-					jen.Break(),
-				),
-				jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("result")),
-				jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("results")).Op(">=").Id("n")).Block(
-					jen.Break(),
-				),
-				jen.Comment("Move past this match"),
-				jen.Id("matchLen").Op(":=").Len(jen.Id("result").Dot("Match")),
-				jen.If(jen.Id("matchLen").Op(">").Lit(0)).Block(
-					jen.Id("offset").Op("+=").Id("matchLen"),
-				).Else().Block(
-					jen.Id("offset").Op("++"),
-				),
-			),
-			jen.Return(jen.Id("results")),
-		)
-
-	// Generate FindAllBytes that calls FindAllBytesAppend with nil
-	c.method("FindAllBytes").
-		Params(
-			jen.Id(codegen.InputName).Index().Byte(),
-			jen.Id("n").Int(),
-		).
-		Params(jen.Index().Op("*").Id(bytesStructName)).
-		Block(
-			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllBytesAppend").Call(
+			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAll"+kind+"Append").Call(
 				jen.Id(codegen.InputName),
 				jen.Id("n"),
 				jen.Nil(),

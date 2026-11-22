@@ -157,7 +157,7 @@ var parityCases = []parityCase{
 			pv(engineDefault, markerDFA, markerBacktracking),
 			pv(engineTDFA, markerDFA, markerTDFA),
 		},
-		extra: []string{"aba", "éé", "", "baaac"},
+		extra: []string{"aba", "éé", "", "baaac", "bab", "bb", "aab"},
 	},
 	{
 		name:    "digitsX",
@@ -273,6 +273,63 @@ var parityCases = []parityCase{
 		},
 		extra: []string{"a@b.c", "x a@b.c y", ".@_@__._."},
 	},
+	{
+		name:     "eStar",
+		pattern:  `(é*)`,
+		variants: []parityVariant{pv(engineDefault, markerBacktracking, markerBacktracking)},
+		extra:    []string{"aéb", "éaé", "éé", ""},
+	},
+	{
+		name:     "wbEmpty",
+		pattern:  `(\b)`,
+		variants: []parityVariant{pv(engineDefault, markerBacktracking, markerBacktracking)},
+		extra:    []string{"ab cd", "a", "", " "},
+	},
+	{
+		name:    "aStarEnd",
+		pattern: `(a*)$`,
+		variants: []parityVariant{
+			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineTDFA, markerDFA, markerTDFA),
+		},
+		extra: []string{"baa", "b", "", "aa"},
+	},
+	{
+		name:    "anchAStar",
+		pattern: `^(a*)`,
+		variants: []parityVariant{
+			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineTDFA, markerDFA, markerTDFA),
+		},
+		extra: []string{"baa", "aab", ""},
+	},
+	{
+		name:    "hexCap",
+		pattern: `0x([0-9a-f]+)`,
+		variants: []parityVariant{
+			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineTDFA, markerDFA, markerTDFA),
+		},
+		extra: []string{"0x1 0x2", "00x1f0x2", "0x"},
+	},
+	{
+		name:    "optCap",
+		pattern: `x(a)?y`,
+		variants: []parityVariant{
+			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineTDFA, markerDFA, markerTDFA),
+		},
+		extra: []string{"xay", "xy", "xayxy", "yxxy é a yxa"},
+	},
+	{
+		name:    "altEmpty",
+		pattern: `(a*|b)`,
+		variants: []parityVariant{
+			pv(engineDefault, markerDFA, markerBacktracking),
+			pv(engineTNFA, markerDFA, markerTNFA),
+		},
+		extra: []string{"ab", "aab", "b"},
+	},
 }
 
 // Method names, in the order they are reported. Used in driver output and in
@@ -286,13 +343,16 @@ var parityMethods = []string{
 	"FindAllString(n=2)",
 	"FindAllBytes(n=-1)",
 	"FindAllBytes(n=2)",
+	"FindAllStringAppend(n=-1)",
+	"FindAllStringAppend(n=2)",
+	"FindAllBytesAppend(n=-1)",
+	"FindAllBytesAppend(n=2)",
 }
 
 type divKey struct{ variant, method string }
 
 // Tags for knownDivergence entries. Each fix task owns the entries with its tag.
 const (
-	tagBug2      = "issue37-bug2 (Task C)" // FindAll iteration (TDFA re-slicing, empty-match rules)
 	tagBug3      = "issue37-bug3 (Task D)" // Thompson Match: assertions and non-ASCII
 	tagUntriaged = "untriaged"
 )
@@ -318,17 +378,10 @@ func buildKnownDivergence() map[divKey]string {
 	findAll := []string{
 		"FindAllString(n=-1)", "FindAllString(n=2)",
 		"FindAllBytes(n=-1)", "FindAllBytes(n=2)",
+		"FindAllStringAppend(n=-1)", "FindAllStringAppend(n=2)",
+		"FindAllBytesAppend(n=-1)", "FindAllBytesAppend(n=2)",
 	}
 	findAndAll := append(append([]string{}, find...), findAll...)
-
-	// Task C: bug 2. FindAll iteration: TDFA re-slicing (2a, 2b) and the
-	// empty-match rules (2c).
-	for _, v := range []string{
-		"aStar/default", "aStar/ForceTDFA", "digitsX/default", "digitsX/ForceTDFA",
-		"anchA/ForceTDFA", "semver/ForceTDFA", "email/ForceTDFA",
-	} {
-		known(m, tagBug2, v, findAll...)
-	}
 
 	// Task D: bug 3. Thompson Match: assertions (3a, 3b) and non-ASCII (3c).
 	for _, v := range []string{
@@ -932,6 +985,21 @@ func writeDriverVariant(w io.Writer, v driverVariant) {
 	fmt.Fprintf(w, "\t\t\tout := make([]any, len(rs))\n")
 	fmt.Fprintf(w, "\t\t\tfor i, r := range rs {\n\t\t\t\tout[i] = r\n\t\t\t}\n")
 	fmt.Fprintf(w, "\t\t\treturn out\n\t\t},\n")
+	for _, isBytes := range []bool{false, true} {
+		field, kind, elem, call := "findAllApp", "string", "RResult", "FindAllStringAppend"
+		if isBytes {
+			field, kind, elem, call = "findAllAppB", "[]byte", "RBytesResult", "FindAllBytesAppend"
+		}
+		fmt.Fprintf(w, "\t\t%s: func() func(%s, int) []any {\n", field, kind)
+		fmt.Fprintf(w, "\t\t\tvar buf []*%s.%s\n", f, elem)
+		fmt.Fprintf(w, "\t\t\tsentinel := &%s.%s{}\n", f, elem)
+		fmt.Fprintf(w, "\t\t\treturn func(s %s, n int) []any {\n", kind)
+		fmt.Fprintf(w, "\t\t\t\tbuf = %s.CompiledR.%s(s, n, append(buf[:0], sentinel))\n", f, call)
+		fmt.Fprintf(w, "\t\t\t\tif len(buf) == 0 || buf[0] != sentinel {\n\t\t\t\t\tpanic(\"Append dropped the prefix element\")\n\t\t\t\t}\n")
+		fmt.Fprintf(w, "\t\t\t\tout := make([]any, len(buf)-1)\n")
+		fmt.Fprintf(w, "\t\t\t\tfor i, r := range buf[1:] {\n\t\t\t\t\tout[i] = r\n\t\t\t\t}\n")
+		fmt.Fprintf(w, "\t\t\t\treturn out\n\t\t\t}\n\t\t}(),\n")
+	}
 	fmt.Fprintf(w, "\t},\n")
 }
 
@@ -964,6 +1032,8 @@ type variant struct {
 	findB                           func([]byte) (any, bool)
 	findAll                         func(string, int) []any
 	findAllB                        func([]byte, int) []any
+	findAllApp                      func(string, int) []any
+	findAllAppB                     func([]byte, int) []any
 }
 
 `
@@ -978,6 +1048,10 @@ var methods = []string{
 	"FindAllString(n=2)",
 	"FindAllBytes(n=-1)",
 	"FindAllBytes(n=2)",
+	"FindAllStringAppend(n=-1)",
+	"FindAllStringAppend(n=2)",
+	"FindAllBytesAppend(n=-1)",
+	"FindAllBytesAppend(n=2)",
 }
 
 type mismatchLine struct {
@@ -1108,7 +1182,7 @@ func main() {
 			report("MatchBytes", fmt.Sprint(reM.MatchString(s)),
 				safe(func() string { return fmt.Sprint(v.matchB([]byte(s))) }))
 
-			if v.find == nil || v.findB == nil || v.findAll == nil || v.findAllB == nil {
+			if v.find == nil || v.findB == nil || v.findAll == nil || v.findAllB == nil || v.findAllApp == nil || v.findAllAppB == nil {
 				continue
 			}
 
@@ -1132,7 +1206,8 @@ func main() {
 
 			for _, lim := range []int{-1, 2} {
 				locs := reF.FindAllStringSubmatchIndex(s, lim)
-				for _, isBytes := range []bool{false, true} {
+				for _, combo := range [4][2]bool{{false, false}, {true, false}, {false, true}, {true, true}} {
+					isBytes, isApp := combo[0], combo[1]
 					wants := make([]string, len(locs))
 					for i, loc := range locs {
 						wants[i] = renderWant(s, loc, isBytes)
@@ -1142,13 +1217,22 @@ func main() {
 					if isBytes {
 						method = "FindAllBytes(n=" + strconv.Itoa(lim) + ")"
 					}
+					if isApp {
+						method = strings.Replace(method, "(n=", "Append(n=", 1)
+					}
 					report(method, want, safe(func() string {
 						var items []any
 						capB := 0
 						if isBytes {
 							b := []byte(s)
 							capB = cap(b)
-							items = v.findAllB(b, lim)
+							if isApp {
+								items = v.findAllAppB(b, lim)
+							} else {
+								items = v.findAllB(b, lim)
+							}
+						} else if isApp {
+							items = v.findAllApp(s, lim)
 						} else {
 							items = v.findAll(s, lim)
 						}
