@@ -24,6 +24,7 @@ type Config struct {
 	GenerateTestFile  bool           // Generate test file with tests and benchmarks
 	TestFileInputs    []string       // Test inputs for generated test file
 	ForceThompson     bool           // Force Thompson NFA for MatchString/MatchBytes
+	ForceBacktracking bool           // Force backtracking for MatchString/MatchBytes (skip DFA and Thompson)
 	ForceTNFA         bool           // Force Tagged NFA for FindString with captures
 	ForceTDFA         bool           // Force Tagged DFA for FindString with captures
 	TDFAThreshold     int            // Max TDFA states before falling back (0 = use default 500)
@@ -107,30 +108,35 @@ func (c *Compiler) analyze() (tdfaForcedButUnavailable bool) {
 	}
 
 	// Determine engine selection for Match functions
-	// Priority: ForceThompson > DFA (when compatible) > Thompson / backtracking fallback
+	// Priority: ForceBacktracking > ForceThompson > DFA (when compatible) > Thompson / backtracking fallback.
+	// With ForceBacktracking neither useDFAForMatch nor useThompsonForMatch is set, so the
+	// backtracking emitter is used (memoized below if the pattern has catastrophic risk).
+	// This exists so the stdlib parity test can reach the backtracking Match emitter.
 
-	if c.config.ForceThompson {
-		// ForceThompson takes highest priority
-		c.useThompsonForMatch = true
-	} else {
-		// DFA is the default Match engine whenever the pattern is DFA-compatible
-		// (ASCII-only, supported anchors, state count under the threshold):
-		// it is a single O(n) pass with no backtracking state.
-		dfaGen := NewDFAGenerator(c)
-		if dfaGen != nil {
-			canUseDFA, dfaInfo := dfaGen.CanUseDFA()
-			c.dfaInfo = dfaInfo
-			if canUseDFA {
-				c.useDFAForMatch = true
-			}
-		}
-
-		// Fallback when DFA is unavailable: Thompson if DFA was explicitly
-		// requested, the pattern has catastrophic risk, or analysis recommends it;
-		// otherwise the backtracking engine.
-		if !c.useDFAForMatch &&
-			(c.config.ForceDFA || c.complexity.HasCatastrophicRisk || c.complexity.UseThompsonNFA) {
+	if !c.config.ForceBacktracking {
+		if c.config.ForceThompson {
+			// ForceThompson takes priority over automatic selection
 			c.useThompsonForMatch = true
+		} else {
+			// DFA is the default Match engine whenever the pattern is DFA-compatible
+			// (ASCII-only, supported anchors, state count under the threshold):
+			// it is a single O(n) pass with no backtracking state.
+			dfaGen := NewDFAGenerator(c)
+			if dfaGen != nil {
+				canUseDFA, dfaInfo := dfaGen.CanUseDFA()
+				c.dfaInfo = dfaInfo
+				if canUseDFA {
+					c.useDFAForMatch = true
+				}
+			}
+
+			// Fallback when DFA is unavailable: Thompson if DFA was explicitly
+			// requested, the pattern has catastrophic risk, or analysis recommends it;
+			// otherwise the backtracking engine.
+			if !c.useDFAForMatch &&
+				(c.config.ForceDFA || c.complexity.HasCatastrophicRisk || c.complexity.UseThompsonNFA) {
+				c.useThompsonForMatch = true
+			}
 		}
 	}
 
@@ -211,6 +217,12 @@ func (c *Compiler) logAnalysisResults(tdfaForcedButUnavailable bool) {
 		c.logger.Log("Match engine: DFA (O(n) single pass)")
 		if c.dfaInfo != "" {
 			c.logger.Log("DFA info: %s", c.dfaInfo)
+		}
+	} else if c.config.ForceBacktracking {
+		if c.useMemoization {
+			c.logger.Log("Match engine: Backtracking NFA with memoization (forced by user)")
+		} else {
+			c.logger.Log("Match engine: Backtracking NFA (forced by user)")
 		}
 	} else if c.config.ForceDFA && c.dfaInfo != "" {
 		c.logger.Log("DFA unavailable: %s", c.dfaInfo)
@@ -573,7 +585,7 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			jen.If(jen.Id("r").Op("==").Nil()).Block(
 				jen.Id("r").Op("=").New(jen.Id(structName)),
 			),
-			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
+			jen.List(jen.Id("_"), jen.Id("_"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findStringInternal").Call(jen.Id(codegen.InputName), jen.Lit(0), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
@@ -582,8 +594,8 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 
 	// Generate internal FindString function (takes pointer, returns bool)
 	c.method("findStringInternal").
-		Params(jen.Id(codegen.InputName).String(), jen.Id("r").Op("*").Id(structName)).
-		Params(jen.Bool()).
+		Params(jen.Id(codegen.InputName).String(), jen.Id("from").Int(), jen.Id("r").Op("*").Id(structName)).
+		Params(jen.Int(), jen.Int(), jen.Bool()).
 		Block(findStringCode...)
 
 	// Generate FindString that calls FindStringReuse with nil (allocates once)
@@ -610,7 +622,7 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			jen.If(jen.Id("r").Op("==").Nil()).Block(
 				jen.Id("r").Op("=").New(jen.Id(bytesStructName)),
 			),
-			jen.Id("ok").Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName), jen.Id("r")),
+			jen.List(jen.Id("_"), jen.Id("_"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("findBytesInternal").Call(jen.Id(codegen.InputName), jen.Lit(0), jen.Id("r")),
 			jen.If(jen.Op("!").Id("ok")).Block(
 				jen.Return(jen.Nil(), jen.False()),
 			),
@@ -619,8 +631,8 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 
 	// Generate internal FindBytes function (takes pointer, returns bool)
 	c.method("findBytesInternal").
-		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("r").Op("*").Id(bytesStructName)).
-		Params(jen.Bool()).
+		Params(jen.Id(codegen.InputName).Index().Byte(), jen.Id("from").Int(), jen.Id("r").Op("*").Id(bytesStructName)).
+		Params(jen.Int(), jen.Int(), jen.Bool()).
 		Block(findBytesCode...)
 
 	// Generate FindBytes that calls FindBytesReuse with nil (allocates once)
@@ -634,23 +646,31 @@ func (c *Compiler) generateTDFACaptureFunctions() error {
 			)),
 		)
 
-	// Generate FindAllString using TDFA (iterate with FindString)
-	c.generateFindAllStringTDFA()
-
-	// Generate FindAllBytes using TDFA
-	c.generateFindAllBytesTDFA()
+	// Generate FindAllString / FindAllBytes using TDFA (stdlib allMatches loop)
+	c.generateFindAllTDFA(false)
+	c.generateFindAllTDFA(true)
 
 	return nil
 }
 
-// generateFindAllStringTDFA generates FindAllStringAppend and FindAllString using TDFA-based FindString.
-func (c *Compiler) generateFindAllStringTDFA() {
-	structName := fmt.Sprintf("%sResult", c.config.Name)
+// generateFindAllTDFA generates FindAll{String,Bytes}Append and FindAll{String,Bytes}
+// on top of the TDFA internal find. The loop is stdlib's allMatches: the search
+// runs on the full input from pos (so ^ keeps its context), an empty match
+// adjacent to the previous match is rejected, the cursor steps one rune after
+// an empty match, and the empty match at end of input is tried. Results reuse
+// the capacity of s and are committed only when accepted.
+func (c *Compiler) generateFindAllTDFA(isBytes bool) {
+	kind, structName := "String", fmt.Sprintf("%sResult", c.config.Name)
+	inputType := jen.String()
+	if isBytes {
+		kind, structName = "Bytes", fmt.Sprintf("%sBytesResult", c.config.Name)
+		inputType = jen.Index().Byte()
+	}
+	internal := "find" + kind + "Internal"
 
-	// Generate FindAllStringAppend first (zero-alloc with slice reuse)
-	c.method("FindAllStringAppend").
+	c.method("FindAll"+kind+"Append").
 		Params(
-			jen.Id(codegen.InputName).String(),
+			jen.Id(codegen.InputName).Add(inputType),
 			jen.Id("n").Int(),
 			jen.Id("s").Index().Op("*").Id(structName),
 		).
@@ -660,94 +680,66 @@ func (c *Compiler) generateFindAllStringTDFA() {
 				jen.Return(jen.Id("s")),
 			),
 			jen.Id("results").Op(":=").Id("s"),
-			jen.Id("offset").Op(":=").Lit(0),
-			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
-				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindString").Call(
-					jen.Id(codegen.InputName).Index(jen.Id("offset").Op(":")),
+			jen.Id("base").Op(":=").Len(jen.Id("s")),
+			jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
+			jen.List(jen.Id("pos"), jen.Id("prevEnd")).Op(":=").List(jen.Lit(0), jen.Lit(-1)),
+			// item is a reusable result from spare capacity in s. When there is
+			// none, the search writes into the stack-local scratch and a heap
+			// result is allocated only once a match is accepted, so the final
+			// failing search costs no allocation.
+			jen.Var().Id("item").Op("*").Id(structName),
+			jen.Var().Id("scratch").Id(structName),
+			jen.For(jen.Id("pos").Op("<=").Id(codegen.InputLenName).Op("&&").Parens(
+				jen.Id("n").Op("<").Lit(0).Op("||").Len(jen.Id("results")).Op("-").Id("base").Op("<").Id("n"),
+			)).Block(
+				jen.If(jen.Id("item").Op("==").Nil().Op("&&").Len(jen.Id("results")).Op("<").Cap(jen.Id("results"))).Block(
+					jen.Id("item").Op("=").Id("results").Index(jen.Empty(), jen.Len(jen.Id("results")).Op("+").Lit(1)).Index(jen.Len(jen.Id("results"))),
+				),
+				jen.Id("dst").Op(":=").Id("item"),
+				jen.If(jen.Id("dst").Op("==").Nil()).Block(
+					jen.Id("dst").Op("=").Op("&").Id("scratch"),
+				),
+				jen.List(jen.Id("start"), jen.Id("end"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot(internal).Call(
+					jen.Id(codegen.InputName), jen.Id("pos"), jen.Id("dst"),
 				),
 				jen.If(jen.Op("!").Id("ok")).Block(
 					jen.Break(),
 				),
-				jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("result")),
-				jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("results")).Op(">=").Id("n")).Block(
-					jen.Break(),
-				),
-				jen.Comment("Move past this match"),
-				jen.Id("matchLen").Op(":=").Len(jen.Id("result").Dot("Match")),
-				jen.If(jen.Id("matchLen").Op(">").Lit(0)).Block(
-					jen.Id("offset").Op("+=").Id("matchLen"),
+				jen.Id("accept").Op(":=").True(),
+				jen.If(jen.Id("end").Op("==").Id("pos")).Block(
+					jen.If(jen.Id("start").Op("==").Id("prevEnd")).Block(
+						jen.Id("accept").Op("=").False(),
+					),
+					jen.If(jen.Id("pos").Op("<").Id(codegen.InputLenName)).Block(
+						c.generateAdvanceRune("pos", isBytes),
+					).Else().Block(
+						jen.Id("pos").Op("++"),
+					),
 				).Else().Block(
-					jen.Id("offset").Op("++"),
+					jen.Id("pos").Op("=").Id("end"),
+				),
+				jen.Id("prevEnd").Op("=").Id("end"),
+				jen.If(jen.Id("accept")).Block(
+					jen.If(jen.Id("item").Op("==").Nil()).Block(
+						jen.Id("cp").Op(":=").Id("scratch"),
+						jen.Id("item").Op("=").Op("&").Id("cp"),
+					),
+					jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("item")),
+					jen.Id("item").Op("=").Nil(),
 				),
 			),
 			jen.Return(jen.Id("results")),
 		)
 
-	// Generate FindAllString that calls FindAllStringAppend with nil
-	c.method("FindAllString").
+	// FindAll{String,Bytes} calls the Append form with nil.
+	c.method("FindAll"+kind).
 		Params(
-			jen.Id(codegen.InputName).String(),
+			jen.Id(codegen.InputName).Add(inputType),
 			jen.Id("n").Int(),
 		).
 		Params(jen.Index().Op("*").Id(structName)).
 		Block(
-			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllStringAppend").Call(
-				jen.Id(codegen.InputName),
-				jen.Id("n"),
-				jen.Nil(),
-			)),
-		)
-}
-
-// generateFindAllBytesTDFA generates FindAllBytesAppend and FindAllBytes using TDFA-based FindBytes.
-func (c *Compiler) generateFindAllBytesTDFA() {
-	bytesStructName := fmt.Sprintf("%sBytesResult", c.config.Name)
-
-	// Generate FindAllBytesAppend first (zero-alloc with slice reuse)
-	c.method("FindAllBytesAppend").
-		Params(
-			jen.Id(codegen.InputName).Index().Byte(),
-			jen.Id("n").Int(),
-			jen.Id("s").Index().Op("*").Id(bytesStructName),
-		).
-		Params(jen.Index().Op("*").Id(bytesStructName)).
-		Block(
-			jen.If(jen.Id("n").Op("==").Lit(0)).Block(
-				jen.Return(jen.Id("s")),
-			),
-			jen.Id("results").Op(":=").Id("s"),
-			jen.Id("offset").Op(":=").Lit(0),
-			jen.For(jen.Id("offset").Op("<").Len(jen.Id(codegen.InputName))).Block(
-				jen.List(jen.Id("result"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot("FindBytes").Call(
-					jen.Id(codegen.InputName).Index(jen.Id("offset").Op(":")),
-				),
-				jen.If(jen.Op("!").Id("ok")).Block(
-					jen.Break(),
-				),
-				jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("result")),
-				jen.If(jen.Id("n").Op(">").Lit(0).Op("&&").Len(jen.Id("results")).Op(">=").Id("n")).Block(
-					jen.Break(),
-				),
-				jen.Comment("Move past this match"),
-				jen.Id("matchLen").Op(":=").Len(jen.Id("result").Dot("Match")),
-				jen.If(jen.Id("matchLen").Op(">").Lit(0)).Block(
-					jen.Id("offset").Op("+=").Id("matchLen"),
-				).Else().Block(
-					jen.Id("offset").Op("++"),
-				),
-			),
-			jen.Return(jen.Id("results")),
-		)
-
-	// Generate FindAllBytes that calls FindAllBytesAppend with nil
-	c.method("FindAllBytes").
-		Params(
-			jen.Id(codegen.InputName).Index().Byte(),
-			jen.Id("n").Int(),
-		).
-		Params(jen.Index().Op("*").Id(bytesStructName)).
-		Block(
-			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAllBytesAppend").Call(
+			jen.Return(jen.Id(c.config.Name).Values().Dot("FindAll"+kind+"Append").Call(
 				jen.Id(codegen.InputName),
 				jen.Id("n"),
 				jen.Nil(),
@@ -869,6 +861,9 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 			jen.Id(codegen.OffsetName).Op(":=").Lit(0),
 		)
 	}
+	// Start offset of the current attempt; retries resume from here, not from
+	// the offset where the last path died.
+	code = append(code, c.attemptStartInit()...)
 
 	// Only add stack initialization if backtracking is needed
 	if c.needsBacktracking {
@@ -917,42 +912,8 @@ func (c *Compiler) generateMatchFunction(isBytes bool) ([]jen.Code, error) {
 		// For patterns without backtracking:
 		fallback := []jen.Code{jen.Id(codegen.TryFallbackName).Op(":")}
 
-		// If not anchored, we must retry at next offset
-		if !c.isAnchored {
-			if hasPrefix {
-				var indexCall *jen.Statement
-				if isBytes {
-					indexCall = jen.Qual("bytes", "IndexByte").Call(
-						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-						jen.Lit(byte(prefix)),
-					)
-				} else {
-					indexCall = jen.Qual("strings", "IndexByte").Call(
-						jen.Id(codegen.InputName).Index(jen.Id(codegen.OffsetName).Op(":")),
-						jen.Lit(byte(prefix)),
-					)
-				}
-
-				fallback = append(fallback,
-					jen.Id(codegen.OffsetName).Op("++"),
-					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-						jen.Id("idx").Op(":=").Add(indexCall),
-						jen.If(jen.Id("idx").Op("==").Lit(-1)).Block(jen.Return(jen.False())),
-						jen.Id(codegen.OffsetName).Op("+=").Id("idx"),
-						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-						jen.Goto().Id(codegen.StepSelectName),
-					),
-				)
-			} else {
-				fallback = append(fallback,
-					jen.If(jen.Id(codegen.InputLenName).Op(">").Id(codegen.OffsetName)).Block(
-						jen.Id(codegen.NextInstructionName).Op("=").Lit(int(c.config.Program.Start)),
-						jen.Id(codegen.OffsetName).Op("++"),
-						jen.Goto().Id(codegen.StepSelectName),
-					),
-				)
-			}
-		}
+		// If not anchored, we must retry from the next attempt start
+		fallback = append(fallback, c.generateRetryBlock(retryOpts{hasPrefix: hasPrefix, prefix: prefix, isBytes: isBytes})...)
 
 		fallback = append(fallback, jen.Return(jen.False()))
 		code = append(code, fallback...)

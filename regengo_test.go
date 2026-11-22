@@ -136,6 +136,41 @@ func TestOptionsValidation(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "ForceBacktracking with ForceThompson",
+			opts: Options{
+				Pattern:           "test",
+				Name:              "Test",
+				OutputFile:        "test.go",
+				Package:           "test",
+				ForceBacktracking: true,
+				ForceThompson:     true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "ForceBacktracking with ForceDFA",
+			opts: Options{
+				Pattern:           "test",
+				Name:              "Test",
+				OutputFile:        "test.go",
+				Package:           "test",
+				ForceBacktracking: true,
+				ForceDFA:          true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "ForceBacktracking alone",
+			opts: Options{
+				Pattern:           "test",
+				Name:              "Test",
+				OutputFile:        "test.go",
+				Package:           "test",
+				ForceBacktracking: true,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

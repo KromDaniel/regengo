@@ -1,6 +1,10 @@
 package compiler
 
 import (
+	"regexp/syntax"
+	"unicode"
+	"unicode/utf8"
+
 	"github.com/KromDaniel/regengo/internal/codegen"
 	"github.com/dave/jennifer/jen"
 )
@@ -12,6 +16,55 @@ func isASCIIOnlyCharClass(runes []rune) bool {
 		// Check the high bound of each range
 		if runes[i+1] >= 128 {
 			return false
+		}
+	}
+	return true
+}
+
+// foldOrbit returns r and every rune in its unicode.SimpleFold orbit.
+func foldOrbit(r rune) []rune {
+	orbit := []rune{r}
+	for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+		orbit = append(orbit, f)
+	}
+	return orbit
+}
+
+// isASCIIProgram reports whether every consuming instruction of prog can match
+// only ASCII runes. FoldCase is set by regexp/syntax only on InstRune with a
+// single rune (never on InstRune1 or multi-range classes), so that is the only
+// place fold orbits are checked. Arg is not read on non-rune instructions
+// (for InstEmptyWidth it is an EmptyOp whose BeginLine bit equals FoldCase).
+func isASCIIProgram(prog *syntax.Prog) bool {
+	for i := range prog.Inst {
+		inst := &prog.Inst[i]
+		switch inst.Op {
+		case syntax.InstRuneAny, syntax.InstRuneAnyNotNL:
+			return false
+		case syntax.InstRune1:
+			if inst.Rune[0] >= utf8.RuneSelf {
+				return false
+			}
+		case syntax.InstRune:
+			switch {
+			case len(inst.Rune) == 0:
+			case len(inst.Rune) == 1:
+				runes := inst.Rune
+				if syntax.Flags(inst.Arg)&syntax.FoldCase != 0 {
+					runes = foldOrbit(inst.Rune[0])
+				}
+				for _, r := range runes {
+					if r >= utf8.RuneSelf {
+						return false
+					}
+				}
+			case len(inst.Rune)%2 == 1:
+				return false
+			default:
+				if !isASCIIOnlyCharClass(inst.Rune) {
+					return false
+				}
+			}
 		}
 	}
 	return true

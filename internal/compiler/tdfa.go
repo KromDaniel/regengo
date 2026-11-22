@@ -965,15 +965,18 @@ func (g *TDFAGenerator) generateMatchingLoop() []jen.Code {
 		jen.Comment("If we found a match, return it"),
 		jen.If(jen.Id("matchEnd").Op(">=").Lit(0)).Block(
 			append(
-				[]jen.Code{jen.Id("matchTags").Index(jen.Lit(1)).Op("=").Id("matchEnd")}, // Group 0 end
-				g.generateResultConstruction("matchTags")...,
+				append(
+					[]jen.Code{jen.Id("matchTags").Index(jen.Lit(1)).Op("=").Id("matchEnd")}, // Group 0 end
+					g.generateResultConstruction("matchTags")...,
+				),
+				jen.Return(jen.Id("start"), jen.Id("matchEnd"), jen.True()),
 			)...,
 		),
 	)
 
 	outerLoopBody = append(outerLoopBody,
-		jen.For(jen.Id("start").Op(":=").Lit(0), jen.Id("start").Op("<=").Id(codegen.InputLenName), jen.Id("start").Op("++")).Block(loopBlock...),
-		jen.Return(jen.False()),
+		jen.For(jen.Id("start").Op(":=").Id("from"), jen.Id("start").Op("<=").Id(codegen.InputLenName), jen.Id("start").Op("++")).Block(loopBlock...),
+		jen.Return(jen.Lit(-1), jen.Lit(-1), jen.False()),
 	)
 
 	// No need to differentiate bytes vs string for the false return since it's just bool now
@@ -1022,6 +1025,13 @@ func (g *TDFAGenerator) generateResultConstruction(tagsVar string) []jen.Code {
 		//     if tags[2*i+1] < 0 { tags[2*i+1] = tags[1] } // Close open group at match end
 		//     r.Field = input[tags[2*i]:tags[2*i+1]]
 		// }
+		// A non-participating group is reset, so reused results carry no stale value.
+		var reset jen.Code
+		if g.isBytes {
+			reset = jen.Id("r").Dot(fieldName).Op("=").Nil()
+		} else {
+			reset = jen.Id("r").Dot(fieldName).Op("=").Lit("")
+		}
 		code = append(code,
 			jen.If(jen.Id(tagsVar).Index(jen.Lit(2*i)).Op(">=").Lit(0)).Block(
 				jen.If(jen.Id(tagsVar).Index(jen.Lit(2*i+1)).Op("<").Lit(0)).Block(
@@ -1031,10 +1041,9 @@ func (g *TDFAGenerator) generateResultConstruction(tagsVar string) []jen.Code {
 					jen.Id(tagsVar).Index(jen.Lit(2*i)),
 					jen.Id(tagsVar).Index(jen.Lit(2*i+1)),
 				)),
-			),
+			).Else().Block(reset),
 		)
 	}
 
-	code = append(code, jen.Return(jen.True()))
 	return code
 }

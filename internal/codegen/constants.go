@@ -8,6 +8,7 @@ const (
 	InputName           = "input"
 	InputLenName        = "l"
 	OffsetName          = "offset"
+	AttemptStartName    = "attemptStart" // start offset of the current unanchored match attempt
 	StackName           = "stack"
 	CapturesName        = "captures"
 	NextInstructionName = "nextInstruction"
