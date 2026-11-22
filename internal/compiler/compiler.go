@@ -683,20 +683,24 @@ func (c *Compiler) generateFindAllTDFA(isBytes bool) {
 			jen.Id("base").Op(":=").Len(jen.Id("s")),
 			jen.Id(codegen.InputLenName).Op(":=").Len(jen.Id(codegen.InputName)),
 			jen.List(jen.Id("pos"), jen.Id("prevEnd")).Op(":=").List(jen.Lit(0), jen.Lit(-1)),
+			// item is a reusable result from spare capacity in s. When there is
+			// none, the search writes into the stack-local scratch and a heap
+			// result is allocated only once a match is accepted, so the final
+			// failing search costs no allocation.
 			jen.Var().Id("item").Op("*").Id(structName),
+			jen.Var().Id("scratch").Id(structName),
 			jen.For(jen.Id("pos").Op("<=").Id(codegen.InputLenName).Op("&&").Parens(
 				jen.Id("n").Op("<").Lit(0).Op("||").Len(jen.Id("results")).Op("-").Id("base").Op("<").Id("n"),
 			)).Block(
-				jen.If(jen.Id("item").Op("==").Nil()).Block(
-					jen.If(jen.Len(jen.Id("results")).Op("<").Cap(jen.Id("results"))).Block(
-						jen.Id("item").Op("=").Id("results").Index(jen.Empty(), jen.Len(jen.Id("results")).Op("+").Lit(1)).Index(jen.Len(jen.Id("results"))),
-					),
-					jen.If(jen.Id("item").Op("==").Nil()).Block(
-						jen.Id("item").Op("=").Op("&").Id(structName).Values(),
-					),
+				jen.If(jen.Id("item").Op("==").Nil().Op("&&").Len(jen.Id("results")).Op("<").Cap(jen.Id("results"))).Block(
+					jen.Id("item").Op("=").Id("results").Index(jen.Empty(), jen.Len(jen.Id("results")).Op("+").Lit(1)).Index(jen.Len(jen.Id("results"))),
+				),
+				jen.Id("dst").Op(":=").Id("item"),
+				jen.If(jen.Id("dst").Op("==").Nil()).Block(
+					jen.Id("dst").Op("=").Op("&").Id("scratch"),
 				),
 				jen.List(jen.Id("start"), jen.Id("end"), jen.Id("ok")).Op(":=").Id(c.config.Name).Values().Dot(internal).Call(
-					jen.Id(codegen.InputName), jen.Id("pos"), jen.Id("item"),
+					jen.Id(codegen.InputName), jen.Id("pos"), jen.Id("dst"),
 				),
 				jen.If(jen.Op("!").Id("ok")).Block(
 					jen.Break(),
@@ -716,6 +720,10 @@ func (c *Compiler) generateFindAllTDFA(isBytes bool) {
 				),
 				jen.Id("prevEnd").Op("=").Id("end"),
 				jen.If(jen.Id("accept")).Block(
+					jen.If(jen.Id("item").Op("==").Nil()).Block(
+						jen.Id("cp").Op(":=").Id("scratch"),
+						jen.Id("item").Op("=").Op("&").Id("cp"),
+					),
 					jen.Id("results").Op("=").Append(jen.Id("results"), jen.Id("item")),
 					jen.Id("item").Op("=").Nil(),
 				),

@@ -126,9 +126,9 @@ func TestTDFAFindFrom(t *testing.T) {
 				t.Errorf("FindBytesReuse does not call findBytesInternal(input, 0, r)\n%s", b)
 			}
 			for _, isBytes := range []bool{false, true} {
-				header, call, bad := "func (Test) FindAllStringAppend(", "findStringInternal(input, pos, item)", "FindString(input["
+				header, call, bad := "func (Test) FindAllStringAppend(", "findStringInternal(input, pos, dst)", "FindString(input["
 				if isBytes {
-					header, call, bad = "func (Test) FindAllBytesAppend(", "findBytesInternal(input, pos, item)", "FindBytes(input["
+					header, call, bad = "func (Test) FindAllBytesAppend(", "findBytesInternal(input, pos, dst)", "FindBytes(input["
 				}
 				body := funcBody(t, src, header)
 				for _, want := range []string{call, "pos, prevEnd := 0, -1", decodeCall(isBytes, "pos"), "len(results)-base < n"} {
