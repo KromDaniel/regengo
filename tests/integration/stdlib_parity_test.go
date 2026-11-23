@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/KromDaniel/regengo"
@@ -64,9 +65,6 @@ type parityCase struct {
 	pattern  string
 	variants []parityVariant
 	extra    []string // fixed regression inputs, always run first, in this order
-	// matchOnly generates and compares Match only (no Find package). Used for
-	// patterns whose Find generation is not supported (e.g. (?i) with captures).
-	matchOnly bool
 }
 
 func pv(engine parityEngine, matchEngine, findEngine string) parityVariant {
@@ -87,9 +85,17 @@ func thompsonOnly() []parityVariant {
 	return []parityVariant{pv(engineThompson, markerThompson, markerBacktracking)}
 }
 
-// thompsonMatchOnly is thompsonOnly for cases flagged matchOnly (no Find engine).
-func thompsonMatchOnly() []parityVariant {
-	return []parityVariant{pv(engineThompson, markerThompson, "")}
+// allEngines returns one variant per engine. defMatch/defFind are the markers
+// the default engine selection produces for the pattern; the forced variants
+// keep the default Match engine except Thompson and Backtracking.
+func allEngines(defMatch, defFind string) []parityVariant {
+	return []parityVariant{
+		pv(engineDefault, defMatch, defFind),
+		pv(engineThompson, markerThompson, markerBacktracking),
+		pv(engineBacktracking, markerBacktracking, markerBacktracking),
+		pv(engineTNFA, defMatch, markerTNFA),
+		pv(engineTDFA, defMatch, markerTDFA),
+	}
 }
 
 var parityCases = []parityCase{
@@ -414,32 +420,61 @@ var parityCases = []parityCase{
 		extra:    []string{"aéb", "é", "ab", "a€b"},
 	},
 	{
-		name:      "foldA",
-		pattern:   `(?i)ab`,
-		variants:  thompsonMatchOnly(),
-		matchOnly: true,
-		extra:     []string{"AB", "aB", "ab", "a b"},
+		name:     "foldA",
+		pattern:  `(?i)(a)(b)`,
+		variants: allEngines(markerDFA, markerBacktracking),
+		extra:    []string{"AB", "aB", "ab", "a b"},
 	},
 	{
-		name:      "foldK",
-		pattern:   `(?i)k`,
-		variants:  thompsonMatchOnly(),
-		matchOnly: true,
-		extra:     []string{"K", "k", "\u212a", "x", "é"},
+		name:     "foldK",
+		pattern:  `(?i)(k)`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"K", "k", "\u212a", "x", "é"},
 	},
 	{
-		name:      "foldS",
-		pattern:   `(?i)as`,
-		variants:  thompsonMatchOnly(),
-		matchOnly: true,
-		extra:     []string{"aſ", "AS", "Aſ", "as"},
+		name:     "foldS",
+		pattern:  `(?i)a(s)`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"aſ", "AS", "Aſ", "as"},
 	},
 	{
-		name:      "foldE",
-		pattern:   `(?i)é+x`,
-		variants:  thompsonMatchOnly(),
-		matchOnly: true,
-		extra:     []string{"Éx", "éÉx", "ex", "x"},
+		name:     "foldE",
+		pattern:  `(?i)(é+)x`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"Éx", "éÉx", "ex", "x"},
+	},
+	{
+		name:     "foldKZ",
+		pattern:  `a(?i)(kz)+`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"akz", "aKZ", "aKZkz", "ak"},
+	},
+	{
+		name:     "foldMix",
+		pattern:  `(?i)(?P<w>[a-c]+)k`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"ABk", "abK", "cK", "x"},
+	},
+	{
+		name:     "foldCafe",
+		pattern:  `(?i)caf(é)`,
+		variants: allEngines(markerBacktracking, markerBacktracking),
+		extra:    []string{"CAFÉ", "Café", "café"},
+	},
+	{
+		name:    "foldRisk",
+		pattern: `(?i)(k+)+z`,
+		// Catastrophic-risk patterns route Find to TDFA whatever the Force*
+		// option (Match still follows the forced engine), so every variant
+		// expects the tdfa Find marker.
+		variants: []parityVariant{
+			pv(engineDefault, markerThompson, markerTDFA),
+			pv(engineThompson, markerThompson, markerTDFA),
+			pv(engineBacktracking, markerBacktracking, markerTDFA),
+			pv(engineTNFA, markerThompson, markerTDFA),
+			pv(engineTDFA, markerThompson, markerTDFA),
+		},
+		extra: []string{"Kz", "kKz", "kk"},
 	},
 }
 
@@ -464,11 +499,14 @@ type divKey struct{ variant, method string }
 
 // Tags for knownDivergence entries.
 const (
-	tagUntriaged = "untriaged"
+	// tagIssue41: the TDFA Find engine matches bytes, not runes, so it misses
+	// non-ASCII input (fold orbit members such as U+212A, U+017F, plus literals
+	// like é and classes like [^,]). Delete the entries when #41 lands.
+	tagIssue41 = "issue41"
 )
 
 // knownDivergence parks divergences from the standard library that are not part
-// of issue #37 (see the untriaged entries in buildKnownDivergence).
+// of issue #37 (see the issue41 entries in buildKnownDivergence).
 // TestStdlibParity fails on a divergence that is not listed here, and also on a
 // listed entry that no longer diverges (so entries cannot go stale).
 var knownDivergence = buildKnownDivergence()
@@ -491,15 +529,25 @@ func buildKnownDivergence() map[divKey]string {
 	}
 	findAndAll := append(append([]string{}, find...), findAll...)
 
-	// Untriaged: not one of the issue #37 bugs.
-	//   - The TDFA Find engine is byte-based: non-ASCII literals never match and
-	//     classes like [^,] only see single bytes (eAcute, notComma Find*).
-	//     Follow-up issue (TDFA byte-based Find, filed with bug 4).
+	// Issue #41: the TDFA Find engine is byte-based: non-ASCII literals never
+	// match and classes like [^,] only see single bytes (eAcute, notComma Find*).
 	for _, v := range []string{
 		"eAcute/ForceBacktracking", "eAcute/default",
 		"notComma/ForceBacktracking", "notComma/default",
 	} {
-		known(m, tagUntriaged, v, findAndAll...)
+		known(m, tagIssue41, v, findAndAll...)
+	}
+
+	// Issue #41 for case-folded literals whose fold orbit has a non-ASCII member
+	// (and so only match on TDFA via their ASCII members). foldA is all-ASCII
+	// and fully enforced on TDFA.
+	for _, v := range []string{
+		"foldK/ForceTDFA", "foldS/ForceTDFA", "foldE/ForceTDFA", "foldKZ/ForceTDFA",
+		"foldMix/ForceTDFA", "foldCafe/ForceTDFA",
+		"foldRisk/default", "foldRisk/ForceThompson", "foldRisk/ForceBacktracking",
+		"foldRisk/ForceTNFA", "foldRisk/ForceTDFA",
+	} {
+		known(m, tagIssue41, v, findAndAll...)
 	}
 
 	return m
@@ -527,12 +575,11 @@ func parityAlphabet(pattern string) ([]rune, error) {
 	var ranges []runeRange
 	needNewline := false
 
+	// addFolded adds the full unicode.SimpleFold orbit of r (so U+212A and
+	// U+017F show up for k and s).
 	addFolded := func(r rune) {
-		switch {
-		case r >= 'a' && r <= 'z':
-			set[r-'a'+'A'] = true
-		case r >= 'A' && r <= 'Z':
-			set[r-'A'+'a'] = true
+		for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+			set[f] = true
 		}
 	}
 
@@ -551,7 +598,8 @@ func parityAlphabet(pattern string) ([]rune, error) {
 			if len(inst.Rune) == 1 {
 				r := inst.Rune[0]
 				ranges = append(ranges, runeRange{r, r})
-				if fold && r < utf8.RuneSelf {
+				if fold {
+					set[r] = true
 					addFolded(r)
 				}
 				continue
@@ -634,6 +682,18 @@ func TestParityAlphabet(t *testing.T) {
 		}
 		if len(rs) > 2+12+3 {
 			t.Errorf("alphabet too large: %d runes", len(rs))
+		}
+	})
+
+	t.Run("fold_orbit", func(t *testing.T) {
+		for p, want := range map[string]rune{`(?i)k+`: 0x212A, `(?i)s+`: 0x17F} {
+			rs, err := parityAlphabet(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !contains(rs, want) {
+				t.Errorf("alphabet for %q lacks %U: %q", p, want, string(rs))
+			}
 		}
 	})
 
@@ -896,12 +956,7 @@ func TestStdlibParity(t *testing.T) {
 			matchSrc := compile(c.pattern, dv.matchPkg, v.engine)
 			findSrc := matchSrc
 			dv.findPkg = dv.matchPkg
-			if c.matchOnly {
-				if v.findEngine != "" {
-					t.Errorf("%s: matchOnly case must not expect a Find engine (%q)", name, v.findEngine)
-				}
-				dv.findPkg = ""
-			} else if !hasCaptures {
+			if !hasCaptures {
 				dv.findPattern = "(" + c.pattern + ")"
 				dv.findPkg = nextPkg()
 				findSrc = compile(dv.findPattern, dv.findPkg, v.engine)
@@ -912,12 +967,10 @@ func TestStdlibParity(t *testing.T) {
 			} else if msg := matchMarkerError(v.matchEngine, body); msg != "" {
 				t.Errorf("%s: expected %s engine for MatchString: %s", name, v.matchEngine, msg)
 			}
-			if !c.matchOnly {
-				if body, ok := parityFuncBody(findSrc, parityFindFuncHeader); !ok {
-					t.Errorf("%s: FindStringReuse function not found in generated code", name)
-				} else if msg := findMarkerError(v.findEngine, body); msg != "" {
-					t.Errorf("%s: expected %s engine for FindStringReuse: %s", name, v.findEngine, msg)
-				}
+			if body, ok := parityFuncBody(findSrc, parityFindFuncHeader); !ok {
+				t.Errorf("%s: FindStringReuse function not found in generated code", name)
+			} else if msg := findMarkerError(v.findEngine, body); msg != "" {
+				t.Errorf("%s: expected %s engine for FindStringReuse: %s", name, v.findEngine, msg)
 			}
 
 			variants = append(variants, dv)

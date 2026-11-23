@@ -63,6 +63,9 @@ type Compiler struct {
 
 // New creates a new compiler instance.
 func New(config Config) *Compiler {
+	// Rewrite case-folded literals into plain rune-pair classes (see foldcase.go).
+	config.Program = NormalizeFoldCase(config.Program)
+
 	compiler := &Compiler{
 		config: config,
 		file:   jen.NewFile(config.Package),

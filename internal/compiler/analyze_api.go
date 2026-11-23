@@ -43,6 +43,7 @@ func AnalyzePattern(pattern string, tdfaThreshold int, dfaThreshold int) (*Analy
 	if err != nil {
 		return nil, err
 	}
+	prog = NormalizeFoldCase(prog)
 
 	// Perform complexity analysis (reuse existing function)
 	complexity := analyzeComplexity(prog, regexAST)

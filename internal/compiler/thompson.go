@@ -548,16 +548,7 @@ func (g *ThompsonGenerator) generateRuneModeCondition(stateIdx int, inst syntax.
 		case len(runes) == 0:
 			return jen.False(), false
 		case len(runes) == 1:
-			if syntax.Flags(inst.Arg)&syntax.FoldCase != 0 {
-				orbit := foldOrbit(runes[0])
-				if len(orbit) > 1 {
-					cond := r().Op("==").Lit(orbit[0])
-					for _, o := range orbit[1:] {
-						cond = cond.Op("||").Add(r()).Op("==").Lit(o)
-					}
-					return jen.Parens(cond), true
-				}
-			}
+			// Case-folded literals never reach here: New runs NormalizeFoldCase.
 			return r().Op("==").Lit(runes[0]), true
 		case len(runes)%2 == 1:
 			return jen.False(), false
@@ -578,22 +569,9 @@ func (g *ThompsonGenerator) generateRuneCondition(inst syntax.Inst) jen.Code {
 		return jen.False()
 	}
 
-	// Check for case-insensitive flag
-	foldCase := syntax.Flags(inst.Arg)&syntax.FoldCase != 0
-
-	// A single rune (what regexp/syntax emits for a case-folded literal): the
-	// rune itself or its fold orbit. Every orbit member is ASCII here.
+	// Case-folded literals never reach here: New runs NormalizeFoldCase, which
+	// rewrites them into sorted rune pairs.
 	if len(runes) == 1 {
-		if foldCase {
-			orbit := foldOrbit(runes[0])
-			if len(orbit) > 1 {
-				cond := jen.Id("c").Op("==").Lit(byte(orbit[0]))
-				for _, o := range orbit[1:] {
-					cond = cond.Op("||").Id("c").Op("==").Lit(byte(o))
-				}
-				return jen.Parens(cond)
-			}
-		}
 		return jen.Id("c").Op("==").Lit(byte(runes[0]))
 	}
 
@@ -601,11 +579,6 @@ func (g *ThompsonGenerator) generateRuneCondition(inst syntax.Inst) jen.Code {
 	if len(runes) == 2 && runes[0] == runes[1] {
 		// Single character
 		r := runes[0]
-		if foldCase && r < 128 {
-			// Case insensitive ASCII
-			lower := byte(r | 0x20)
-			return jen.Parens(jen.Id("c").Op("|").Lit(byte(0x20))).Op("==").Lit(lower)
-		}
 		if r < 128 {
 			return jen.Id("c").Op("==").Lit(byte(r))
 		}

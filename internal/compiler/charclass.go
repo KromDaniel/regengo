@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"regexp/syntax"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/KromDaniel/regengo/internal/codegen"
@@ -21,19 +20,12 @@ func isASCIIOnlyCharClass(runes []rune) bool {
 	return true
 }
 
-// foldOrbit returns r and every rune in its unicode.SimpleFold orbit.
-func foldOrbit(r rune) []rune {
-	orbit := []rune{r}
-	for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
-		orbit = append(orbit, f)
-	}
-	return orbit
-}
-
 // isASCIIProgram reports whether every consuming instruction of prog can match
 // only ASCII runes. FoldCase is set by regexp/syntax only on InstRune with a
 // single rune (never on InstRune1 or multi-range classes), so that is the only
-// place fold orbits are checked. Arg is not read on non-rune instructions
+// place fold orbits are checked. (Programs reaching the generators are already
+// fold-normalized by NormalizeFoldCase; this branch keeps the function correct
+// on raw programs.) Arg is not read on non-rune instructions
 // (for InstEmptyWidth it is an EmptyOp whose BeginLine bit equals FoldCase).
 func isASCIIProgram(prog *syntax.Prog) bool {
 	for i := range prog.Inst {

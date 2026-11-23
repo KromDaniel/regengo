@@ -165,6 +165,14 @@ func TestAnalyzeMatchLength(t *testing.T) {
 		{"[a-z]+", 1, -1},
 		{"a{2,5}", 2, 5},
 		{"(a|bb|ccc)", 1, 3},
+
+		// Case-folded literals: orbit members can have different UTF-8 lengths
+		{"(?i)k", 1, 3},  // K, k, U+212A KELVIN SIGN (3 bytes)
+		{"(?i)kz", 2, 4}, // multi-rune literal
+		{"(?i)s", 1, 2},  // S, s, U+017F LONG S (2 bytes)
+		{"(?i)é", 2, 2},
+		{"(?i)café", 5, 5},
+		{"(?i)ks", 2, 5}, // two folded runes: 1+1 .. 3+2
 	}
 
 	for _, tt := range tests {
