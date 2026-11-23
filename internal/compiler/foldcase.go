@@ -4,6 +4,7 @@ import (
 	"regexp/syntax"
 	"sort"
 	"unicode"
+	"unicode/utf8"
 )
 
 // foldOrbit returns r and every rune in its unicode.SimpleFold orbit.
@@ -29,6 +30,22 @@ func foldOrbitPairs(r rune) []rune {
 		pairs = append(pairs, o, o)
 	}
 	return pairs
+}
+
+// foldRuneLenBounds returns the minimum and maximum UTF-8 length over the
+// SimpleFold orbit of r.
+func foldRuneLenBounds(r rune) (minLen, maxLen int) {
+	minLen, maxLen = utf8.RuneLen(r), utf8.RuneLen(r)
+	for _, o := range foldOrbit(r) {
+		n := utf8.RuneLen(o)
+		if n < minLen {
+			minLen = n
+		}
+		if n > maxLen {
+			maxLen = n
+		}
+	}
+	return minLen, maxLen
 }
 
 // NormalizeFoldCase rewrites every InstRune that holds a single rune with the

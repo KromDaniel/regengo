@@ -164,9 +164,16 @@ func TestAnalyzePatternFoldCase(t *testing.T) {
 		t.Errorf("missing UnicodeCharClass: %v %v", res.FeatureLabels, res.EngineLabels)
 	}
 
+	if res.MaxMatchLength != 4 {
+		t.Errorf("(?i)(k)z max_match_length = %d, want 4", res.MaxMatchLength)
+	}
+
 	res, err = AnalyzePattern(`(?i)(a)z`, 0, 0)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if res.MaxMatchLength != 2 {
+		t.Errorf("(?i)(a)z max_match_length = %d, want 2", res.MaxMatchLength)
 	}
 	if !hasLabel(res.EngineLabels, "DFA") {
 		t.Errorf("want DFA label, got %v", res.EngineLabels)

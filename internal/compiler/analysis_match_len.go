@@ -49,6 +49,11 @@ func minMatchLen(re *syntax.Regexp) int {
 		// Sum of UTF-8 encoded lengths of all runes
 		total := 0
 		for _, r := range re.Rune {
+			if re.Flags&syntax.FoldCase != 0 {
+				lo, _ := foldRuneLenBounds(r)
+				total += lo
+				continue
+			}
 			total += utf8.RuneLen(r)
 		}
 		return total
@@ -155,6 +160,11 @@ func maxMatchLen(re *syntax.Regexp) int {
 		// Sum of UTF-8 encoded lengths of all runes
 		total := 0
 		for _, r := range re.Rune {
+			if re.Flags&syntax.FoldCase != 0 {
+				_, hi := foldRuneLenBounds(r)
+				total += hi
+				continue
+			}
 			total += utf8.RuneLen(r)
 		}
 		return total
