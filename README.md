@@ -300,7 +300,7 @@ See [Transform API Guide](docs/transform-api.md) for complete documentation.
 
 ## CLI Reference
 
-```
+```text
 Required:
   -pattern string    Regex pattern to compile
   -name string       Name for generated struct
